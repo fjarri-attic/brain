@@ -32,10 +32,10 @@ class DeleteRequest(_BaseWriteRequest): pass
 		
 
 class Field:
-	def __init__(self, name, type=None, contents=None):
+	def __init__(self, name, type=None, value=None):
 		self.name = name
 		self.type = type
-		self.contents = contents
+		self.value = value
 		
 		if isinstance(self.name, str):
 			self.name = [name]

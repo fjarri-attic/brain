@@ -42,6 +42,12 @@ class DatabaseLayer:
 		#print("Checking for existence: " + name)
 		return name in res
 
+	def tableIsEmpty(self, name):
+		return len(list(self.__conn.execute("SELECT * FROM '" + name + "'"))) == 0
+
+	def deleteTable(self, name):
+		self.__conn.execute("DROP TABLE IF EXISTS '" + name + "'")
+
 class StructureLayer:
 	def __init__(self, path):
 		self.db = DatabaseLayer(path)
@@ -49,66 +55,87 @@ class StructureLayer:
 		# create specification table
 		self.db.execute("CREATE table IF NOT EXISTS '" + _ID_TABLE + "' (id TEXT, fields TEXT)")
 
-	def __getFieldValues(self, field_name, id):
+	def __getFieldValues(self, id, field_name):
 		return list(self.db.execute("SELECT * FROM '" + field_name + "' WHERE id=:id",
 			{'id': id}))
 
-	def getFieldValue(self, field_name, id):
+	def getFieldValue(self, id, field):
+		field_name = _nameFromList(field.name)
 		l = self.__getFieldValues(field_name, id)
 		if len(l) > 1:
 			raise Exception("Request returned more than one entry")
 		elif len(l) == 1:
-			return l[0]
+			# [0]: list contains only one element
+			# [1]: return only value, not id
+			return l[0][1]
 		else:
 			return None
 
-	def updateFieldValue(self, id, name, type, value):
-		self.db.execute("UPDATE '" + name + "' SET type=?, contents=?, indexed=? WHERE id=?",
+	def __updateFieldValue(self, id, field):
+		field_name = _nameFromList(field.name)
+		self.db.execute("UPDATE '" + field_name + "' SET type=?, contents=?, indexed=? WHERE id=?",
 			(type, value, value, id))
 
-	def setFieldValue(self, id, name, type, value):
-		self.db.execute("INSERT INTO '" + name + "' VALUES (:id, :type, :value, :value)",
-			{'id': id, 'type': type, 'value': value})
+	def __setFieldValue(self, id, field):
+		field_name = _nameFromList(field.name)
+		self.db.execute("INSERT INTO '" + field_name + "' VALUES (:id, :type, :value, :value)",
+			{'id': id, 'type': field.type, 'value': field.value})
 
-	def deleteFieldValue(self, id, name):
+	def deleteFieldValue(self, id, field):
+
+		field_name = _nameFromList(field.name)
 
 		# check if table exists
-		if not self.db.tableExists(name):
+		if not self.db.tableExists(field_name):
 			return
 
 		# delete value
-		self.db.execute("DELETE FROM '" + name + "' WHERE id=:id",
+		self.db.execute("DELETE FROM '" + field_name + "' WHERE id=:id",
 			{'id': id})
 
-		# check if the table is empty
-		if len(list(self.db.execute("SELECT * FROM '" + name + "'"))) == 0:
-			self.db.execute("DROP TABLE IF EXISTS '" + name + "'")
+		# check if the table is empty and if it is - delete it too
+		if self.db.tableIsEmpty(field_name):
+			self.db.deleteTable(field_name)
 
-	def createElements(self, id, fields):
+	def deleteElement(self, id):
+		# get element specification
+		specifications = self.__getFieldValues(id, _ID_TABLE)[0][1]
+		field_names = specifications.split('#')
+
+		# for each field, remove it from tables
+		for field_name in field_names:
+			self.deleteFieldValue(id, interfaces.Field(field_name))
+
+		self.deleteFieldValue(id, interfaces.Field(_ID_TABLE))
+
+	def createElement(self, id, fields):
 
 		# create element header
-		field_name_list = [field.name for field in fields]
+		field_name_list = [_nameFromList(field.name) for field in fields]
 		specification = _specificationFromNames(field_name_list)
 		self.db.execute("INSERT INTO '" + _ID_TABLE + "' VALUES (?, ?)", (id, specification))
 
 		# update field tables
 		for field in fields:
-			self.db.execute("CREATE TABLE IF NOT EXISTS '" + field.name +
+			self.db.execute("CREATE TABLE IF NOT EXISTS '" + _nameFromList(field.name) +
 				"' (id TEXT, type TEXT, contents TEXT, indexed TEXT)")
-			self.setFieldValue(id, field.name, field.type, field.contents)
+			self.__setFieldValue(id, field)
 
-	def modifyElements(self, id, fields):
+	def modifyElement(self, id, fields):
 
 		# get element specification
-		specifications = self.getFieldValue(_ID_TABLE, id)[1]
+		specifications = self.__getFieldValues(id, _ID_TABLE)[0][1]
 		field_names = specifications.split('#')
 
 		# for each field, check if it already exists
 		for field in fields:
 			if field.name in field_names:
-				self.updateFieldValue(id, field.name, field.type, field.contents)
+				self.__updateFieldValue(id, field)
 			else:
-				self.setFieldValue(id, field.name, field.type, field.contents)			
+				self.__setFieldValue(id, field)
+
+	def elementExists(self, id):
+		return len(self.__getFieldValues(id, _ID_TABLE)) == 0
 
 class Sqlite3Database(interfaces.Database):
 
@@ -117,8 +144,6 @@ class Sqlite3Database(interfaces.Database):
 
 	def processRequest(self, request):
 		if request.__class__ == interfaces.ModifyRequest:
-			for field in request.fields:
-				field.name = _nameFromList(field.name)
 			self.__processModifyRequest(request)
 		elif request.__class__ == interfaces.DeleteRequest:
 			self.__processDeleteRequest(request)
@@ -140,31 +165,21 @@ class Sqlite3Database(interfaces.Database):
 
 		# check if the entry with specified id already exists
 		# if no, just add it to the database
-		if self.db.getFieldValue(_ID_TABLE, request.id) == None:
-			self.db.createElements(request.id, request.fields)
+		if self.db.elementExists(request.id):
+			self.db.createElement(request.id, request.fields)
 		else:
-			self.db.modifyElements(request.id, request.fields)
+			self.db.modifyElement(request.id, request.fields)
 
 	def __processDeleteRequest(self, request):
 
-		# remove specified fields
 		if request.fields != None:
+			# remove specified fields
 			for field in request.fields:
-				field_name = _nameFromList(field.name)
-				self.db.deleteFieldValue(request.id, field_name)
+				self.db.deleteFieldValue(request.id, field)
 			return
-
-		# delete whole object
-
-		# get element specification
-		specifications = self.db.getFieldValue(_ID_TABLE, request.id)[1]
-		field_names = specifications.split('#')
-
-		# for each field, remove it from tables
-		for field_name in field_names:
-			self.db.deleteFieldValue(request.id, field_name)
-
-		self.db.deleteFieldValue(request.id, _ID_TABLE)
+		else:
+			# delete whole object
+			self.db.deleteElement(request.id)
 
 	def __processSearchRequest(self, request):
 
