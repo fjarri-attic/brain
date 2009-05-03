@@ -24,6 +24,9 @@ class Field:
 		elif not isinstance(self.name, list):
 			raise FormatError("Field name must be a list")
 
+	def __eq__(self, other):
+		return (self.name == other.name) and (self.type == other.type) and (self.value == other.value)
+
 	def __str__(self):
 		return "Field ('" + str(self.name) + "'" + \
 			(", type=" + str(self.type) if self.type else "") + \
