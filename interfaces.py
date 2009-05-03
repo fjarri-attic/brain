@@ -59,7 +59,7 @@ class DeleteRequest(_BaseFieldRelatedRequest):
 
 class ReadRequest(_BaseFieldRelatedRequest):
 	def __str__(self):
-		return "DeleteRequest for element '" + self.id + "': " + self.__getFieldsStr()
+		return "ReadRequest for element '" + self.id + "': " + self.__getFieldsStr()
 
 class SearchRequest:
 
