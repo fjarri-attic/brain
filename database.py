@@ -100,9 +100,6 @@ class StructureLayer:
 	# Other functions
 	#
 
-	def fieldExists(self, field):
-		return self.db.tableExists(_nameFromList(field.name))
-
 	def getFieldValue(self, id, field):
 		field_name = _nameFromList(field.name)
 		l = list(self.db.execute("SELECT contents FROM '" + field_name + "' WHERE id=:id",
@@ -183,6 +180,51 @@ class StructureLayer:
 			else:
 				self.__setFieldValue(id, field)
 
+	def searchForElements(self, condition):
+		def buildSqlQuery(condition):
+
+			if not condition.leaf:
+				if isinstance(condition.operator, interfaces.SearchRequest.And):
+					return "SELECT * FROM (" + buildSqlQuery(condition.operand1) + \
+						") INTERSECT SELECT * FROM (" + buildSqlQuery(condition.operand2) + ")"
+				elif isinstance(condition.operator, interfaces.SearchRequest.Or):
+					return "SELECT * FROM (" + buildSqlQuery(condition.operand1) + \
+						") UNION SELECT * FROM (" + buildSqlQuery(condition.operand2) + ")"
+				else:
+					raise Exception("Operator unsupported: " + str(condition.operator))
+				return
+
+			field_name = _nameFromList(condition.operand1.name)
+
+			if not self.db.tableExists(field_name):
+				return "SELECT 0 limit 0" # returns empty result
+
+			if condition.invert:
+				not_str = " NOT "
+			else:
+				not_str = " "
+
+			if isinstance(condition.operator, interfaces.SearchRequest.Eq):
+				result = "SELECT id FROM " + field_name + " WHERE" + not_str + \
+					"contents = '" + condition.operand2 + "'"
+			elif isinstance(condition.operator, interfaces.SearchRequest.Regexp):
+				result = "SELECT id FROM " + field_name + " WHERE" + not_str + \
+					"contents REGEXP '" + condition.operand2 + "'"
+			else:
+				raise Exception("Comparison unsupported: " + str(condition.operator))
+
+			if condition.invert:
+				result = result + " UNION SELECT * FROM (SELECT id FROM '" + _ID_TABLE + \
+					"' EXCEPT SELECT id FROM '" + field_name + "')"
+
+			return result
+
+		request = buildSqlQuery(condition)
+		result = self.db.execute(request)
+		list_res = [x[0] for x in result]
+
+		return list_res
+
 class Sqlite3Database(interfaces.Database):
 
 	def __init__(self, path):
@@ -237,48 +279,7 @@ class Sqlite3Database(interfaces.Database):
 				propagateInversion(condition.operand1)
 				propagateInversion(condition.operand2)
 
-		def makeSqlRequest(condition):
-
-			if not condition.leaf:
-				if isinstance(condition.operator, interfaces.SearchRequest.And):
-					return "SELECT * FROM (" + makeSqlRequest(condition.operand1) + \
-						") INTERSECT SELECT * FROM (" + makeSqlRequest(condition.operand2) + ")"
-				elif isinstance(condition.operator, interfaces.SearchRequest.Or):
-					return "SELECT * FROM (" + makeSqlRequest(condition.operand1) + \
-						") UNION SELECT * FROM (" + makeSqlRequest(condition.operand2) + ")"
-				else:
-					raise Exception("Operator unsupported: " + str(condition.operator))
-				return
-
-			field_name = _nameFromList(condition.operand1.name)
-
-			if not self.db.fieldExists(condition.operand1):
-				return "SELECT 0 limit 0" # returns empty result
-
-			if condition.invert:
-				not_str = " NOT "
-			else:
-				not_str = " "
-
-			if isinstance(condition.operator, interfaces.SearchRequest.Eq):
-				result = "SELECT id FROM " + field_name + " WHERE" + not_str + \
-					"contents = '" + condition.operand2 + "'"
-			elif isinstance(condition.operator, interfaces.SearchRequest.Regexp):
-				result = "SELECT id FROM " + field_name + " WHERE" + not_str + \
-					"contents REGEXP '" + condition.operand2 + "'"
-			else:
-				raise Exception("Comparison unsupported: " + str(condition.operator))
-
-			if condition.invert:
-				result = result + " UNION SELECT * FROM (SELECT id FROM '" + _ID_TABLE + \
-					"' EXCEPT SELECT id FROM '" + field_name + "')"
-
-			return result
-
 		propagateInversion(request.condition)
-		request = makeSqlRequest(request.condition)
-		print("Requesting: " + request)
-		result = self.db.db.execute(request)
-		list_res = [x[0] for x in result]
-		#print(repr(list_res))
-		return list_res
+		print("Requesting: " + str(request.condition))
+
+		return self.db.searchForElements(request.condition)
