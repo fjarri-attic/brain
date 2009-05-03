@@ -25,6 +25,12 @@ class Field:
 			raise FormatError("Field name must be a list")
 
 	def __eq__(self, other):
+		if other == None:
+			return False
+		
+		if not isinstance(other, Field):
+			return False
+
 		return (self.name == other.name) and (self.type == other.type) and (self.value == other.value)
 
 	def __str__(self):
