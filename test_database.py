@@ -29,8 +29,7 @@ class TestRequests(unittest.TestCase):
 				", expected: " + str(expected_elem))
 
 	def addObject(self, id, fields={}):
-		field_objs = [Field(key if isinstance(key, list) else [key],
-			'text', fields[key]) for key in fields.keys()]
+		field_objs = [Field(key, 'text', fields[key]) for key in fields.keys()]
 		self.db.processRequest(ModifyRequest(id, field_objs))
 
 	def testBlankObjectAddition(self):
@@ -330,6 +329,11 @@ class TestRequests(unittest.TestCase):
 
 		self.checkSearchResult(res, ['1', '5'])
 
+	def testZZZReadAllFields(self):
+		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
+
+		res = self.db.processRequest(ReadRequest('1'))
+		print(str(res))
 
 def suite():
 	res = testhelpers.NamedTestSuite()

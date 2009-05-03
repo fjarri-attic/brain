@@ -72,7 +72,7 @@ class StructureLayer:
 		self.db.execute("DELETE FROM '" + _ID_TABLE + "' WHERE id=:id",	{'id': id})
 
 	def __updateSpecification(self, id, field):
-		existing_fields = self.__getFieldsList(id)
+		existing_fields = self.getFieldsList(id)
 		existing_fields.append(field)
 
 		field_name_list = [_nameFromList(field.name) for field in existing_fields]
@@ -81,7 +81,7 @@ class StructureLayer:
 		self.db.execute("UPDATE '" + _ID_TABLE + "' SET fields=? WHERE id=?",
 			(specification, id))
 
-	def __getFieldsList(self, id):
+	def getFieldsList(self, id):
 		# get element specification
 		l = list(self.db.execute("SELECT fields FROM '" + _ID_TABLE + "' WHERE id=:id",
 			{'id': id}))
@@ -102,28 +102,27 @@ class StructureLayer:
 
 	def getFieldValue(self, id, field):
 		field_name = _nameFromList(field.name)
-		l = list(self.db.execute("SELECT contents FROM '" + field_name + "' WHERE id=:id",
+		l = list(self.db.execute("SELECT value FROM '" + field_name + "' WHERE id=:id",
 			{'id': id}))
 		if len(l) > 1:
 			raise Exception("Request returned more than one entry")
 		elif len(l) == 1:
 			# [0]: list contains only one element
-			# [1]: return only value, not id
-			return l[0][0]
+			# [0]: each list element is a tuple with one value
+			return interfaces.Field(field.name, 'text', l[0][0])
 		else:
 			return None
 
 	def __updateFieldValue(self, id, field):
 		field_name = _nameFromList(field.name)
-		self.db.execute("UPDATE '" + field_name + "' SET type=?, contents=? WHERE id=?",
+		self.db.execute("UPDATE '" + field_name + "' SET type=?, value=? WHERE id=?",
 			(field.type, field.value, id))
 
 	def __setFieldValue(self, id, field):
 		self.__assureFieldTableExists(field)
-		self.__updateSpecification(id, field)
 
 		field_name = _nameFromList(field.name)
-		self.db.execute("INSERT INTO '" + field_name + "' VALUES (:id, :type, :value, :value)",
+		self.db.execute("INSERT INTO '" + field_name + "' VALUES (:id, :type, :value)",
 			{'id': id, 'type': field.type, 'value': field.value})
 
 	def deleteField(self, id, field):
@@ -144,7 +143,7 @@ class StructureLayer:
 
 	def __assureFieldTableExists(self, field):
 		self.db.execute("CREATE TABLE IF NOT EXISTS '" + _nameFromList(field.name) +
-			"' (id TEXT, type TEXT, contents TEXT, indexed TEXT)")
+			"' (id TEXT, type TEXT, value TEXT)")
 
 	def createElement(self, id, fields):
 
@@ -158,7 +157,7 @@ class StructureLayer:
 
 	def deleteElement(self, id):
 
-		fields = self.__getFieldsList(id)
+		fields = self.getFieldsList(id)
 
 		# for each field, remove it from tables
 		for field in fields:
@@ -167,7 +166,7 @@ class StructureLayer:
 		self.__deleteSpecification(id)
 
 	def __elementHasField(self, id, field):
-		existing_fields = self.__getFieldsList(id)
+		existing_fields = self.getFieldsList(id)
 		existing_names = [existing_field.name for existing_field in existing_fields]
 		return field.name in existing_names
 
@@ -178,6 +177,7 @@ class StructureLayer:
 			if self.__elementHasField(id, field):
 				self.__updateFieldValue(id, field)
 			else:
+				self.__updateSpecification(id, field)
 				self.__setFieldValue(id, field)
 
 	def searchForElements(self, condition):
@@ -206,10 +206,10 @@ class StructureLayer:
 
 			if isinstance(condition.operator, interfaces.SearchRequest.Eq):
 				result = "SELECT id FROM " + field_name + " WHERE" + not_str + \
-					"contents = '" + condition.operand2 + "'"
+					"value = '" + condition.operand2 + "'"
 			elif isinstance(condition.operator, interfaces.SearchRequest.Regexp):
 				result = "SELECT id FROM " + field_name + " WHERE" + not_str + \
-					"contents REGEXP '" + condition.operand2 + "'"
+					"value REGEXP '" + condition.operand2 + "'"
 			else:
 				raise Exception("Comparison unsupported: " + str(condition.operator))
 
@@ -261,9 +261,11 @@ class Sqlite3Database(interfaces.Database):
 		else:
 			# delete whole object
 			self.db.deleteElement(request.id)
-	
+
 	def __processReadRequest(self, request):
-		pass
+		fields_to_read = request.fields if request.fields else self.db.getFieldsList(request.id)
+
+		return [self.db.getFieldValue(request.id, field) for field in fields_to_read]
 
 	def __processSearchRequest(self, request):
 
