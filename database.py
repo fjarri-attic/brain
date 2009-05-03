@@ -14,18 +14,37 @@ def _nameFromList(name_list):
 
 def _specificationFromNames(name_list):
 	return _SPECIFICATION_SEP.join(name_list)
+	
+class DatabaseWrapper:
+	def __init__(self, path):
+		self.db = sqlite3.connect(path)
+		self.db.create_function("regexp", 2, self.__regexp)
+	
+	def dump(self):
+		print("Dump:")
+		for str in self.db.iterdump():
+			print(str)
+		print("--------")
+
+	def __regexp(self, expr, item):
+		r = re.compile(expr)
+		return r.match(item) is not None
+	
+	def execute(self, sql_str, params=None):
+		if params:
+			return self.db.execute(sql_str, params)
+		else:
+			return self.db.execute(sql_str)
 
 class Sqlite3Database(interfaces.Database):
 
 	__id_column = "_id"
 
 	def __init__(self, path):
-		self.conn = sqlite3.connect(path)
-
+		self.db = DatabaseWrapper(path)
+		
 		# create necessary tables
-		self.conn.execute("CREATE table IF NOT EXISTS '" + self.__id_column + "' (id TEXT, fields TEXT)")
-
-		self.conn.create_function("regexp", 2, self.__regexp)
+		self.db.execute("CREATE table IF NOT EXISTS '" + self.__id_column + "' (id TEXT, fields TEXT)")
 
 	def processRequest(self, request):
 		if request.__class__ == interfaces.ModifyRequest:
@@ -58,21 +77,20 @@ class Sqlite3Database(interfaces.Database):
 			self.__modifyElements(request.id, request.fields)
 
 	def __createElements(self, id, fields):
-		cur = self.conn.cursor()
 
 		# create element header
 		field_name_list = [field.name for field in fields]
 		specification = _specificationFromNames(field_name_list)
-		cur.execute("INSERT INTO '" + self.__id_column + "' VALUES (?, ?)", (id, specification))
+		self.db.execute("INSERT INTO '" + self.__id_column + "' VALUES (?, ?)", (id, specification))
 
 		# update field tables
 		for field in fields:
-			cur.execute("CREATE TABLE IF NOT EXISTS '" + field.name +
+			self.db.execute("CREATE TABLE IF NOT EXISTS '" + field.name +
 				"' (id TEXT, type TEXT, contents TEXT, indexed TEXT)")
 			self.__setFieldValue(id, field.name, field.type, field.contents)
 
 	def __getFieldValues(self, field_name, id):
-		return list(self.conn.execute("SELECT * FROM '" + field_name + "' WHERE id=:id",
+		return list(self.db.execute("SELECT * FROM '" + field_name + "' WHERE id=:id",
 			{'id': id}))
 
 	def __getFieldValue(self, field_name, id):
@@ -85,15 +103,15 @@ class Sqlite3Database(interfaces.Database):
 			return None
 
 	def __updateFieldValue(self, id, name, type, value):
-		self.conn.execute("UPDATE '" + name + "' SET type=?, contents=?, indexed=? WHERE id=?",
+		self.db.execute("UPDATE '" + name + "' SET type=?, contents=?, indexed=? WHERE id=?",
 			(type, value, value, id))
 
 	def __setFieldValue(self, id, name, type, value):
-		self.conn.execute("INSERT INTO '" + name + "' VALUES (:id, :type, :value, :value)",
+		self.db.execute("INSERT INTO '" + name + "' VALUES (:id, :type, :value, :value)",
 			{'id': id, 'type': type, 'value': value})
 	
 	def __tableExists(self, name):
-		res = list(self.conn.execute("SELECT name FROM sqlite_master WHERE type='table'"))
+		res = list(self.db.execute("SELECT name FROM sqlite_master WHERE type='table'"))
 		res = [x[0] for x in res]
 		print("Checking for existence: " + name)
 		return name in res
@@ -105,12 +123,12 @@ class Sqlite3Database(interfaces.Database):
 			return
 
 		# delete value
-		self.conn.execute("DELETE FROM '" + name + "' WHERE id=:id",
+		self.db.execute("DELETE FROM '" + name + "' WHERE id=:id",
 			{'id': id})
 
 		# check if the table is empty
-		if len(list(self.conn.execute("SELECT * FROM '" + name + "'"))) == 0:
-			self.conn.execute("DROP TABLE IF EXISTS '" + name + "'")
+		if len(list(self.db.execute("SELECT * FROM '" + name + "'"))) == 0:
+			self.db.execute("DROP TABLE IF EXISTS '" + name + "'")
 
 	def __modifyElements(self, id, fields):
 
@@ -201,17 +219,7 @@ class Sqlite3Database(interfaces.Database):
 
 		request = makeSqlRequest(request.condition)
 		print("Requesting: " + request)
-		result = self.conn.execute(request)
+		result = self.db.execute(request)
 		list_res = [x[0] for x in result]
 		#print(repr(list_res))
 		return list_res
-
-	def dump(self):
-		print("Dump:")
-		for str in self.conn.iterdump():
-			print(str)
-		print("--------")
-
-	def __regexp(self, expr, item):
-		r = re.compile(expr)
-		return r.match(item) is not None
