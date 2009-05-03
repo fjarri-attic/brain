@@ -231,12 +231,14 @@ class Sqlite3Database(interfaces.Database):
 		self.db = StructureLayer(path)
 
 	def processRequest(self, request):
-		if request.__class__ == interfaces.ModifyRequest:
+		if isinstance(request, interfaces.ModifyRequest):
 			self.__processModifyRequest(request)
-		elif request.__class__ == interfaces.DeleteRequest:
+		elif isinstance(request, interfaces.DeleteRequest):
 			self.__processDeleteRequest(request)
-		elif request.__class__ == interfaces.SearchRequest:
+		elif isinstance(request, interfaces.SearchRequest):
 			return self.__processSearchRequest(request)
+		elif isinstance(request, interfaces.ReadRequest):
+			return self.__processReadRequest(request)
 		else:
 			raise Exception("Unknown request type: " + request.__class__.__name__)
 
@@ -259,6 +261,9 @@ class Sqlite3Database(interfaces.Database):
 		else:
 			# delete whole object
 			self.db.deleteElement(request.id)
+	
+	def __processReadRequest(self, request):
+		pass
 
 	def __processSearchRequest(self, request):
 
