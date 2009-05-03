@@ -16,6 +16,9 @@ def _listFromName(name):
 def _specificationFromNames(name_list):
 	return _SPECIFICATION_SEP.join(name_list)
 
+def _namesFromSpecification(specification):
+	return specification.split(_SPECIFICATION_SEP)
+
 class DatabaseLayer:
 	def __init__(self, path):
 		self.__conn = sqlite3.connect(path)
@@ -83,8 +86,8 @@ class StructureLayer:
 		l = list(self.db.execute("SELECT fields FROM '" + _ID_TABLE + "' WHERE id=:id",
 			{'id': id}))
 
-		specifications = l[0][0]
-		field_names = specifications.split('#')
+		specification = l[0][0]
+		field_names = _namesFromSpecification(specification)
 
 		return [interfaces.Field(_listFromName(field_name)) for field_name in field_names]
 
@@ -92,11 +95,11 @@ class StructureLayer:
 		l = list(self.db.execute("SELECT fields FROM '" + _ID_TABLE + "' WHERE id=:id",
 			{'id': id}))
 		return len(l) > 0
-	
+
 	#
 	# Other functions
 	#
-	
+
 	def fieldExists(self, field):
 		return self.db.tableExists(_nameFromList(field.name))
 
