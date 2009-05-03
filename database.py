@@ -287,6 +287,5 @@ class Sqlite3Database(interfaces.Database):
 				propagateInversion(condition.operand2)
 
 		propagateInversion(request.condition)
-		print("Requesting: " + str(request.condition))
 
 		return self.db.searchForElements(request.condition)
