@@ -36,6 +36,12 @@ class DatabaseWrapper:
 		else:
 			return self.db.execute(sql_str)
 
+	def tableExists(self, name):
+		res = list(self.db.execute("SELECT name FROM sqlite_master WHERE type='table'"))
+		res = [x[0] for x in res]
+		#print("Checking for existence: " + name)
+		return name in res	
+
 class Sqlite3Database(interfaces.Database):
 
 	__id_column = "_id"
@@ -109,17 +115,11 @@ class Sqlite3Database(interfaces.Database):
 	def __setFieldValue(self, id, name, type, value):
 		self.db.execute("INSERT INTO '" + name + "' VALUES (:id, :type, :value, :value)",
 			{'id': id, 'type': type, 'value': value})
-	
-	def __tableExists(self, name):
-		res = list(self.db.execute("SELECT name FROM sqlite_master WHERE type='table'"))
-		res = [x[0] for x in res]
-		print("Checking for existence: " + name)
-		return name in res
 
 	def __deleteFieldValue(self, id, name):
 
 		# check if table exists
-		if not self.__tableExists(name):
+		if not self.db.tableExists(name):
 			return
 
 		# delete value
@@ -194,7 +194,7 @@ class Sqlite3Database(interfaces.Database):
 					raise Exception("Operator unsupported: " + condition.operator.__name__)
 				return
 			
-			if not self.__tableExists(condition.operand1):
+			if not self.db.tableExists(condition.operand1):
 				return "SELECT 0 limit 0" # returns empty result
 
 			if condition.invert:
