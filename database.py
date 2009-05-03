@@ -51,9 +51,46 @@ class DatabaseLayer:
 class StructureLayer:
 	def __init__(self, path):
 		self.db = DatabaseLayer(path)
+		self.__createSpecificationTable()
 
-		# create specification table
+	#
+	# Specification-oriented functions
+	#
+
+	def __createSpecificationTable(self):
 		self.db.execute("CREATE table IF NOT EXISTS '" + _ID_TABLE + "' (id TEXT, fields TEXT)")
+
+	def __createSpecification(self, id, fields):
+		field_name_list = [_nameFromList(field.name) for field in fields]
+		specification = _specificationFromNames(field_name_list)
+		self.db.execute("INSERT INTO '" + _ID_TABLE + "' VALUES (?, ?)", (id, specification))
+
+	def __deleteSpecification(self, id):
+		self.deleteField(id, interfaces.Field(_ID_TABLE))
+
+	def __getFieldsList(self, id):
+		# get element specification
+		specifications = self.__getFieldValues(id, _ID_TABLE)[0][1]
+		field_names = specifications.split('#')
+
+		return [interfaces.Field(field_name) for field_name in field_names]
+
+	def elementExists(self, id):
+		return len(self.__getFieldValues(id, _ID_TABLE)) > 0
+
+	#
+	# Other functions
+	#
+
+	def deleteElement(self, id):
+
+		fields = self.__getFieldsList(id)
+
+		# for each field, remove it from tables
+		for field in fields:
+			self.deleteField(id, field)
+
+		self.__deleteSpecification(id)
 
 	def __getFieldValues(self, id, field_name):
 		return list(self.db.execute("SELECT * FROM '" + field_name + "' WHERE id=:id",
@@ -74,20 +111,23 @@ class StructureLayer:
 	def __updateFieldValue(self, id, field):
 		field_name = _nameFromList(field.name)
 		self.db.execute("UPDATE '" + field_name + "' SET type=?, contents=?, indexed=? WHERE id=?",
-			(type, value, value, id))
+			(field.type, field.value, field.value, id))
 
 	def __setFieldValue(self, id, field):
 		field_name = _nameFromList(field.name)
 		self.db.execute("INSERT INTO '" + field_name + "' VALUES (:id, :type, :value, :value)",
 			{'id': id, 'type': field.type, 'value': field.value})
 
-	def deleteFieldValue(self, id, field):
+
+
+	def deleteField(self, id, field):
 
 		field_name = _nameFromList(field.name)
 
 		# check if table exists
 		if not self.db.tableExists(field_name):
 			return
+
 
 		# delete value
 		self.db.execute("DELETE FROM '" + field_name + "' WHERE id=:id",
@@ -97,23 +137,10 @@ class StructureLayer:
 		if self.db.tableIsEmpty(field_name):
 			self.db.deleteTable(field_name)
 
-	def deleteElement(self, id):
-		# get element specification
-		specifications = self.__getFieldValues(id, _ID_TABLE)[0][1]
-		field_names = specifications.split('#')
-
-		# for each field, remove it from tables
-		for field_name in field_names:
-			self.deleteFieldValue(id, interfaces.Field(field_name))
-
-		self.deleteFieldValue(id, interfaces.Field(_ID_TABLE))
-
 	def createElement(self, id, fields):
 
 		# create element header
-		field_name_list = [_nameFromList(field.name) for field in fields]
-		specification = _specificationFromNames(field_name_list)
-		self.db.execute("INSERT INTO '" + _ID_TABLE + "' VALUES (?, ?)", (id, specification))
+		self.__createSpecification(id, fields)
 
 		# update field tables
 		for field in fields:
@@ -121,21 +148,19 @@ class StructureLayer:
 				"' (id TEXT, type TEXT, contents TEXT, indexed TEXT)")
 			self.__setFieldValue(id, field)
 
-	def modifyElement(self, id, fields):
+	def __elementHasField(self, id, field):
+		existing_fields = self.__getFieldsList(id)
+		existing_names = [existing_field.name for existing_field in existing_fields]
+		return field.name in existing_names
 
-		# get element specification
-		specifications = self.__getFieldValues(id, _ID_TABLE)[0][1]
-		field_names = specifications.split('#')
+	def modifyElement(self, id, fields):
 
 		# for each field, check if it already exists
 		for field in fields:
-			if field.name in field_names:
+			if self.__elementHasField(id, field):
 				self.__updateFieldValue(id, field)
 			else:
 				self.__setFieldValue(id, field)
-
-	def elementExists(self, id):
-		return len(self.__getFieldValues(id, _ID_TABLE)) > 0
 
 class Sqlite3Database(interfaces.Database):
 
@@ -175,7 +200,7 @@ class Sqlite3Database(interfaces.Database):
 		if request.fields != None:
 			# remove specified fields
 			for field in request.fields:
-				self.db.deleteFieldValue(request.id, field)
+				self.db.deleteField(request.id, field)
 			return
 		else:
 			# delete whole object
