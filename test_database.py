@@ -16,36 +16,36 @@ class TestRequests(unittest.TestCase):
 		return Derived
 
 	def setUp(self):
-		raise Exception("Not implemented")		
+		raise Exception("Not implemented")
 
 	def checkSearchResult(self, res, expected):
 		self.failUnless(isinstance(res, list), "Search result has type " + str(type(res)))
 		self.failUnless(len(res) == len(expected), "Search returned " + str(len(res)) + " results")
-		
+
 		to_compare = zip(res, expected)
 		for res_elem, expected_elem in to_compare:
-			self.failUnless(res_elem == expected_elem, 
-				"Search result is wrong: " + str(res_elem) + 
+			self.failUnless(res_elem == expected_elem,
+				"Search result is wrong: " + str(res_elem) +
 				", expected: " + str(expected_elem))
-	
+
 	def addObject(self, id, fields={}):
-		field_objs = [Field(key if isinstance(key, list) else [key], 
+		field_objs = [Field(key if isinstance(key, list) else [key],
 			'text', fields[key]) for key in fields.keys()]
 		self.db.processRequest(ModifyRequest(id, field_objs))
-		
+
 	def testBlankObjectAddition(self):
 		self.addObject('1')
 
 	def testAdditionNoCheck(self):
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
-		
+
 	def testAddition(self):
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
-		
+
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			['phone'], SearchRequest.Eq, '1111')))
-		
-		self.checkSearchResult(res, ['1'])	
+
+		self.checkSearchResult(res, ['1'])
 
 	def testModificationNoCheck(self):
 		self.addObject('2', {'name': 'Alex', 'phone': '1111'})
@@ -56,28 +56,64 @@ class TestRequests(unittest.TestCase):
 
 	def testModification(self):
 		self.addObject('2', {'name': 'Alex', 'phone': '1111'})
-	
+
 		self.db.processRequest(ModifyRequest('2', [
 			Field('name', 'text', 'Bob')
 		]))
-		
+
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			['name'], SearchRequest.Eq, 'Bob')))
 
-		self.checkSearchResult(res, ['2'])	
-			
+		self.checkSearchResult(res, ['2'])
+
+	def testModificationAddsField(self):
+		self.addObject('2', {'name': 'Alex', 'phone': '1111'})
+
+		self.db.processRequest(ModifyRequest('2', [
+			Field('age', 'text', '27')
+		]))
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			['age'], SearchRequest.Eq, '27')))
+
+		self.checkSearchResult(res, ['2'])
+
+	def testModificationAddFieldTwice(self):
+		"""Regression test for non-updating specification"""
+
+		# Add test object
+		self.addObject('2', {'name': 'Alex', 'phone': '1111'})
+
+		# Add new field to object
+		self.db.processRequest(ModifyRequest('2', [
+			Field('age', 'text', '27')
+		]))
+
+		# Delete object. If specification was not updated,
+		# new field is still in database
+		self.db.processRequest(DeleteRequest('2'))
+
+		# Add object again
+		self.addObject('2', {'name': 'Alex', 'phone': '1111'})
+
+		# Check that field from old object is not there
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			['age'], SearchRequest.Eq, '27')))
+
+		self.checkSearchResult(res, [])
+
 	def testModificationPreservesFields(self):
 		self.addObject('2', {'name': 'Alex', 'phone': '1111'})
 
 		self.db.processRequest(ModifyRequest('2', [
 			Field('name', 'text', 'Bob')
 		]))
-		
+
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			['phone'], SearchRequest.Eq, '1111')))
 
-		self.checkSearchResult(res, ['2'])	
-			
+		self.checkSearchResult(res, ['2'])
+
 	def testMultipleModification(self):
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
@@ -85,19 +121,19 @@ class TestRequests(unittest.TestCase):
 		self.db.processRequest(ModifyRequest('2', [
 			Field(['name'], 'text', 'Rob')
 		]))
-		
+
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			['name'], SearchRequest.Eq, 'Rob')))
 
 		self.checkSearchResult(res, ['2'])
-	
+
 	def testSearchConditionAnd(self):
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
 		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
 		self.addObject('4', {'name': 'Don', 'phone': '4444', 'age': '20'})
 		self.addObject('5', {'name': 'Alex', 'phone': '1111', 'age': '22'})
-		
+
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 		SearchRequest.Condition(
 			['phone'], SearchRequest.Eq, '1111'
@@ -107,7 +143,7 @@ class TestRequests(unittest.TestCase):
 			['age'], SearchRequest.Eq, '22'
 			)
 		)))
-		
+
 		self.checkSearchResult(res, ['5'])
 
 	def testSearchConditionOr(self):
@@ -116,7 +152,7 @@ class TestRequests(unittest.TestCase):
 		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
 		self.addObject('4', {'name': 'Don', 'phone': '4444', 'age': '20'})
 		self.addObject('5', {'name': 'Alex', 'phone': '1111', 'age': '22'})
-		
+
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 		SearchRequest.Condition(
 			['phone'], SearchRequest.Eq, '2222'
@@ -126,16 +162,16 @@ class TestRequests(unittest.TestCase):
 			['age'], SearchRequest.Eq, '27'
 			)
 		)))
-		
+
 		self.checkSearchResult(res, ['2', '3'])
-		
+
 	def testSearchConditionInvert(self):
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
 		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
 		self.addObject('4', {'name': 'Don', 'phone': '4444', 'age': '20'})
 		self.addObject('5', {'name': 'Alex', 'phone': '1111', 'age': '22'})
-		
+
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 		SearchRequest.Condition(
 			['phone'], SearchRequest.Eq, '1111'
@@ -145,16 +181,16 @@ class TestRequests(unittest.TestCase):
 			['age'], SearchRequest.Eq, '22', invert=True
 			)
 		)))
-		
+
 		self.checkSearchResult(res, ['1'])
-	
+
 	def testSearchConditionRegexp(self):
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
 		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
 		self.addObject('4', {'name': 'Don', 'phone': '4444', 'age': '20'})
 		self.addObject('5', {'name': 'Alex', 'phone': '1111', 'age': '22'})
-		
+
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 		SearchRequest.Condition(
 			['phone'], SearchRequest.Regexp, '\d+'
@@ -164,16 +200,16 @@ class TestRequests(unittest.TestCase):
 			['age'], SearchRequest.Eq, '22', invert=True
 			)
 		)))
-		
+
 		self.checkSearchResult(res, ['1', '2', '3', '4'])
-	
+
 	def testDeleteObject(self):
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
 		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
 
 		self.db.processRequest(DeleteRequest('3'))
-		
+
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			['phone'], SearchRequest.Eq, '3333')))
 		self.checkSearchResult(res, [])
@@ -188,7 +224,7 @@ class TestRequests(unittest.TestCase):
 		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
 
 		self.db.processRequest(DeleteRequest('3', [Field('age'), Field('phone')]))
-		
+
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			['name'], SearchRequest.Eq, 'Carl')))
 		self.checkSearchResult(res, ['3'])
@@ -200,14 +236,14 @@ class TestRequests(unittest.TestCase):
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			['age'], SearchRequest.Eq, '27')))
 		self.checkSearchResult(res, [])
-		
+
 	def testDeleteNonExistentFields(self):
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
 		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
 
 		self.db.processRequest(DeleteRequest('2', [Field('name'), Field('blablabla')]))
-		
+
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			['name'], SearchRequest.Eq, 'Bob')))
 		self.checkSearchResult(res, [])
@@ -215,14 +251,34 @@ class TestRequests(unittest.TestCase):
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			['phone'], SearchRequest.Eq, '2222')))
 		self.checkSearchResult(res, ['2'])
-	
+
+	def testDeleteAllElements(self):
+		"""Test that deleting all elements does not spoil the database"""
+
+		# Add some objects
+		self.addObject('2', {'name': 'Alex', 'phone': '1111'})
+		self.addObject('3', {'name': 'Bob', 'phone': '2222'})
+
+		# Remove all
+		self.db.processRequest(DeleteRequest('2'))
+		self.db.processRequest(DeleteRequest('3'))
+
+		# Add object again
+		self.addObject('2', {'name': 'Alex', 'phone': '2222'})
+
+		# Check that addition was successful
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			['phone'], SearchRequest.Eq, '2222')))
+
+		self.checkSearchResult(res, ['2'])
+
 	def testSearchNonExistentFieldInAndCondition(self):
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
 		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
 		self.addObject('4', {'name': 'Don', 'phone': '4444', 'age': '20'})
 		self.addObject('5', {'name': 'Alex', 'phone': '1111', 'age': '22'})
-		
+
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 		SearchRequest.Condition(
 			['phone'], SearchRequest.Eq, '1111'
@@ -232,7 +288,7 @@ class TestRequests(unittest.TestCase):
 			['blablabla'], SearchRequest.Eq, '22', invert=True
 			)
 		)))
-		
+
 		self.checkSearchResult(res, [])
 
 	def testSearchNonExistentFieldInOrCondition(self):
@@ -241,7 +297,7 @@ class TestRequests(unittest.TestCase):
 		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
 		self.addObject('4', {'name': 'Don', 'phone': '4444', 'age': '20'})
 		self.addObject('5', {'name': 'Alex', 'phone': '1111', 'age': '22'})
-		
+
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 		SearchRequest.Condition(
 			['phone'], SearchRequest.Eq, '1111'
@@ -251,7 +307,7 @@ class TestRequests(unittest.TestCase):
 			['blablabla'], SearchRequest.Eq, '22', invert=True
 			)
 		)))
-		
+
 		self.checkSearchResult(res, ['1', '5'])
 
 
@@ -267,6 +323,6 @@ def suite():
 			TestRequests.getParameterized(*parameter)))
 
 	return res
-		
+
 if __name__ == '__main__':
 	testhelpers.TextTestRunner(verbosity=2).run(suite())

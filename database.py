@@ -66,7 +66,17 @@ class StructureLayer:
 		self.db.execute("INSERT INTO '" + _ID_TABLE + "' VALUES (?, ?)", (id, specification))
 
 	def __deleteSpecification(self, id):
-		self.deleteField(id, interfaces.Field(_ID_TABLE))
+		self.db.execute("DELETE FROM '" + _ID_TABLE + "' WHERE id=:id",	{'id': id})
+
+	def __updateSpecification(self, id, field):
+		existing_fields = self.__getFieldsList(id)
+		existing_fields.append(field)
+
+		field_name_list = [_nameFromList(field.name) for field in existing_fields]
+		specification = _specificationFromNames(field_name_list)
+
+		self.db.execute("UPDATE '" + _ID_TABLE + "' SET fields=? WHERE id=?",
+			(specification, id))
 
 	def __getFieldsList(self, id):
 		# get element specification
@@ -101,6 +111,9 @@ class StructureLayer:
 			(field.type, field.value, field.value, id))
 
 	def __setFieldValue(self, id, field):
+		self.__assureFieldTableExists(field)
+		self.__updateSpecification(id, field)
+
 		field_name = _nameFromList(field.name)
 		self.db.execute("INSERT INTO '" + field_name + "' VALUES (:id, :type, :value, :value)",
 			{'id': id, 'type': field.type, 'value': field.value})
@@ -121,6 +134,10 @@ class StructureLayer:
 		if self.db.tableIsEmpty(field_name):
 			self.db.deleteTable(field_name)
 
+	def __assureFieldTableExists(self, field):
+		self.db.execute("CREATE TABLE IF NOT EXISTS '" + _nameFromList(field.name) +
+			"' (id TEXT, type TEXT, contents TEXT, indexed TEXT)")
+
 	def createElement(self, id, fields):
 
 		# create element header
@@ -128,8 +145,7 @@ class StructureLayer:
 
 		# update field tables
 		for field in fields:
-			self.db.execute("CREATE TABLE IF NOT EXISTS '" + _nameFromList(field.name) +
-				"' (id TEXT, type TEXT, contents TEXT, indexed TEXT)")
+			self.__assureFieldTableExists(field)
 			self.__setFieldValue(id, field)
 
 	def deleteElement(self, id):
@@ -152,8 +168,10 @@ class StructureLayer:
 		# for each field, check if it already exists
 		for field in fields:
 			if self.__elementHasField(id, field):
+				print("Updating")
 				self.__updateFieldValue(id, field)
 			else:
+				print("Setting")
 				self.__setFieldValue(id, field)
 
 class Sqlite3Database(interfaces.Database):
