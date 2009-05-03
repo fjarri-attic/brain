@@ -336,13 +336,21 @@ class TestRequests(unittest.TestCase):
 
 		self.checkSearchResult(res, ['1', '5'])
 
-	def testZZZReadAllFields(self):
+	def testReadAllFields(self):
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 
 		res = self.db.processRequest(ReadRequest('1'))
 		self.checkReadResult(res, [
 			Field('name', 'text', 'Alex'),
 			Field('phone', 'text', '1111')])
+	
+	def testReadSomeFields(self):
+		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
+
+		res = self.db.processRequest(ReadRequest('1', [Field('name')]))
+		self.checkReadResult(res, [
+			Field('name', 'text', 'Alex'),
+			])
 
 def suite():
 	res = testhelpers.NamedTestSuite()
