@@ -29,6 +29,9 @@ class Field:
 			(", type=" + str(self.type) if self.type else "") + \
 			(", value=" + str(self.value) if self.value else "") + ")"
 
+	def __repr__(self):
+		return str(self)
+
 class _BaseFieldRelatedRequest:
 	def __init__(self, id, fields=None):
 		self.id = id
