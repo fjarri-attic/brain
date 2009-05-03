@@ -46,13 +46,74 @@ class StructureLayer:
 	def __init__(self, path):
 		self.db = DatabaseLayer(path)
 
+		# create specification table
+		self.db.execute("CREATE table IF NOT EXISTS '" + _ID_TABLE + "' (id TEXT, fields TEXT)")
+
+	def __getFieldValues(self, field_name, id):
+		return list(self.db.execute("SELECT * FROM '" + field_name + "' WHERE id=:id",
+			{'id': id}))
+
+	def getFieldValue(self, field_name, id):
+		l = self.__getFieldValues(field_name, id)
+		if len(l) > 1:
+			raise Exception("Request returned more than one entry")
+		elif len(l) == 1:
+			return l[0]
+		else:
+			return None
+
+	def updateFieldValue(self, id, name, type, value):
+		self.db.execute("UPDATE '" + name + "' SET type=?, contents=?, indexed=? WHERE id=?",
+			(type, value, value, id))
+
+	def setFieldValue(self, id, name, type, value):
+		self.db.execute("INSERT INTO '" + name + "' VALUES (:id, :type, :value, :value)",
+			{'id': id, 'type': type, 'value': value})
+
+	def deleteFieldValue(self, id, name):
+
+		# check if table exists
+		if not self.db.tableExists(name):
+			return
+
+		# delete value
+		self.db.execute("DELETE FROM '" + name + "' WHERE id=:id",
+			{'id': id})
+
+		# check if the table is empty
+		if len(list(self.db.execute("SELECT * FROM '" + name + "'"))) == 0:
+			self.db.execute("DROP TABLE IF EXISTS '" + name + "'")
+
+	def createElements(self, id, fields):
+
+		# create element header
+		field_name_list = [field.name for field in fields]
+		specification = _specificationFromNames(field_name_list)
+		self.db.execute("INSERT INTO '" + _ID_TABLE + "' VALUES (?, ?)", (id, specification))
+
+		# update field tables
+		for field in fields:
+			self.db.execute("CREATE TABLE IF NOT EXISTS '" + field.name +
+				"' (id TEXT, type TEXT, contents TEXT, indexed TEXT)")
+			self.setFieldValue(id, field.name, field.type, field.contents)
+
+	def modifyElements(self, id, fields):
+
+		# get element specification
+		specifications = self.getFieldValue(_ID_TABLE, id)[1]
+		field_names = specifications.split('#')
+
+		# for each field, check if it already exists
+		for field in fields:
+			if field.name in field_names:
+				self.updateFieldValue(id, field.name, field.type, field.contents)
+			else:
+				self.setFieldValue(id, field.name, field.type, field.contents)			
+
 class Sqlite3Database(interfaces.Database):
 
 	def __init__(self, path):
-		self.db = DatabaseLayer(path)
-
-		# create necessary tables
-		self.db.execute("CREATE table IF NOT EXISTS '" + _ID_TABLE + "' (id TEXT, fields TEXT)")
+		self.db = StructureLayer(path)
 
 	def processRequest(self, request):
 		if request.__class__ == interfaces.ModifyRequest:
@@ -79,71 +140,10 @@ class Sqlite3Database(interfaces.Database):
 
 		# check if the entry with specified id already exists
 		# if no, just add it to the database
-		if self.__getFieldValue(_ID_TABLE, request.id) == None:
-			self.__createElements(request.id, request.fields)
+		if self.db.getFieldValue(_ID_TABLE, request.id) == None:
+			self.db.createElements(request.id, request.fields)
 		else:
-			self.__modifyElements(request.id, request.fields)
-
-	def __createElements(self, id, fields):
-
-		# create element header
-		field_name_list = [field.name for field in fields]
-		specification = _specificationFromNames(field_name_list)
-		self.db.execute("INSERT INTO '" + _ID_TABLE + "' VALUES (?, ?)", (id, specification))
-
-		# update field tables
-		for field in fields:
-			self.db.execute("CREATE TABLE IF NOT EXISTS '" + field.name +
-				"' (id TEXT, type TEXT, contents TEXT, indexed TEXT)")
-			self.__setFieldValue(id, field.name, field.type, field.contents)
-
-	def __getFieldValues(self, field_name, id):
-		return list(self.db.execute("SELECT * FROM '" + field_name + "' WHERE id=:id",
-			{'id': id}))
-
-	def __getFieldValue(self, field_name, id):
-		l = self.__getFieldValues(field_name, id)
-		if len(l) > 1:
-			raise Exception("Request returned more than one entry")
-		elif len(l) == 1:
-			return l[0]
-		else:
-			return None
-
-	def __updateFieldValue(self, id, name, type, value):
-		self.db.execute("UPDATE '" + name + "' SET type=?, contents=?, indexed=? WHERE id=?",
-			(type, value, value, id))
-
-	def __setFieldValue(self, id, name, type, value):
-		self.db.execute("INSERT INTO '" + name + "' VALUES (:id, :type, :value, :value)",
-			{'id': id, 'type': type, 'value': value})
-
-	def __deleteFieldValue(self, id, name):
-
-		# check if table exists
-		if not self.db.tableExists(name):
-			return
-
-		# delete value
-		self.db.execute("DELETE FROM '" + name + "' WHERE id=:id",
-			{'id': id})
-
-		# check if the table is empty
-		if len(list(self.db.execute("SELECT * FROM '" + name + "'"))) == 0:
-			self.db.execute("DROP TABLE IF EXISTS '" + name + "'")
-
-	def __modifyElements(self, id, fields):
-
-		# get element specification
-		specifications = self.__getFieldValue(_ID_TABLE, id)[1]
-		field_names = specifications.split('#')
-
-		# for each field, check if it already exists
-		for field in fields:
-			if field.name in field_names:
-				self.__updateFieldValue(id, field.name, field.type, field.contents)
-			else:
-				self.__setFieldValue(id, field.name, field.type, field.contents)
+			self.db.modifyElements(request.id, request.fields)
 
 	def __processDeleteRequest(self, request):
 
@@ -151,20 +151,20 @@ class Sqlite3Database(interfaces.Database):
 		if request.fields != None:
 			for field in request.fields:
 				field_name = _nameFromList(field.name)
-				self.__deleteFieldValue(request.id, field_name)
+				self.db.deleteFieldValue(request.id, field_name)
 			return
 
 		# delete whole object
 
 		# get element specification
-		specifications = self.__getFieldValue(_ID_TABLE, request.id)[1]
+		specifications = self.db.getFieldValue(_ID_TABLE, request.id)[1]
 		field_names = specifications.split('#')
 
 		# for each field, remove it from tables
 		for field_name in field_names:
-			self.__deleteFieldValue(request.id, field_name)
+			self.db.deleteFieldValue(request.id, field_name)
 
-		self.__deleteFieldValue(request.id, _ID_TABLE)
+		self.db.deleteFieldValue(request.id, _ID_TABLE)
 
 	def __processSearchRequest(self, request):
 
@@ -196,7 +196,7 @@ class Sqlite3Database(interfaces.Database):
 					raise Exception("Operator unsupported: " + condition.operator.__name__)
 				return
 
-			if not self.db.tableExists(condition.operand1):
+			if not self.db.db.tableExists(condition.operand1):
 				return "SELECT 0 limit 0" # returns empty result
 
 			if condition.invert:
@@ -221,7 +221,7 @@ class Sqlite3Database(interfaces.Database):
 
 		request = makeSqlRequest(request.condition)
 		print("Requesting: " + request)
-		result = self.db.execute(request)
+		result = self.db.db.execute(request)
 		list_res = [x[0] for x in result]
 		#print(repr(list_res))
 		return list_res
