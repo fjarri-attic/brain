@@ -14,12 +14,12 @@ def _nameFromList(name_list):
 
 def _specificationFromNames(name_list):
 	return _SPECIFICATION_SEP.join(name_list)
-	
+
 class DatabaseWrapper:
 	def __init__(self, path):
 		self.db = sqlite3.connect(path)
 		self.db.create_function("regexp", 2, self.__regexp)
-	
+
 	def dump(self):
 		print("Dump:")
 		for str in self.db.iterdump():
@@ -29,7 +29,7 @@ class DatabaseWrapper:
 	def __regexp(self, expr, item):
 		r = re.compile(expr)
 		return r.match(item) is not None
-	
+
 	def execute(self, sql_str, params=None):
 		if params:
 			return self.db.execute(sql_str, params)
@@ -40,13 +40,13 @@ class DatabaseWrapper:
 		res = list(self.db.execute("SELECT name FROM sqlite_master WHERE type='table'"))
 		res = [x[0] for x in res]
 		#print("Checking for existence: " + name)
-		return name in res	
+		return name in res
 
 class Sqlite3Database(interfaces.Database):
 
 	def __init__(self, path):
 		self.db = DatabaseWrapper(path)
-		
+
 		# create necessary tables
 		self.db.execute("CREATE table IF NOT EXISTS '" + _ID_TABLE + "' (id TEXT, fields TEXT)")
 
@@ -58,19 +58,19 @@ class Sqlite3Database(interfaces.Database):
 		elif request.__class__ == interfaces.DeleteRequest:
 			self.__processDeleteRequest(request)
 		elif request.__class__ == interfaces.SearchRequest:
-		
+
 			def convertFieldNames(condition):
 				if condition.leaf:
 					condition.operand1 = _nameFromList(condition.operand1)
 				else:
 					convertFieldNames(condition.operand1)
 					convertFieldNames(condition.operand2)
-			
+
 			convertFieldNames(request.condition)
 			return self.__processSearchRequest(request)
 		else:
 			raise Exception("Unknown request type: " + request.__class__.__name__)
-	
+
 	def __processModifyRequest(self, request):
 
 		# check if the entry with specified id already exists
@@ -149,9 +149,9 @@ class Sqlite3Database(interfaces.Database):
 				field_name = _nameFromList(field.name)
 				self.__deleteFieldValue(request.id, field_name)
 			return
-		
+
 		# delete whole object
-		
+
 		# get element specification
 		specifications = self.__getFieldValue(_ID_TABLE, request.id)[1]
 		field_names = specifications.split('#')
@@ -191,7 +191,7 @@ class Sqlite3Database(interfaces.Database):
 				else:
 					raise Exception("Operator unsupported: " + condition.operator.__name__)
 				return
-			
+
 			if not self.db.tableExists(condition.operand1):
 				return "SELECT 0 limit 0" # returns empty result
 
