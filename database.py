@@ -92,10 +92,13 @@ class StructureLayer:
 		l = list(self.db.execute("SELECT fields FROM '" + _ID_TABLE + "' WHERE id=:id",
 			{'id': id}))
 		return len(l) > 0
-
+	
 	#
 	# Other functions
 	#
+	
+	def fieldExists(self, field):
+		return self.db.tableExists(_nameFromList(field.name))
 
 	def getFieldValue(self, id, field):
 		field_name = _nameFromList(field.name)
@@ -242,9 +245,9 @@ class Sqlite3Database(interfaces.Database):
 					raise Exception("Operator unsupported: " + condition.operator.__name__)
 				return
 
-			field_name = _nameFromList(condition.operand1)
+			field_name = _nameFromList(condition.operand1.name)
 
-			if not self.db.db.tableExists(field_name):
+			if not self.db.fieldExists(condition.operand1):
 				return "SELECT 0 limit 0" # returns empty result
 
 			if condition.invert:

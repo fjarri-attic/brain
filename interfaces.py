@@ -29,19 +29,19 @@ class ModifyRequest(_BaseWriteRequest):
 				raise FormatError("Field list element must have class Field")
 
 class DeleteRequest(_BaseWriteRequest): pass
-		
+
 
 class Field:
 	def __init__(self, name, type=None, value=None):
 		self.name = name
 		self.type = type
 		self.value = value
-		
+
 		if isinstance(self.name, str):
 			self.name = [name]
 		elif not isinstance(self.name, list):
 			raise FormatError("Field name must be a list")
-		
+
 class SearchRequest:
 
 	class Operator: pass
@@ -67,6 +67,10 @@ class SearchRequest:
 			else:
 				raise FormatError("Wrong operator type: " + operator.__name__)
 
+			if self.leaf and not isinstance(operand1, Field):
+				raise FormatError("First operand should be Field, but it is " +
+					operand1.__class__.__name__)
+
 			self.operand1 = operand1
 			self.operand2 = operand2
 			self.operator = operator
@@ -75,5 +79,5 @@ class SearchRequest:
 	def __init__(self, condition):
 		if not condition.__class__ == self.Condition:
 			raise FormatError("Wrong condition type: " + condition.__class__.__name__)
-		
+
 		self.condition = condition

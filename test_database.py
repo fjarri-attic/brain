@@ -43,7 +43,7 @@ class TestRequests(unittest.TestCase):
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			['phone'], SearchRequest.Eq, '1111')))
+			Field('phone'), SearchRequest.Eq, '1111')))
 
 		self.checkSearchResult(res, ['1'])
 
@@ -62,7 +62,7 @@ class TestRequests(unittest.TestCase):
 		]))
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			['name'], SearchRequest.Eq, 'Bob')))
+			Field('name'), SearchRequest.Eq, 'Bob')))
 
 		self.checkSearchResult(res, ['2'])
 
@@ -74,7 +74,7 @@ class TestRequests(unittest.TestCase):
 		]))
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			['age'], SearchRequest.Eq, '27')))
+			Field('age'), SearchRequest.Eq, '27')))
 
 		self.checkSearchResult(res, ['2'])
 
@@ -98,7 +98,7 @@ class TestRequests(unittest.TestCase):
 
 		# Check that field from old object is not there
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			['age'], SearchRequest.Eq, '27')))
+			Field('age'), SearchRequest.Eq, '27')))
 
 		self.checkSearchResult(res, [])
 
@@ -110,7 +110,7 @@ class TestRequests(unittest.TestCase):
 		]))
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			['phone'], SearchRequest.Eq, '1111')))
+			Field('phone'), SearchRequest.Eq, '1111')))
 
 		self.checkSearchResult(res, ['2'])
 
@@ -119,11 +119,11 @@ class TestRequests(unittest.TestCase):
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
 
 		self.db.processRequest(ModifyRequest('2', [
-			Field(['name'], 'text', 'Rob')
+			Field('name', 'text', 'Rob')
 		]))
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			['name'], SearchRequest.Eq, 'Rob')))
+			Field('name'), SearchRequest.Eq, 'Rob')))
 
 		self.checkSearchResult(res, ['2'])
 
@@ -136,11 +136,11 @@ class TestRequests(unittest.TestCase):
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 		SearchRequest.Condition(
-			['phone'], SearchRequest.Eq, '1111'
+			Field('phone'), SearchRequest.Eq, '1111'
 			),
 		SearchRequest.And,
 		SearchRequest.Condition(
-			['age'], SearchRequest.Eq, '22'
+			Field('age'), SearchRequest.Eq, '22'
 			)
 		)))
 
@@ -155,11 +155,11 @@ class TestRequests(unittest.TestCase):
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 		SearchRequest.Condition(
-			['phone'], SearchRequest.Eq, '2222'
+			Field('phone'), SearchRequest.Eq, '2222'
 			),
 		SearchRequest.Or,
 		SearchRequest.Condition(
-			['age'], SearchRequest.Eq, '27'
+			Field('age'), SearchRequest.Eq, '27'
 			)
 		)))
 
@@ -174,11 +174,11 @@ class TestRequests(unittest.TestCase):
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 		SearchRequest.Condition(
-			['phone'], SearchRequest.Eq, '1111'
+			Field('phone'), SearchRequest.Eq, '1111'
 			),
 		SearchRequest.And,
 		SearchRequest.Condition(
-			['age'], SearchRequest.Eq, '22', invert=True
+			Field('age'), SearchRequest.Eq, '22', invert=True
 			)
 		)))
 
@@ -193,11 +193,11 @@ class TestRequests(unittest.TestCase):
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 		SearchRequest.Condition(
-			['phone'], SearchRequest.Regexp, '\d+'
+			Field('phone'), SearchRequest.Regexp, '\d+'
 			),
 		SearchRequest.And,
 		SearchRequest.Condition(
-			['age'], SearchRequest.Eq, '22', invert=True
+			Field('age'), SearchRequest.Eq, '22', invert=True
 			)
 		)))
 
@@ -211,11 +211,11 @@ class TestRequests(unittest.TestCase):
 		self.db.processRequest(DeleteRequest('3'))
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			['phone'], SearchRequest.Eq, '3333')))
+			Field('phone'), SearchRequest.Eq, '3333')))
 		self.checkSearchResult(res, [])
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			['phone'], SearchRequest.Eq, '1111')))
+			Field('phone'), SearchRequest.Eq, '1111')))
 		self.checkSearchResult(res, ['1'])
 
 	def testDeleteExistentFields(self):
@@ -226,15 +226,15 @@ class TestRequests(unittest.TestCase):
 		self.db.processRequest(DeleteRequest('3', [Field('age'), Field('phone')]))
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			['name'], SearchRequest.Eq, 'Carl')))
+			Field('name'), SearchRequest.Eq, 'Carl')))
 		self.checkSearchResult(res, ['3'])
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			['phone'], SearchRequest.Eq, '3333')))
+			Field('phone'), SearchRequest.Eq, '3333')))
 		self.checkSearchResult(res, [])
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			['age'], SearchRequest.Eq, '27')))
+			Field('age'), SearchRequest.Eq, '27')))
 		self.checkSearchResult(res, [])
 
 	def testDeleteNonExistentFields(self):
@@ -245,11 +245,11 @@ class TestRequests(unittest.TestCase):
 		self.db.processRequest(DeleteRequest('2', [Field('name'), Field('blablabla')]))
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			['name'], SearchRequest.Eq, 'Bob')))
+			Field('name'), SearchRequest.Eq, 'Bob')))
 		self.checkSearchResult(res, [])
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			['phone'], SearchRequest.Eq, '2222')))
+			Field('phone'), SearchRequest.Eq, '2222')))
 		self.checkSearchResult(res, ['2'])
 
 	def testDeleteAllElements(self):
@@ -268,7 +268,7 @@ class TestRequests(unittest.TestCase):
 
 		# Check that addition was successful
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			['phone'], SearchRequest.Eq, '2222')))
+			Field('phone'), SearchRequest.Eq, '2222')))
 
 		self.checkSearchResult(res, ['2'])
 
@@ -281,11 +281,11 @@ class TestRequests(unittest.TestCase):
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 		SearchRequest.Condition(
-			['phone'], SearchRequest.Eq, '1111'
+			Field('phone'), SearchRequest.Eq, '1111'
 			),
 		SearchRequest.And,
 		SearchRequest.Condition(
-			['blablabla'], SearchRequest.Eq, '22', invert=True
+			Field('blablabla'), SearchRequest.Eq, '22', invert=True
 			)
 		)))
 
@@ -300,11 +300,11 @@ class TestRequests(unittest.TestCase):
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 		SearchRequest.Condition(
-			['phone'], SearchRequest.Eq, '1111'
+			Field('phone'), SearchRequest.Eq, '1111'
 			),
 		SearchRequest.Or,
 		SearchRequest.Condition(
-			['blablabla'], SearchRequest.Eq, '22', invert=True
+			Field('blablabla'), SearchRequest.Eq, '22', invert=True
 			)
 		)))
 
