@@ -27,7 +27,7 @@ class Field:
 	def __eq__(self, other):
 		if other == None:
 			return False
-		
+
 		if not isinstance(other, Field):
 			return False
 
