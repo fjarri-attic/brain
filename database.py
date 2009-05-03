@@ -40,7 +40,6 @@ class DatabaseLayer:
 	def tableExists(self, name):
 		res = list(self.__conn.execute("SELECT name FROM sqlite_master WHERE type='table'"))
 		res = [x[0] for x in res]
-		#print("Checking for existence: " + name)
 		return name in res
 
 	def tableIsEmpty(self, name):
@@ -189,15 +188,6 @@ class Sqlite3Database(interfaces.Database):
 		elif request.__class__ == interfaces.DeleteRequest:
 			self.__processDeleteRequest(request)
 		elif request.__class__ == interfaces.SearchRequest:
-
-			def convertFieldNames(condition):
-				if condition.leaf:
-					condition.operand1 = _nameFromList(condition.operand1)
-				else:
-					convertFieldNames(condition.operand1)
-					convertFieldNames(condition.operand2)
-
-			convertFieldNames(request.condition)
 			return self.__processSearchRequest(request)
 		else:
 			raise Exception("Unknown request type: " + request.__class__.__name__)
@@ -223,6 +213,13 @@ class Sqlite3Database(interfaces.Database):
 			self.db.deleteElement(request.id)
 
 	def __processSearchRequest(self, request):
+
+		def convertFieldNames(condition):
+			if condition.leaf:
+				condition.operand1 = _nameFromList(condition.operand1)
+			else:
+				convertFieldNames(condition.operand1)
+				convertFieldNames(condition.operand2)
 
 		def propagateInversion(condition):
 			if not condition.leaf:
@@ -275,6 +272,7 @@ class Sqlite3Database(interfaces.Database):
 
 			return result
 
+		convertFieldNames(request.condition)	
 		request = makeSqlRequest(request.condition)
 		print("Requesting: " + request)
 		result = self.db.db.execute(request)
