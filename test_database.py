@@ -343,13 +343,21 @@ class TestRequests(unittest.TestCase):
 		self.checkReadResult(res, [
 			Field('name', 'text', 'Alex'),
 			Field('phone', 'text', '1111')])
-	
+
 	def testReadSomeFields(self):
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 
 		res = self.db.processRequest(ReadRequest('1', [Field('name')]))
 		self.checkReadResult(res, [
 			Field('name', 'text', 'Alex'),
+			])
+
+	def testReadNonExistingField(self):
+		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
+
+		res = self.db.processRequest(ReadRequest('1', [Field('name'), Field('age')]))
+		self.checkReadResult(res, [
+			Field('name', 'text', 'Alex')
 			])
 
 def suite():

@@ -165,7 +165,7 @@ class StructureLayer:
 
 		self.__deleteSpecification(id)
 
-	def __elementHasField(self, id, field):
+	def elementHasField(self, id, field):
 		existing_fields = self.getFieldsList(id)
 		existing_names = [existing_field.name for existing_field in existing_fields]
 		return field.name in existing_names
@@ -174,7 +174,7 @@ class StructureLayer:
 
 		# for each field, check if it already exists
 		for field in fields:
-			if self.__elementHasField(id, field):
+			if self.elementHasField(id, field):
 				self.__updateFieldValue(id, field)
 			else:
 				self.__updateSpecification(id, field)
@@ -263,7 +263,10 @@ class Sqlite3Database(interfaces.Database):
 			self.db.deleteElement(request.id)
 
 	def __processReadRequest(self, request):
-		fields_to_read = request.fields if request.fields else self.db.getFieldsList(request.id)
+		if request.fields:
+			fields_to_read = filter(lambda x: self.db.elementHasField(request.id, x), request.fields)
+		else:
+			fields_to_read = self.db.getFieldsList(request.id)
 
 		return [self.db.getFieldValue(request.id, field) for field in fields_to_read]
 
