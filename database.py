@@ -100,21 +100,21 @@ class StructureLayer:
 
 	def getFieldValue(self, id, field):
 		field_name = _nameFromList(field.name)
-		l = list(self.db.execute("SELECT * FROM '" + field_name + "' WHERE id=:id",
+		l = list(self.db.execute("SELECT contents FROM '" + field_name + "' WHERE id=:id",
 			{'id': id}))
 		if len(l) > 1:
 			raise Exception("Request returned more than one entry")
 		elif len(l) == 1:
 			# [0]: list contains only one element
 			# [1]: return only value, not id
-			return l[0][1]
+			return l[0][0]
 		else:
 			return None
 
 	def __updateFieldValue(self, id, field):
 		field_name = _nameFromList(field.name)
-		self.db.execute("UPDATE '" + field_name + "' SET type=?, contents=?, indexed=? WHERE id=?",
-			(field.type, field.value, field.value, id))
+		self.db.execute("UPDATE '" + field_name + "' SET type=?, contents=? WHERE id=?",
+			(field.type, field.value, id))
 
 	def __setFieldValue(self, id, field):
 		self.__assureFieldTableExists(field)
