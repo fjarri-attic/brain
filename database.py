@@ -44,13 +44,11 @@ class DatabaseWrapper:
 
 class Sqlite3Database(interfaces.Database):
 
-	__id_column = "_id"
-
 	def __init__(self, path):
 		self.db = DatabaseWrapper(path)
 		
 		# create necessary tables
-		self.db.execute("CREATE table IF NOT EXISTS '" + self.__id_column + "' (id TEXT, fields TEXT)")
+		self.db.execute("CREATE table IF NOT EXISTS '" + _ID_TABLE + "' (id TEXT, fields TEXT)")
 
 	def processRequest(self, request):
 		if request.__class__ == interfaces.ModifyRequest:
@@ -77,7 +75,7 @@ class Sqlite3Database(interfaces.Database):
 
 		# check if the entry with specified id already exists
 		# if no, just add it to the database
-		if self.__getFieldValue(self.__id_column, request.id) == None:
+		if self.__getFieldValue(_ID_TABLE, request.id) == None:
 			self.__createElements(request.id, request.fields)
 		else:
 			self.__modifyElements(request.id, request.fields)
@@ -87,7 +85,7 @@ class Sqlite3Database(interfaces.Database):
 		# create element header
 		field_name_list = [field.name for field in fields]
 		specification = _specificationFromNames(field_name_list)
-		self.db.execute("INSERT INTO '" + self.__id_column + "' VALUES (?, ?)", (id, specification))
+		self.db.execute("INSERT INTO '" + _ID_TABLE + "' VALUES (?, ?)", (id, specification))
 
 		# update field tables
 		for field in fields:
@@ -133,7 +131,7 @@ class Sqlite3Database(interfaces.Database):
 	def __modifyElements(self, id, fields):
 
 		# get element specification
-		specifications = self.__getFieldValue(self.__id_column, id)[1]
+		specifications = self.__getFieldValue(_ID_TABLE, id)[1]
 		field_names = specifications.split('#')
 
 		# for each field, check if it already exists
@@ -155,14 +153,14 @@ class Sqlite3Database(interfaces.Database):
 		# delete whole object
 		
 		# get element specification
-		specifications = self.__getFieldValue(self.__id_column, request.id)[1]
+		specifications = self.__getFieldValue(_ID_TABLE, request.id)[1]
 		field_names = specifications.split('#')
 
 		# for each field, remove it from tables
 		for field_name in field_names:
 			self.__deleteFieldValue(request.id, field_name)
 
-		self.__deleteFieldValue(request.id, self.__id_column)
+		self.__deleteFieldValue(request.id, _ID_TABLE)
 
 	def __processSearchRequest(self, request):
 
@@ -212,7 +210,7 @@ class Sqlite3Database(interfaces.Database):
 				raise Exception("Comparison unsupported: " + condition.operator.__name__)
 
 			if condition.invert:
-				result = result + " UNION SELECT * FROM (SELECT id FROM '" + self.__id_column + \
+				result = result + " UNION SELECT * FROM (SELECT id FROM '" + _ID_TABLE + \
 					"' EXCEPT SELECT id FROM '" + condition.operand1 + "')"
 
 			return result
