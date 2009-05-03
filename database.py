@@ -168,10 +168,8 @@ class StructureLayer:
 		# for each field, check if it already exists
 		for field in fields:
 			if self.__elementHasField(id, field):
-				print("Updating")
 				self.__updateFieldValue(id, field)
 			else:
-				print("Setting")
 				self.__setFieldValue(id, field)
 
 class Sqlite3Database(interfaces.Database):
