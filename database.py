@@ -15,14 +15,14 @@ def _nameFromList(name_list):
 def _specificationFromNames(name_list):
 	return _SPECIFICATION_SEP.join(name_list)
 
-class DatabaseWrapper:
+class DatabaseLayer:
 	def __init__(self, path):
-		self.db = sqlite3.connect(path)
-		self.db.create_function("regexp", 2, self.__regexp)
+		self.__conn = sqlite3.connect(path)
+		self.__conn.create_function("regexp", 2, self.__regexp)
 
 	def dump(self):
 		print("Dump:")
-		for str in self.db.iterdump():
+		for str in self.__conn.iterdump():
 			print(str)
 		print("--------")
 
@@ -32,20 +32,24 @@ class DatabaseWrapper:
 
 	def execute(self, sql_str, params=None):
 		if params:
-			return self.db.execute(sql_str, params)
+			return self.__conn.execute(sql_str, params)
 		else:
-			return self.db.execute(sql_str)
+			return self.__conn.execute(sql_str)
 
 	def tableExists(self, name):
-		res = list(self.db.execute("SELECT name FROM sqlite_master WHERE type='table'"))
+		res = list(self.__conn.execute("SELECT name FROM sqlite_master WHERE type='table'"))
 		res = [x[0] for x in res]
 		#print("Checking for existence: " + name)
 		return name in res
 
+class StructureLayer:
+	def __init__(self, path):
+		self.db = DatabaseLayer(path)
+
 class Sqlite3Database(interfaces.Database):
 
 	def __init__(self, path):
-		self.db = DatabaseWrapper(path)
+		self.db = DatabaseLayer(path)
 
 		# create necessary tables
 		self.db.execute("CREATE table IF NOT EXISTS '" + _ID_TABLE + "' (id TEXT, fields TEXT)")
