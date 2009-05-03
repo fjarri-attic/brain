@@ -222,30 +222,32 @@ class Sqlite3Database(interfaces.Database):
 
 		def propagateInversion(condition):
 			if not condition.leaf:
-				condition.operand1.invert = not condition.operand1.invert
-				condition.operand2.invert = not condition.operand1.invert
+				if condition.invert:
+
+					condition.invert = False
+
+					condition.operand1.invert = not condition.operand1.invert
+					condition.operand2.invert = not condition.operand2.invert
+
+					if isinstance(condition.operator, interfaces.SearchRequest.And):
+						condition.operator = interfaces.SearchRequest.Or()
+					elif isinstance(condition.operator, interfaces.SearchRequest.Or):
+						condition.operator = interfaces.SearchRequest.And()
 
 				propagateInversion(condition.operand1)
 				propagateInversion(condition.operand2)
 
-				if condition.operator == interfaces.SearchRequest.And:
-					condition.operator = interfaces.SearchRequest.Or
-				if condition.operator == interfaces.SearchRequest.Or:
-					condition.operator = interfaces.SearchRequest.And
-
 		def makeSqlRequest(condition):
-			if condition.invert:
-				propagateInversion(condition)
 
 			if not condition.leaf:
-				if condition.operator == interfaces.SearchRequest.And:
+				if isinstance(condition.operator, interfaces.SearchRequest.And):
 					return "SELECT * FROM (" + makeSqlRequest(condition.operand1) + \
 						") INTERSECT SELECT * FROM (" + makeSqlRequest(condition.operand2) + ")"
-				elif condition.operator == interfaces.SearchRequest.Or:
+				elif isinstance(condition.operator, interfaces.SearchRequest.Or):
 					return "SELECT * FROM (" + makeSqlRequest(condition.operand1) + \
 						") UNION SELECT * FROM (" + makeSqlRequest(condition.operand2) + ")"
 				else:
-					raise Exception("Operator unsupported: " + condition.operator.__name__)
+					raise Exception("Operator unsupported: " + str(condition.operator))
 				return
 
 			field_name = _nameFromList(condition.operand1.name)
@@ -258,14 +260,14 @@ class Sqlite3Database(interfaces.Database):
 			else:
 				not_str = " "
 
-			if condition.operator == interfaces.SearchRequest.Eq:
+			if isinstance(condition.operator, interfaces.SearchRequest.Eq):
 				result = "SELECT id FROM " + field_name + " WHERE" + not_str + \
 					"contents = '" + condition.operand2 + "'"
-			elif condition.operator == interfaces.SearchRequest.Regexp:
+			elif isinstance(condition.operator, interfaces.SearchRequest.Regexp):
 				result = "SELECT id FROM " + field_name + " WHERE" + not_str + \
 					"contents REGEXP '" + condition.operand2 + "'"
 			else:
-				raise Exception("Comparison unsupported: " + condition.operator.__name__)
+				raise Exception("Comparison unsupported: " + str(condition.operator))
 
 			if condition.invert:
 				result = result + " UNION SELECT * FROM (SELECT id FROM '" + _ID_TABLE + \
@@ -273,6 +275,7 @@ class Sqlite3Database(interfaces.Database):
 
 			return result
 
+		propagateInversion(request.condition)
 		request = makeSqlRequest(request.condition)
 		print("Requesting: " + request)
 		result = self.db.db.execute(request)

@@ -28,8 +28,22 @@ class ModifyRequest(_BaseWriteRequest):
 			if not isinstance(field, Field):
 				raise FormatError("Field list element must have class Field")
 
-class DeleteRequest(_BaseWriteRequest): pass
+	def __str__(self):
+		if self.fields:
+			fields_list = ":\n" + "\n".join(["\t" + str(field) for field in self.fields])
+		else:
+			fields_list = ""
 
+		return "ModifyRequest for element '" + self.id + "'" + fields_list
+
+class DeleteRequest(_BaseWriteRequest):
+	def __str__(self):
+		if self.fields:
+			fields_list = ":\n" + "\n".join(["\t" + str(field) for field in self.fields])
+		else:
+			fields_list = ""
+
+		return "DeleteRequest for element '" + self.id + "'" + fields_list
 
 class Field:
 	def __init__(self, name, type=None, value=None):
@@ -42,30 +56,41 @@ class Field:
 		elif not isinstance(self.name, list):
 			raise FormatError("Field name must be a list")
 
+	def __str__(self):
+		return "Field '" + str(self.name) + "'" + \
+			(", type=" + str(self.type) if self.type else "") + \
+			(", value=" + str(self.value) if self.value else "")
+
 class SearchRequest:
 
 	class Operator: pass
 	class Comparison: pass
 
-	class And(Operator): pass
-	class Or(Operator): pass
+	class And(Operator):
+		def __str__(self): return "And"
 
-	class Eq(Comparison): pass
-	class Regexp(Comparison): pass
+	class Or(Operator):
+		def __str__(self): return "Or"
+
+	class Eq(Comparison):
+		def __str__(self): return "=="
+
+	class Regexp(Comparison):
+		def __str__(self): return "=~"
 
 	class Condition:
 		def __init__(self, operand1, operator, operand2, invert=False):
 
-			if issubclass(operator, SearchRequest.Comparison):
+			if isinstance(operator, SearchRequest.Comparison):
 				self.leaf = True
-			elif issubclass(operator, SearchRequest.Operator):
-				if not issubclass(operand1.__class__, SearchRequest.Condition):
+			elif isinstance(operator, SearchRequest.Operator):
+				if not isinstance(operand1, SearchRequest.Condition):
 					raise FormatError("Wrong condition type: " + operand1.__class__.__name__)
-				if not issubclass(operand2.__class__, SearchRequest.Condition):
+				if not isinstance(operand2, SearchRequest.Condition):
 					raise FormatError("Wrong condition type: " + operand2.__class__.__name__)
 				self.leaf = False
 			else:
-				raise FormatError("Wrong operator type: " + operator.__name__)
+				raise FormatError("Wrong operator type: " + operator.__class__.__name__)
 
 			if self.leaf and not isinstance(operand1, Field):
 				raise FormatError("First operand should be Field, but it is " +
@@ -76,8 +101,16 @@ class SearchRequest:
 			self.operator = operator
 			self.invert = invert
 
+		def __str__(self):
+			return "(" + str(self.operand1) + " " + \
+				("!" if self.invert else "") + str(self.operator) + \
+				" " + str(self.operand2) + ")"
+
 	def __init__(self, condition):
 		if not condition.__class__ == self.Condition:
 			raise FormatError("Wrong condition type: " + condition.__class__.__name__)
 
 		self.condition = condition
+
+	def __str__(self):
+		return "SearchRequest: " + str(self.condition)
