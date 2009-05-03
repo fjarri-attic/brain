@@ -4,6 +4,13 @@ import testhelpers
 import database
 from interfaces import *
 
+def compareLists(l1, l2):
+	for elem in l1:
+		if elem in l2:
+			l2.remove(elem)
+		else:
+			raise Exception("Cannot find " + str(elem) + " in second list")
+
 class TestRequests(unittest.TestCase):
 
 	def getParameterized(name_prefix, db_class, db_file_name):
@@ -21,12 +28,12 @@ class TestRequests(unittest.TestCase):
 	def checkSearchResult(self, res, expected):
 		self.failUnless(isinstance(res, list), "Search result has type " + str(type(res)))
 		self.failUnless(len(res) == len(expected), "Search returned " + str(len(res)) + " results")
+		compareLists(res, expected)
 
-		to_compare = zip(res, expected)
-		for res_elem, expected_elem in to_compare:
-			self.failUnless(res_elem == expected_elem,
-				"Search result is wrong: " + str(res_elem) +
-				", expected: " + str(expected_elem))
+	def checkReadResult(self, res, expected):
+		self.failUnless(isinstance(res, list), "Read result has type " + str(type(res)))
+		self.failUnless(len(res) == len(expected), "Read returned " + str(len(res)) + " results")
+		compareLists(res, expected)
 
 	def addObject(self, id, fields={}):
 		field_objs = [Field(key, 'text', fields[key]) for key in fields.keys()]
@@ -333,7 +340,9 @@ class TestRequests(unittest.TestCase):
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 
 		res = self.db.processRequest(ReadRequest('1'))
-		print(str(res))
+		self.checkReadResult(res, [
+			Field('name', 'text', 'Alex'),
+			Field('phone', 'text', '1111')])
 
 def suite():
 	res = testhelpers.NamedTestSuite()
