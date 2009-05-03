@@ -70,35 +70,22 @@ class StructureLayer:
 
 	def __getFieldsList(self, id):
 		# get element specification
-		specifications = self.__getFieldValues(id, _ID_TABLE)[0][1]
+		specifications = self.getFieldValue(id, interfaces.Field(_ID_TABLE))
 		field_names = specifications.split('#')
 
 		return [interfaces.Field(field_name) for field_name in field_names]
 
 	def elementExists(self, id):
-		return len(self.__getFieldValues(id, _ID_TABLE)) > 0
+		return self.getFieldValue(id, interfaces.Field(_ID_TABLE)) != None
 
 	#
 	# Other functions
 	#
 
-	def deleteElement(self, id):
-
-		fields = self.__getFieldsList(id)
-
-		# for each field, remove it from tables
-		for field in fields:
-			self.deleteField(id, field)
-
-		self.__deleteSpecification(id)
-
-	def __getFieldValues(self, id, field_name):
-		return list(self.db.execute("SELECT * FROM '" + field_name + "' WHERE id=:id",
-			{'id': id}))
-
 	def getFieldValue(self, id, field):
 		field_name = _nameFromList(field.name)
-		l = self.__getFieldValues(field_name, id)
+		l = list(self.db.execute("SELECT * FROM '" + field_name + "' WHERE id=:id",
+			{'id': id}))
 		if len(l) > 1:
 			raise Exception("Request returned more than one entry")
 		elif len(l) == 1:
@@ -118,8 +105,6 @@ class StructureLayer:
 		self.db.execute("INSERT INTO '" + field_name + "' VALUES (:id, :type, :value, :value)",
 			{'id': id, 'type': field.type, 'value': field.value})
 
-
-
 	def deleteField(self, id, field):
 
 		field_name = _nameFromList(field.name)
@@ -127,7 +112,6 @@ class StructureLayer:
 		# check if table exists
 		if not self.db.tableExists(field_name):
 			return
-
 
 		# delete value
 		self.db.execute("DELETE FROM '" + field_name + "' WHERE id=:id",
@@ -147,6 +131,16 @@ class StructureLayer:
 			self.db.execute("CREATE TABLE IF NOT EXISTS '" + _nameFromList(field.name) +
 				"' (id TEXT, type TEXT, contents TEXT, indexed TEXT)")
 			self.__setFieldValue(id, field)
+
+	def deleteElement(self, id):
+
+		fields = self.__getFieldsList(id)
+
+		# for each field, remove it from tables
+		for field in fields:
+			self.deleteField(id, field)
+
+		self.__deleteSpecification(id)
 
 	def __elementHasField(self, id, field):
 		existing_fields = self.__getFieldsList(id)
