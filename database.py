@@ -135,7 +135,7 @@ class StructureLayer:
 				self.__setFieldValue(id, field)
 
 	def elementExists(self, id):
-		return len(self.__getFieldValues(id, _ID_TABLE)) == 0
+		return len(self.__getFieldValues(id, _ID_TABLE)) > 0
 
 class Sqlite3Database(interfaces.Database):
 
@@ -165,7 +165,7 @@ class Sqlite3Database(interfaces.Database):
 
 		# check if the entry with specified id already exists
 		# if no, just add it to the database
-		if self.db.elementExists(request.id):
+		if not self.db.elementExists(request.id):
 			self.db.createElement(request.id, request.fields)
 		else:
 			self.db.modifyElement(request.id, request.fields)
