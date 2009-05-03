@@ -4,13 +4,14 @@ import re
 
 _FIELD_SEP = '.'
 _SPECIFICATION_SEP = '#'
-_ID_TABLE = '_id'
+_ID_TABLE = 'id'
 _ID_COLUMN = 'id'
 
 def _nameFromList(name_list):
-	if isinstance(name_list, str):
-		raise Exception("!")
-	return _FIELD_SEP.join(name_list)
+	return "_" + _FIELD_SEP.join(name_list)
+
+def _listFromName(name):
+	return name[1:].split(_FIELD_SEP)
 
 def _specificationFromNames(name_list):
 	return _SPECIFICATION_SEP.join(name_list)
@@ -80,13 +81,18 @@ class StructureLayer:
 
 	def __getFieldsList(self, id):
 		# get element specification
-		specifications = self.getFieldValue(id, interfaces.Field(_ID_TABLE))
+		l = list(self.db.execute("SELECT fields FROM '" + _ID_TABLE + "' WHERE id=:id",
+			{'id': id}))
+
+		specifications = l[0][0]
 		field_names = specifications.split('#')
 
-		return [interfaces.Field(field_name) for field_name in field_names]
+		return [interfaces.Field(_listFromName(field_name)) for field_name in field_names]
 
 	def elementExists(self, id):
-		return self.getFieldValue(id, interfaces.Field(_ID_TABLE)) != None
+		l = list(self.db.execute("SELECT fields FROM '" + _ID_TABLE + "' WHERE id=:id",
+			{'id': id}))
+		return len(l) > 0
 
 	#
 	# Other functions
