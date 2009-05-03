@@ -214,13 +214,6 @@ class Sqlite3Database(interfaces.Database):
 
 	def __processSearchRequest(self, request):
 
-		def convertFieldNames(condition):
-			if condition.leaf:
-				condition.operand1 = _nameFromList(condition.operand1)
-			else:
-				convertFieldNames(condition.operand1)
-				convertFieldNames(condition.operand2)
-
 		def propagateInversion(condition):
 			if not condition.leaf:
 				condition.operand1.invert = not condition.operand1.invert
@@ -249,7 +242,9 @@ class Sqlite3Database(interfaces.Database):
 					raise Exception("Operator unsupported: " + condition.operator.__name__)
 				return
 
-			if not self.db.db.tableExists(condition.operand1):
+			field_name = _nameFromList(condition.operand1)
+
+			if not self.db.db.tableExists(field_name):
 				return "SELECT 0 limit 0" # returns empty result
 
 			if condition.invert:
@@ -258,21 +253,20 @@ class Sqlite3Database(interfaces.Database):
 				not_str = " "
 
 			if condition.operator == interfaces.SearchRequest.Eq:
-				result = "SELECT id FROM " + condition.operand1 + " WHERE" + not_str + \
+				result = "SELECT id FROM " + field_name + " WHERE" + not_str + \
 					"contents = '" + condition.operand2 + "'"
 			elif condition.operator == interfaces.SearchRequest.Regexp:
-				result = "SELECT id FROM " + condition.operand1 + " WHERE" + not_str + \
+				result = "SELECT id FROM " + field_name + " WHERE" + not_str + \
 					"contents REGEXP '" + condition.operand2 + "'"
 			else:
 				raise Exception("Comparison unsupported: " + condition.operator.__name__)
 
 			if condition.invert:
 				result = result + " UNION SELECT * FROM (SELECT id FROM '" + _ID_TABLE + \
-					"' EXCEPT SELECT id FROM '" + condition.operand1 + "')"
+					"' EXCEPT SELECT id FROM '" + field_name + "')"
 
 			return result
 
-		convertFieldNames(request.condition)	
 		request = makeSqlRequest(request.condition)
 		print("Requesting: " + request)
 		result = self.db.db.execute(request)
