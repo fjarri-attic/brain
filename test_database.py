@@ -53,6 +53,18 @@ class TestRequests(unittest.TestCase):
 
 		self.checkSearchResult(res, ['1'])
 
+	def testAdditionSameFields(self):
+		self.db.processRequest(ModifyRequest('1', [
+			Field(['tracks'], value='Track 1'),
+			Field(['tracks'], value='Track 2'),
+			Field(['tracks'], value='Track 3')]
+			))
+
+		res = self.db.processRequest(ReadRequest('1', [Field(['tracks'])]))
+		self.checkReadResult(res, [
+			Field(['tracks'], 'text', 'Track 3')
+			])
+
 	def testModificationNoCheck(self):
 		self.addObject('2', {'name': 'Alex', 'phone': '1111'})
 

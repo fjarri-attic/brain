@@ -120,8 +120,9 @@ class StructureLayer:
 
 	def __setFieldValue(self, id, field):
 		self.__assureFieldTableExists(field)
-
 		field_name = _nameFromList(field.name)
+
+		self.db.execute("DELETE FROM '" + field_name + "' WHERE id=:id", {'id': id})
 		self.db.execute("INSERT INTO '" + field_name + "' VALUES (:id, :type, :value)",
 			{'id': id, 'type': field.type, 'value': field.value})
 
