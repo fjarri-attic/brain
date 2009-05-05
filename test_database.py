@@ -372,6 +372,20 @@ class TestRequests(unittest.TestCase):
 			Field('name', 'text', 'Alex')
 			])
 
+	def testAdditionWithList(self):
+		self.db.processRequest(ModifyRequest('1', [
+			Field(['tracks', 0], value='Track 1'),
+			Field(['tracks', 1], value='Track 2'),
+			Field(['tracks', 2], value='Track 3')]
+			))
+		
+		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', ''])]))
+		self.checkReadResult(res, [
+			Field(['tracks', 0], 'text', 'Track 1'),
+			Field(['tracks', 1], 'text', 'Track 2'),
+			Field(['tracks', 2], 'text', 'Track 3')
+			])			
+
 def suite():
 	res = testhelpers.NamedTestSuite()
 
