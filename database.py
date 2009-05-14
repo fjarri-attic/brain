@@ -8,10 +8,11 @@ _ID_TABLE = 'id'
 _ID_COLUMN = 'id'
 
 def _nameFromList(name_list):
-	return "_" + _FIELD_SEP.join(name_list)
+	temp_list = [(x if isinstance(x, str) else '') for x in name_list]
+	return "_" + _FIELD_SEP.join(temp_list)
 
 def _listFromName(name):
-	return name[1:].split(_FIELD_SEP)
+	return [(x if x != '' else None) for x in name[1:].split(_FIELD_SEP)]
 
 def _specificationFromNames(name_list):
 	return _SPECIFICATION_SEP.join(name_list)
@@ -122,9 +123,29 @@ class StructureLayer:
 		self.__assureFieldTableExists(field)
 		field_name = _nameFromList(field.name)
 
-		self.db.execute("DELETE FROM '" + field_name + "' WHERE id=:id", {'id': id})
-		self.db.execute("INSERT INTO '" + field_name + "' VALUES (:id, :type, :value)",
-			{'id': id, 'type': field.type, 'value': field.value})
+		numerical_cols = {}
+		numerical_vals = ""
+		delete_condition = ""
+		counter = 0
+		for elem in field.name:
+			if isinstance(elem, int):
+				numerical_cols['c' + str(counter)] = elem
+				numerical_vals += ", :c" + str(counter)
+
+				delete_condition += " AND c" + str(counter) + "=:c" + str(counter)
+
+				counter += 1
+
+		cols_to_insert = {'id': id, 'type': field.type, 'value': field.value}
+		cols_to_insert.update(numerical_cols)
+
+		cols_to_delete = {'id': id}
+		cols_to_delete.update(numerical_cols)
+		delete_condition = "id=:id" + delete_condition
+
+		self.db.execute("DELETE FROM '" + field_name + "' WHERE " + delete_condition, cols_to_delete)
+		self.db.execute("INSERT INTO '" + field_name + "' VALUES (:id, :type, :value" +
+			numerical_vals + ")", cols_to_insert)
 
 	def deleteField(self, id, field):
 
@@ -143,8 +164,15 @@ class StructureLayer:
 			self.db.deleteTable(field_name)
 
 	def __assureFieldTableExists(self, field):
+		values_str = "id TEXT, type TEXT, value TEXT"
+		counter = 0
+		for elem in field.name:
+			if isinstance(elem, int):
+				values_str += ", c" + str(counter) + " INTEGER"
+				counter += 1
+
 		self.db.execute("CREATE TABLE IF NOT EXISTS '" + _nameFromList(field.name) +
-			"' (id TEXT, type TEXT, value TEXT)")
+			"' (" + values_str + ")")
 
 	def createElement(self, id, fields):
 
