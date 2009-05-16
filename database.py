@@ -14,6 +14,38 @@ def _nameFromList(name_list):
 def _listFromName(name):
 	return [(x if x != '' else None) for x in name[1:].split(_FIELD_SEP)]
 
+def _conditionFromList(name_list):
+	num_cols = filter(lambda x: not isinstance(x, str), name_list)
+
+	counter = 0
+	cond_list = []
+	query_list = []
+	query_cols = []
+	param_map = {}
+	for num_col in num_cols:
+		if num_col != None:
+			cond_list.append("c" + str(counter) + "=:c" + str(counter))
+			param_map["c" + str(counter)] = num_col
+		else:
+			query_list.append("c" + str(counter))
+		counter += 1
+
+	counter = 0
+	for elem in name_list:
+		if elem == None:
+			query_cols.append(counter)
+		counter += 1
+
+	cond = ""
+	if len(cond_list) > 0:
+		cond = " AND " + " AND ".join(cond_list)
+
+	query = ""
+	if len(query_list) > 0:
+		query = ", " + ", ".join(query_list)
+
+	return cond, param_map, query, query_cols
+
 def _specificationFromNames(name_list):
 	return _SPECIFICATION_SEP.join(name_list)
 
@@ -103,14 +135,27 @@ class StructureLayer:
 
 	def getFieldValue(self, id, field):
 		field_name = _nameFromList(field.name)
-		l = list(self.db.execute("SELECT value FROM '" + field_name + "' WHERE id=:id",
-			{'id': id}))
-		if len(l) > 1:
-			raise Exception("Request returned more than one entry")
+		cond, param_map, query, query_cols = _conditionFromList(field.name)
+
+		param_map.update({'id': id})
+		l = list(self.db.execute("SELECT value" + query + " FROM '" + field_name +
+			"' WHERE id=:id" + cond, param_map))
+
+		res = []
+		for elem in l:
+			f = interfaces.Field(field.name, 'text', elem[0])
+
+			counter = 1
+			for col in query_cols:
+				f.name[col] = elem[counter]
+				counter += 1
+
+			res.append(f)
+
+		if len(res) > 1:
+			return res
 		elif len(l) == 1:
-			# [0]: list contains only one element
-			# [0]: each list element is a tuple with one value
-			return interfaces.Field(field.name, 'text', l[0][0])
+			return res
 		else:
 			return None
 
@@ -297,7 +342,12 @@ class Sqlite3Database(interfaces.Database):
 		else:
 			fields_to_read = self.db.getFieldsList(request.id)
 
-		return [self.db.getFieldValue(request.id, field) for field in fields_to_read]
+		results = [self.db.getFieldValue(request.id, field) for field in fields_to_read]
+
+		result_list = []
+		for result in results:
+			result_list += result
+		return result_list
 
 	def __processSearchRequest(self, request):
 
