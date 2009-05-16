@@ -279,10 +279,10 @@ class StructureLayer:
 				not_str = " "
 
 			if isinstance(condition.operator, interfaces.SearchRequest.Eq):
-				result = "SELECT id FROM '" + field_name + "' WHERE" + not_str + \
+				result = "SELECT DISTINCT id FROM '" + field_name + "' WHERE" + not_str + \
 					"value = '" + condition.operand2 + "'" + cond_raw
 			elif isinstance(condition.operator, interfaces.SearchRequest.Regexp):
-				result = "SELECT id FROM '" + field_name + "' WHERE" + not_str + \
+				result = "SELECT DISTINCT id FROM '" + field_name + "' WHERE" + not_str + \
 					"value REGEXP '" + condition.operand2 + "'" + cond_raw
 			else:
 				raise Exception("Comparison unsupported: " + str(condition.operator))
