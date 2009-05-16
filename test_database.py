@@ -1,43 +1,51 @@
+"""Unit tests for database layer"""
+
 import unittest
 
 import testhelpers
 import database
 from interfaces import *
 
-def compareLists(l1, l2):
+def _compareLists(l1, l2):
+	"""Check if all elements of the first list exist in the second list"""
 	for elem in l1:
 		if elem in l2:
 			l2.remove(elem)
 		else:
 			raise Exception("Cannot find " + str(elem) + " in second list")
 
+def _getParameterized(base_class, name_suffix, db_class, db_file_name):
+	"""Get named test suite with predefined setUp()"""
+	class Derived(base_class):
+		def setUp(self):
+			self.db = db_class(db_file_name)
+
+	Derived.__name__ = base_class.__name__ + "." + name_suffix
+
+	return Derived
+
 class TestRequests(unittest.TestCase):
-
-	def getParameterized(name_prefix, db_class, db_file_name):
-		class Derived(TestRequests):
-			def setUp(self):
-				self.db = db_class(db_file_name)
-
-		Derived.__name__ = name_prefix + "." + TestRequests.__name__
-
-		return Derived
+	"""Base class for database requests testing"""
 
 	def setUp(self):
+		"""Stub for setUp() so that nobody creates the instance of this class"""
 		raise Exception("Not implemented")
 
 	def checkSearchResult(self, res, expected):
 		self.failUnless(isinstance(res, list), "Search result has type " + str(type(res)))
 		self.failUnless(len(res) == len(expected), "Search returned " + str(len(res)) + " results")
-		compareLists(res, expected)
+		_compareLists(res, expected)
 
 	def checkReadResult(self, res, expected):
 		self.failUnless(isinstance(res, list), "Read result has type " + str(type(res)))
 		self.failUnless(len(res) == len(expected), "Read returned " + str(len(res)) + " results")
-		compareLists(res, expected)
+		_compareLists(res, expected)
 
 	def addObject(self, id, fields={}):
 		field_objs = [Field(key, 'text', fields[key]) for key in fields.keys()]
 		self.db.processRequest(ModifyRequest(id, field_objs))
+
+class TestRequestsDerived(TestRequests):
 
 	def testBlankObjectAddition(self):
 		self.addObject('1')
@@ -531,7 +539,7 @@ def suite():
 
 	for parameter in parameters:
 		res.addTest(unittest.TestLoader().loadTestsFromTestCase(
-			TestRequests.getParameterized(*parameter)))
+			_getParameterized(TestRequestsDerived, *parameter)))
 
 	return res
 
