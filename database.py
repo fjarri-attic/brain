@@ -14,6 +14,9 @@ def _nameFromList(name_list):
 def _listFromName(name):
 	return [(x if x != '' else None) for x in name[1:].split(_FIELD_SEP)]
 
+def _cleanColsFromList(name_list):
+	return [(x if isinstance(x, str) else None) for x in name_list]
+
 def _conditionFromList(name_list):
 	num_cols = filter(lambda x: not isinstance(x, str), name_list)
 
@@ -242,7 +245,7 @@ class StructureLayer:
 	def elementHasField(self, id, field):
 		existing_fields = self.getFieldsList(id)
 		existing_names = [existing_field.name for existing_field in existing_fields]
-		return field.name in existing_names
+		return _cleanColsFromList(field.name) in existing_names
 
 	def modifyElement(self, id, fields):
 
