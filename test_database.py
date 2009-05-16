@@ -165,7 +165,7 @@ class TestModifyRequest(TestRequest):
 class TestSearchRequest(TestRequest):
 	"""Test operation of SearchRequest"""
 
-	def testSearchConditionAnd(self):
+	def testConditionAnd(self):
 		"""Check complex condition with And operator"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
@@ -185,7 +185,7 @@ class TestSearchRequest(TestRequest):
 
 		self.checkRequestResult(res, ['5'])
 
-	def testSearchConditionOr(self):
+	def testConditionOr(self):
 		"""Check complex condition with Or operator"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
@@ -205,7 +205,7 @@ class TestSearchRequest(TestRequest):
 
 		self.checkRequestResult(res, ['2', '3'])
 
-	def testSearchConditionInvert(self):
+	def testConditionInvert(self):
 		"""Check operation of inversion flag in condition"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
@@ -225,7 +225,7 @@ class TestSearchRequest(TestRequest):
 
 		self.checkRequestResult(res, ['1'])
 
-	def testSearchConditionInvertInRoot(self):
+	def testConditionInvertInRoot(self):
 		"""Check if inversion flag works in the root of condition"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
@@ -246,7 +246,7 @@ class TestSearchRequest(TestRequest):
 
 		self.checkRequestResult(res, ['2', '3', '4', '5'])
 
-	def testSearchConditionRegexp(self):
+	def testConditionRegexp(self):
 		"""Check operation of regexp-based condition"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
@@ -266,7 +266,7 @@ class TestSearchRequest(TestRequest):
 
 		self.checkRequestResult(res, ['1', '2', '3', '4'])
 
-	def testSearchConditionRegexpOnPart(self):
+	def testConditionRegexpOnPart(self):
 		"""Regression for bug when there was match() instead of search() in regexp callback"""
 		self.addObject('1', {'name': 'Alex name', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
@@ -280,7 +280,7 @@ class TestSearchRequest(TestRequest):
 
 		self.checkRequestResult(res, ['1', '5'])
 
-	def testSearchNonExistentFieldInAndCondition(self):
+	def testNonExistentFieldInAndCondition(self):
 		"""Check that condition on non-existent field works with And operator"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
@@ -302,7 +302,7 @@ class TestSearchRequest(TestRequest):
 
 		self.checkRequestResult(res, [])
 
-	def testSearchNonExistentFieldInOrCondition(self):
+	def testNonExistentFieldInOrCondition(self):
 		"""Check that condition on non-existent field works with Or operator"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
@@ -324,7 +324,7 @@ class TestSearchRequest(TestRequest):
 
 		self.checkRequestResult(res, ['1', '5'])
 
-	def testSearchListOneLevel(self):
+	def testListOneLevel(self):
 		"""Check searching in simple lists"""
 		self.db.processRequest(ModifyRequest('1', [
 			Field(['tracks', 0], value='Track 1'),
@@ -342,7 +342,7 @@ class TestSearchRequest(TestRequest):
 
 		self.checkRequestResult(res, ['1', '2'])
 
-	def testSearchListOneLevelDefinedPosition(self):
+	def testListOneLevelDefinedPosition(self):
 		"""Check search when some of positions in lists are defined"""
 		self.db.processRequest(ModifyRequest('1', [
 			Field(['tracks', 0], value='Track 1'),
@@ -360,7 +360,7 @@ class TestSearchRequest(TestRequest):
 
 		self.checkRequestResult(res, ['1'])
 
-	def testSearchListTwoLevels(self):
+	def testListTwoLevels(self):
 		"""Check searching in nested lists"""
 		self.db.processRequest(ModifyRequest('1', [
 			Field(['tracks', 0], value='Track 1'),
@@ -413,7 +413,7 @@ class TestSearchRequest(TestRequest):
 class TestDeleteRequest(TestRequest):
 	"""Test operation of DeleteRequest"""
 
-	def testDeleteObject(self):
+	def testWholeObject(self):
 		"""Check deletion of the whole object"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
@@ -429,7 +429,7 @@ class TestDeleteRequest(TestRequest):
 			Field('phone'), SearchRequest.Eq(), '1111')))
 		self.checkRequestResult(res, ['1'])
 
-	def testDeleteExistentFields(self):
+	def testExistentFields(self):
 		"""Check deletion of existent fields"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
@@ -449,7 +449,7 @@ class TestDeleteRequest(TestRequest):
 			Field('age'), SearchRequest.Eq(), '27')))
 		self.checkRequestResult(res, [])
 
-	def testDeleteNonExistentFields(self):
+	def testNonExistentFields(self):
 		"""Check deletion of non-existent fields"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
@@ -465,7 +465,7 @@ class TestDeleteRequest(TestRequest):
 			Field('phone'), SearchRequest.Eq(), '2222')))
 		self.checkRequestResult(res, ['2'])
 
-	def testDeleteAllElements(self):
+	def testAllElements(self):
 		"""Test that deleting all elements does not spoil the database"""
 
 		# Add some objects
@@ -488,7 +488,7 @@ class TestDeleteRequest(TestRequest):
 class TestReadRequest(TestRequest):
 	"""Test operation of ReadRequest"""
 
-	def testReadAllFields(self):
+	def testAllFields(self):
 		"""Check the operation of whole object reading"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 
@@ -497,7 +497,7 @@ class TestReadRequest(TestRequest):
 			Field('name', 'text', 'Alex'),
 			Field('phone', 'text', '1111')])
 
-	def testReadSomeFields(self):
+	def testSomeFields(self):
 		"""Check the operation of reading some chosen fields"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 
@@ -506,7 +506,7 @@ class TestReadRequest(TestRequest):
 			Field('name', 'text', 'Alex'),
 			])
 
-	def testReadNonExistingField(self):
+	def testNonExistingField(self):
 		"""Check that non-existent field is ignored during read"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 
@@ -515,7 +515,7 @@ class TestReadRequest(TestRequest):
 			Field('name', 'text', 'Alex')
 			])
 
-	def testReadAddedList(self):
+	def testAddedList(self):
 		"""Check that list values can be read"""
 		self.db.processRequest(ModifyRequest('1', [
 			Field(['tracks', 0], value='Track 1'),
@@ -530,7 +530,7 @@ class TestReadRequest(TestRequest):
 			Field(['tracks', 2], 'text', 'Track 3')
 			])
 
-	def testReadAddedListComplexCondition(self):
+	def testAddedListComplexCondition(self):
 		"""Check that read request works properly when some list positions are defined"""
 		self.db.processRequest(ModifyRequest('1', [
 			Field(['tracks', 0], value='Track 1'),
@@ -550,7 +550,7 @@ class TestReadRequest(TestRequest):
 			Field(['tracks', 1, 'Authors', 0], 'text', 'Carl')
 			])
 
-	def testReadFromMiddleLevelList(self):
+	def testFromMiddleLevelList(self):
 		"""Check that one can read from list in the middle of the hierarchy"""
 		self.db.processRequest(ModifyRequest('1', [
 			Field(['tracks', 0], value='Track 1'),
