@@ -21,6 +21,7 @@ def _conditionFromList(name_list):
 
 	counter = 0
 	cond_list = []
+	cond_raw_list = []
 	query_list = []
 	query_cols = []
 	param_map = {}
@@ -28,6 +29,7 @@ def _conditionFromList(name_list):
 		if num_col != None:
 			cond_list.append("c" + str(counter) + "=:c" + str(counter))
 			param_map["c" + str(counter)] = num_col
+			cond_raw_list.append("c" + str(counter) + "=" + str(num_col))
 		else:
 			query_list.append("c" + str(counter))
 		counter += 1
@@ -46,7 +48,11 @@ def _conditionFromList(name_list):
 	if len(query_list) > 0:
 		query = ", " + ", ".join(query_list)
 
-	return cond, param_map, query, query_cols
+	cond_raw = ""
+	if len(cond_raw_list) > 0:
+		cond_raw = " AND " + " AND ".join(cond_raw_list)
+
+	return cond, param_map, query, query_cols, cond_raw
 
 class DatabaseLayer:
 	def __init__(self, path):
@@ -128,7 +134,7 @@ class StructureLayer:
 
 	def getFieldValue(self, id, field):
 		field_name = _nameFromList(field.name)
-		cond, param_map, query, query_cols = _conditionFromList(field.name)
+		cond, param_map, query, query_cols, cond_raw = _conditionFromList(field.name)
 
 		param_map.update({'id': id})
 		l = list(self.db.execute("SELECT value" + query + " FROM '" + field_name +
@@ -262,6 +268,7 @@ class StructureLayer:
 				return
 
 			field_name = _nameFromList(condition.operand1.name)
+			cond, param_map, query, query_cols, cond_raw = _conditionFromList(condition.operand1.name)
 
 			if not self.db.tableExists(field_name):
 				return "SELECT 0 limit 0" # returns empty result
@@ -273,10 +280,10 @@ class StructureLayer:
 
 			if isinstance(condition.operator, interfaces.SearchRequest.Eq):
 				result = "SELECT id FROM '" + field_name + "' WHERE" + not_str + \
-					"value = '" + condition.operand2 + "'"
+					"value = '" + condition.operand2 + "'" + cond_raw
 			elif isinstance(condition.operator, interfaces.SearchRequest.Regexp):
 				result = "SELECT id FROM '" + field_name + "' WHERE" + not_str + \
-					"value REGEXP '" + condition.operand2 + "'"
+					"value REGEXP '" + condition.operand2 + "'" + cond_raw
 			else:
 				raise Exception("Comparison unsupported: " + str(condition.operator))
 
