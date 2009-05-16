@@ -385,7 +385,7 @@ class TestRequests(unittest.TestCase):
 			Field(['tracks', 1], 'text', 'Track 2'),
 			Field(['tracks', 2], 'text', 'Track 3')
 			])
-	
+
 	def testReadAddedListComplexCondition(self):
 		self.db.processRequest(ModifyRequest('1', [
 			Field(['tracks', 0], value='Track 1'),
@@ -402,10 +402,10 @@ class TestRequests(unittest.TestCase):
 		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None, 'Authors', 0])]))
 		self.checkReadResult(res, [
 			Field(['tracks', 0, 'Authors', 0], 'text', 'Alex'),
-			Field(['tracks', 1, 'Authors', 0], 'text', 'Carl')			
+			Field(['tracks', 1, 'Authors', 0], 'text', 'Carl')
 			])
-	
-	def testzzzSearchListOneLevel(self):
+
+	def testSearchListOneLevel(self):
 		self.db.processRequest(ModifyRequest('1', [
 			Field(['tracks', 0], value='Track 1'),
 			Field(['tracks', 1], value='Track 2'),
@@ -421,7 +421,54 @@ class TestRequests(unittest.TestCase):
 			)))
 
 		self.checkSearchResult(res, ['1', '2'])
-	
+
+	def testSearchListOneLevelDefinedPosition(self):
+		self.db.processRequest(ModifyRequest('1', [
+			Field(['tracks', 0], value='Track 1'),
+			Field(['tracks', 1], value='Track 2'),
+			Field(['tracks', 2], value='Track 3')]
+			))
+		self.db.processRequest(ModifyRequest('2', [
+			Field(['tracks', 0], value='Track 2'),
+			Field(['tracks', 1], value='Track 1')]
+			))
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field(['tracks', 1]), SearchRequest.Eq(), 'Track 2'
+			)))
+
+		self.checkSearchResult(res, ['1'])
+
+	def testSearchListTwoLevels(self):
+		self.db.processRequest(ModifyRequest('1', [
+			Field(['tracks', 0], value='Track 1'),
+			Field(['tracks', 0, 'Name'], value='Track 1 name'),
+			Field(['tracks', 0, 'Length'], value='Track 1 length'),
+			Field(['tracks', 0, 'Authors', 0], value='Alex'),
+			Field(['tracks', 0, 'Authors', 1], value='Bob'),
+
+			Field(['tracks', 1], value='Track 2'),
+			Field(['tracks', 1, 'Name'], value='Track 2 name'),
+			Field(['tracks', 1, 'Authors', 0], value='Carl')
+			]))
+
+		self.db.processRequest(ModifyRequest('2', [
+			Field(['tracks', 0], value='Track 1'),
+			Field(['tracks', 0, 'Name'], value='Track 1 name'),
+			Field(['tracks', 0, 'Length'], value='Track 1 length'),
+			Field(['tracks', 0, 'Authors', 0], value='Earl'),
+			Field(['tracks', 0, 'Authors', 1], value='Dan'),
+
+			Field(['tracks', 1], value='Track 2'),
+			Field(['tracks', 1, 'Name'], value='Track 2 name'),
+			Field(['tracks', 1, 'Authors', 0], value='Alex')
+			]))
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field(['tracks', 0, 'Authors', None]), SearchRequest.Eq(), 'Alex'
+			)))
+
+		self.checkSearchResult(res, ['1'])
 
 def suite():
 	res = testhelpers.NamedTestSuite()
