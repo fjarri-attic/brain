@@ -3,7 +3,6 @@ import interfaces
 import re
 
 _FIELD_SEP = '.'
-_SPECIFICATION_SEP = '#'
 _ID_TABLE = 'id'
 _ID_COLUMN = 'id'
 
@@ -48,12 +47,6 @@ def _conditionFromList(name_list):
 		query = ", " + ", ".join(query_list)
 
 	return cond, param_map, query, query_cols
-
-def _specificationFromNames(name_list):
-	return _SPECIFICATION_SEP.join(name_list)
-
-def _namesFromSpecification(specification):
-	return specification.split(_SPECIFICATION_SEP)
 
 class DatabaseLayer:
 	def __init__(self, path):
