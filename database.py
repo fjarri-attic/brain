@@ -67,7 +67,7 @@ class DatabaseLayer:
 
 	def __regexp(self, expr, item):
 		r = re.compile(expr)
-		return r.match(item) is not None
+		return r.search(item) is not None
 
 	def execute(self, sql_str, params=None):
 		if params:
