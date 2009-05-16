@@ -162,9 +162,11 @@ class TestModifyRequest(TestRequest):
 
 		self.checkRequestResult(res, ['2'])
 
-class TestRequestDerived(TestRequest):
+class TestSearchRequest(TestRequest):
+	"""Test operation of SearchRequest"""
 
 	def testSearchConditionAnd(self):
+		"""Check complex condition with And operator"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
 		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
@@ -184,6 +186,7 @@ class TestRequestDerived(TestRequest):
 		self.checkRequestResult(res, ['5'])
 
 	def testSearchConditionOr(self):
+		"""Check complex condition with Or operator"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
 		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
@@ -203,6 +206,7 @@ class TestRequestDerived(TestRequest):
 		self.checkRequestResult(res, ['2', '3'])
 
 	def testSearchConditionInvert(self):
+		"""Check operation of inversion flag in condition"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
 		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
@@ -222,6 +226,7 @@ class TestRequestDerived(TestRequest):
 		self.checkRequestResult(res, ['1'])
 
 	def testSearchConditionInvertInRoot(self):
+		"""Check if inversion flag works in the root of condition"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
 		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
@@ -242,6 +247,7 @@ class TestRequestDerived(TestRequest):
 		self.checkRequestResult(res, ['2', '3', '4', '5'])
 
 	def testSearchConditionRegexp(self):
+		"""Check operation of regexp-based condition"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
 		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
@@ -273,6 +279,8 @@ class TestRequestDerived(TestRequest):
 			)))
 
 		self.checkRequestResult(res, ['1', '5'])
+
+class TestRequestDerived(TestRequest):
 
 	def testDeleteObject(self):
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
@@ -548,11 +556,12 @@ def suite():
 		('memory.sqlite3', database.Sqlite3Database, ':memory:'),
 	]
 
+	requests = [TestModifyRequest, TestSearchRequest, TestRequestDerived]
+
 	for parameter in parameters:
-		res.addTest(unittest.TestLoader().loadTestsFromTestCase(
-			_getParameterized(TestModifyRequest, *parameter)))
-		res.addTest(unittest.TestLoader().loadTestsFromTestCase(
-			_getParameterized(TestRequestDerived, *parameter)))
+		for request in requests:
+			res.addTest(unittest.TestLoader().loadTestsFromTestCase(
+				_getParameterized(request, *parameter)))
 
 	return res
 
