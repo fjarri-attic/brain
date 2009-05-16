@@ -449,14 +449,14 @@ class TestRequests(unittest.TestCase):
 
 			Field(['tracks', 1], value='Track 2'),
 			Field(['tracks', 1, 'Name'], value='Track 2 name'),
-			Field(['tracks', 1, 'Authors', 0], value='Carl')
+			Field(['tracks', 1, 'Authors', 0], value='Carl I')
 			]))
 
 		self.db.processRequest(ModifyRequest('2', [
 			Field(['tracks', 0], value='Track 1'),
 			Field(['tracks', 0, 'Name'], value='Track 1 name'),
 			Field(['tracks', 0, 'Length'], value='Track 1 length'),
-			Field(['tracks', 0, 'Authors', 0], value='Earl'),
+			Field(['tracks', 0, 'Authors', 0], value='Carl II'),
 			Field(['tracks', 0, 'Authors', 1], value='Dan'),
 
 			Field(['tracks', 1], value='Track 2'),
@@ -469,6 +469,13 @@ class TestRequests(unittest.TestCase):
 			)))
 
 		self.checkSearchResult(res, ['1'])
+		
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field(['tracks', 1, 'Authors', None]), SearchRequest.Regexp(), 'Carl'
+			)))
+
+		self.checkSearchResult(res, ['1'])
+		
 
 def suite():
 	res = testhelpers.NamedTestSuite()
