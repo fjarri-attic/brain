@@ -15,13 +15,14 @@ class Database:
 
 class Field:
 	def __init__(self, name, type=None, value=None):
-		self.name = name
 		self.type = type
 		self.value = value
 
-		if isinstance(self.name, str):
+		if isinstance(name, str):
 			self.name = [name]
-		elif not isinstance(self.name, list):
+		elif isinstance(name, list):
+			self.name = name[:] # clone given list
+		else:
 			raise FormatError("Field name must be a list")
 
 	def __eq__(self, other):
