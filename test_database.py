@@ -24,7 +24,7 @@ def _getParameterized(base_class, name_suffix, db_class, db_file_name):
 
 	return Derived
 
-class TestRequests(unittest.TestCase):
+class TestRequest(unittest.TestCase):
 	"""Base class for database requests testing"""
 
 	def setUp(self):
@@ -32,15 +32,17 @@ class TestRequests(unittest.TestCase):
 		raise Exception("Not implemented")
 
 	def checkRequestResult(self, res, expected):
+		"""Compare request results with expected list"""
 		self.failUnless(isinstance(res, list), "Request result has type " + str(type(res)))
 		self.failUnless(len(res) == len(expected), "Request returned " + str(len(res)) + " results")
 		_compareLists(res, expected)
 
 	def addObject(self, id, fields={}):
+		"""Add object with given fields to database"""
 		field_objs = [Field(key, 'text', fields[key]) for key in fields.keys()]
 		self.db.processRequest(ModifyRequest(id, field_objs))
 
-class TestRequestsDerived(TestRequests):
+class TestRequestDerived(TestRequest):
 
 	def testBlankObjectAddition(self):
 		self.addObject('1')
@@ -534,7 +536,7 @@ def suite():
 
 	for parameter in parameters:
 		res.addTest(unittest.TestLoader().loadTestsFromTestCase(
-			_getParameterized(TestRequestsDerived, *parameter)))
+			_getParameterized(TestRequestDerived, *parameter)))
 
 	return res
 
