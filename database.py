@@ -97,38 +97,35 @@ class StructureLayer:
 	#
 
 	def __createSpecificationTable(self):
-		self.db.execute("CREATE table IF NOT EXISTS '" + _ID_TABLE + "' (id TEXT, fields TEXT)")
+		self.db.execute("CREATE table IF NOT EXISTS '" + _ID_TABLE + "' (id TEXT, field TEXT)")
 
 	def __createSpecification(self, id, fields):
-		field_name_list = [_nameFromList(field.name) for field in fields]
-		specification = _specificationFromNames(field_name_list)
-		self.db.execute("INSERT INTO '" + _ID_TABLE + "' VALUES (?, ?)", (id, specification))
+		for field in fields:
+			self.__updateSpecification(id, field)
 
 	def __deleteSpecification(self, id):
 		self.db.execute("DELETE FROM '" + _ID_TABLE + "' WHERE id=:id",	{'id': id})
 
 	def __updateSpecification(self, id, field):
-		existing_fields = self.getFieldsList(id)
-		existing_fields.append(field)
+		name = _nameFromList(field.name)
 
-		field_name_list = [_nameFromList(field.name) for field in existing_fields]
-		specification = _specificationFromNames(field_name_list)
+		l = list(self.db.execute("SELECT field FROM '" + _ID_TABLE + "' WHERE id=:id AND field=:field",
+			{'id': id, 'field': name}))
 
-		self.db.execute("UPDATE '" + _ID_TABLE + "' SET fields=? WHERE id=?",
-			(specification, id))
+		if len(l) == 0:
+			self.db.execute("INSERT INTO '" + _ID_TABLE + "' VALUES (?, ?)", (id, name))
 
 	def getFieldsList(self, id):
 		# get element specification
-		l = list(self.db.execute("SELECT fields FROM '" + _ID_TABLE + "' WHERE id=:id",
+		l = list(self.db.execute("SELECT field FROM '" + _ID_TABLE + "' WHERE id=:id",
 			{'id': id}))
 
-		specification = l[0][0]
-		field_names = _namesFromSpecification(specification)
+		field_names = [x[0] for x in l]
 
 		return [interfaces.Field(_listFromName(field_name)) for field_name in field_names]
 
 	def elementExists(self, id):
-		l = list(self.db.execute("SELECT fields FROM '" + _ID_TABLE + "' WHERE id=:id",
+		l = list(self.db.execute("SELECT field FROM '" + _ID_TABLE + "' WHERE id=:id",
 			{'id': id}))
 		return len(l) > 0
 
