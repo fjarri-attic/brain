@@ -14,13 +14,13 @@ def _compareLists(l1, l2):
 		else:
 			raise Exception("Cannot find " + str(elem) + " in second list")
 
-def _getParameterized(base_class, name_suffix, db_class, db_file_name):
+def _getParameterized(base_class, name_prefix, db_class, db_file_name):
 	"""Get named test suite with predefined setUp()"""
 	class Derived(base_class):
 		def setUp(self):
 			self.db = db_class(db_file_name)
 
-	Derived.__name__ = base_class.__name__ + "." + name_suffix
+	Derived.__name__ = name_prefix + "." + base_class.__name__
 
 	return Derived
 
@@ -42,15 +42,19 @@ class TestRequest(unittest.TestCase):
 		field_objs = [Field(key, 'text', fields[key]) for key in fields.keys()]
 		self.db.processRequest(ModifyRequest(id, field_objs))
 
-class TestRequestDerived(TestRequest):
+class TestModifyRequest(TestRequest):
+	"""Test different uses of ModifyRequest"""
 
 	def testBlankObjectAddition(self):
+		"""Check that object without fields can be created"""
 		self.addObject('1')
 
 	def testAdditionNoCheck(self):
+		"""Check simple object addition"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 
 	def testAddition(self):
+		"""Simple object addition with result checking"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
@@ -59,6 +63,7 @@ class TestRequestDerived(TestRequest):
 		self.checkRequestResult(res, ['1'])
 
 	def testAdditionSameFields(self):
+		"""Check that several equal fields are handled correctly"""
 		self.db.processRequest(ModifyRequest('1', [
 			Field(['tracks'], value='Track 1'),
 			Field(['tracks'], value='Track 2'),
@@ -66,11 +71,14 @@ class TestRequestDerived(TestRequest):
 			))
 
 		res = self.db.processRequest(ReadRequest('1', [Field(['tracks'])]))
+
+		# only last field value should be saved
 		self.checkRequestResult(res, [
 			Field(['tracks'], 'text', 'Track 3')
 			])
 
 	def testModificationNoCheck(self):
+		"""Check object modification"""
 		self.addObject('2', {'name': 'Alex', 'phone': '1111'})
 
 		self.db.processRequest(ModifyRequest('2', [
@@ -78,6 +86,7 @@ class TestRequestDerived(TestRequest):
 		]))
 
 	def testModification(self):
+		"""Object modification with results checking"""
 		self.addObject('2', {'name': 'Alex', 'phone': '1111'})
 
 		self.db.processRequest(ModifyRequest('2', [
@@ -90,6 +99,7 @@ class TestRequestDerived(TestRequest):
 		self.checkRequestResult(res, ['2'])
 
 	def testModificationAddsField(self):
+		"""Check that object modification can add a new field"""
 		self.addObject('2', {'name': 'Alex', 'phone': '1111'})
 
 		self.db.processRequest(ModifyRequest('2', [
@@ -101,7 +111,7 @@ class TestRequestDerived(TestRequest):
 
 		self.checkRequestResult(res, ['2'])
 
-	def testModificationAddFieldTwice(self):
+	def testModificationAddsFieldTwice(self):
 		"""Regression test for non-updating specification"""
 
 		# Add test object
@@ -126,6 +136,7 @@ class TestRequestDerived(TestRequest):
 		self.checkRequestResult(res, [])
 
 	def testModificationPreservesFields(self):
+		"""Check that modification preserves existing fields"""
 		self.addObject('2', {'name': 'Alex', 'phone': '1111'})
 
 		self.db.processRequest(ModifyRequest('2', [
@@ -138,6 +149,7 @@ class TestRequestDerived(TestRequest):
 		self.checkRequestResult(res, ['2'])
 
 	def testMultipleModification(self):
+		"""Check modification in the presence of multiple objects"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
 
@@ -149,6 +161,8 @@ class TestRequestDerived(TestRequest):
 			Field('name'), SearchRequest.Eq(), 'Rob')))
 
 		self.checkRequestResult(res, ['2'])
+
+class TestRequestDerived(TestRequest):
 
 	def testSearchConditionAnd(self):
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
@@ -535,6 +549,8 @@ def suite():
 	]
 
 	for parameter in parameters:
+		res.addTest(unittest.TestLoader().loadTestsFromTestCase(
+			_getParameterized(TestModifyRequest, *parameter)))
 		res.addTest(unittest.TestLoader().loadTestsFromTestCase(
 			_getParameterized(TestRequestDerived, *parameter)))
 
