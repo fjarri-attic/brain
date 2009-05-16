@@ -280,84 +280,16 @@ class TestSearchRequest(TestRequest):
 
 		self.checkRequestResult(res, ['1', '5'])
 
-class TestRequestDerived(TestRequest):
-
-	def testDeleteObject(self):
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
-		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
-		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
-
-		self.db.processRequest(DeleteRequest('3'))
-
-		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '3333')))
-		self.checkRequestResult(res, [])
-
-		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '1111')))
-		self.checkRequestResult(res, ['1'])
-
-	def testDeleteExistentFields(self):
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
-		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
-		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
-
-		self.db.processRequest(DeleteRequest('3', [Field('age'), Field('phone')]))
-
-		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('name'), SearchRequest.Eq(), 'Carl')))
-		self.checkRequestResult(res, ['3'])
-
-		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '3333')))
-		self.checkRequestResult(res, [])
-
-		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('age'), SearchRequest.Eq(), '27')))
-		self.checkRequestResult(res, [])
-
-	def testDeleteNonExistentFields(self):
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
-		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
-		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
-
-		self.db.processRequest(DeleteRequest('2', [Field('name'), Field('blablabla')]))
-
-		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('name'), SearchRequest.Eq(), 'Bob')))
-		self.checkRequestResult(res, [])
-
-		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '2222')))
-		self.checkRequestResult(res, ['2'])
-
-	def testDeleteAllElements(self):
-		"""Test that deleting all elements does not spoil the database"""
-
-		# Add some objects
-		self.addObject('2', {'name': 'Alex', 'phone': '1111'})
-		self.addObject('3', {'name': 'Bob', 'phone': '2222'})
-
-		# Remove all
-		self.db.processRequest(DeleteRequest('2'))
-		self.db.processRequest(DeleteRequest('3'))
-
-		# Add object again
-		self.addObject('2', {'name': 'Alex', 'phone': '2222'})
-
-		# Check that addition was successful
-		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '2222')))
-
-		self.checkRequestResult(res, ['2'])
-
 	def testSearchNonExistentFieldInAndCondition(self):
+		"""Check that condition on non-existent field works with And operator"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
 		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
 		self.addObject('4', {'name': 'Don', 'phone': '4444', 'age': '20'})
 		self.addObject('5', {'name': 'Alex', 'phone': '1111', 'age': '22'})
 
+		# Second part of the condition should return empty list,
+		# so the whole result should be empty too
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 		SearchRequest.Condition(
 			Field('phone'), SearchRequest.Eq(), '1111'
@@ -371,12 +303,15 @@ class TestRequestDerived(TestRequest):
 		self.checkRequestResult(res, [])
 
 	def testSearchNonExistentFieldInOrCondition(self):
+		"""Check that condition on non-existent field works with Or operator"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
 		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
 		self.addObject('4', {'name': 'Don', 'phone': '4444', 'age': '20'})
 		self.addObject('5', {'name': 'Alex', 'phone': '1111', 'age': '22'})
 
+		# Second part of the condition should return empty list,
+		# so the whole result should be equal to the result of the first part
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 		SearchRequest.Condition(
 			Field('phone'), SearchRequest.Eq(), '1111'
@@ -389,64 +324,8 @@ class TestRequestDerived(TestRequest):
 
 		self.checkRequestResult(res, ['1', '5'])
 
-	def testReadAllFields(self):
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
-
-		res = self.db.processRequest(ReadRequest('1'))
-		self.checkRequestResult(res, [
-			Field('name', 'text', 'Alex'),
-			Field('phone', 'text', '1111')])
-
-	def testReadSomeFields(self):
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
-
-		res = self.db.processRequest(ReadRequest('1', [Field('name')]))
-		self.checkRequestResult(res, [
-			Field('name', 'text', 'Alex'),
-			])
-
-	def testReadNonExistingField(self):
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
-
-		res = self.db.processRequest(ReadRequest('1', [Field('name'), Field('age')]))
-		self.checkRequestResult(res, [
-			Field('name', 'text', 'Alex')
-			])
-
-	def testReadAddedList(self):
-		self.db.processRequest(ModifyRequest('1', [
-			Field(['tracks', 0], value='Track 1'),
-			Field(['tracks', 1], value='Track 2'),
-			Field(['tracks', 2], value='Track 3')]
-			))
-
-		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None])]))
-		self.checkRequestResult(res, [
-			Field(['tracks', 0], 'text', 'Track 1'),
-			Field(['tracks', 1], 'text', 'Track 2'),
-			Field(['tracks', 2], 'text', 'Track 3')
-			])
-
-	def testReadAddedListComplexCondition(self):
-		self.db.processRequest(ModifyRequest('1', [
-			Field(['tracks', 0], value='Track 1'),
-			Field(['tracks', 0, 'Name'], value='Track 1 name'),
-			Field(['tracks', 0, 'Length'], value='Track 1 length'),
-			Field(['tracks', 0, 'Authors', 0], value='Alex'),
-			Field(['tracks', 0, 'Authors', 1], value='Bob'),
-
-			Field(['tracks', 1], value='Track 2'),
-			Field(['tracks', 1, 'Name'], value='Track 2 name'),
-			Field(['tracks', 1, 'Authors', 0], value='Carl')
-			]))
-
-		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None, 'Authors', 0])]))
-		self.checkRequestResult(res, [
-			Field(['tracks', 0, 'Authors', 0], 'text', 'Alex'),
-			Field(['tracks', 1, 'Authors', 0], 'text', 'Carl')
-			])
-
 	def testSearchListOneLevel(self):
+		"""Check searching in simple lists"""
 		self.db.processRequest(ModifyRequest('1', [
 			Field(['tracks', 0], value='Track 1'),
 			Field(['tracks', 1], value='Track 2'),
@@ -464,6 +343,7 @@ class TestRequestDerived(TestRequest):
 		self.checkRequestResult(res, ['1', '2'])
 
 	def testSearchListOneLevelDefinedPosition(self):
+		"""Check search when some of positions in lists are defined"""
 		self.db.processRequest(ModifyRequest('1', [
 			Field(['tracks', 0], value='Track 1'),
 			Field(['tracks', 1], value='Track 2'),
@@ -480,26 +360,8 @@ class TestRequestDerived(TestRequest):
 
 		self.checkRequestResult(res, ['1'])
 
-	def testReadFromMiddleLevelList(self):
-		self.db.processRequest(ModifyRequest('1', [
-			Field(['tracks', 0], value='Track 1'),
-			Field(['tracks', 0, 'Name'], value='Track 1 name'),
-			Field(['tracks', 0, 'Length'], value='Track 1 length'),
-			Field(['tracks', 0, 'Authors', 0], value='Alex'),
-			Field(['tracks', 0, 'Authors', 1], value='Bob'),
-
-			Field(['tracks', 1], value='Track 2'),
-			Field(['tracks', 1, 'Name'], value='Track 2 name'),
-			Field(['tracks', 1, 'Authors', 0], value='Carl I')
-			]))
-
-		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None, 'Name'])]))
-		self.checkRequestResult(res, [
-			Field(['tracks', 0, 'Name'], 'text', 'Track 1 name'),
-			Field(['tracks', 1, 'Name'], 'text', 'Track 2 name')
-			])
-
 	def testSearchListTwoLevels(self):
+		"""Check searching in nested lists"""
 		self.db.processRequest(ModifyRequest('1', [
 			Field(['tracks', 0], value='Track 1'),
 			Field(['tracks', 0, 'Name'], value='Track 1 name'),
@@ -548,15 +410,176 @@ class TestRequestDerived(TestRequest):
 
 		self.checkRequestResult(res, ['2'])
 
+class TestDeleteRequest(TestRequest):
+	"""Test operation of DeleteRequest"""
+
+	def testDeleteObject(self):
+		"""Check deletion of the whole object"""
+		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
+		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
+		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
+
+		self.db.processRequest(DeleteRequest('3'))
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field('phone'), SearchRequest.Eq(), '3333')))
+		self.checkRequestResult(res, [])
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field('phone'), SearchRequest.Eq(), '1111')))
+		self.checkRequestResult(res, ['1'])
+
+	def testDeleteExistentFields(self):
+		"""Check deletion of existent fields"""
+		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
+		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
+		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
+
+		self.db.processRequest(DeleteRequest('3', [Field('age'), Field('phone')]))
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field('name'), SearchRequest.Eq(), 'Carl')))
+		self.checkRequestResult(res, ['3'])
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field('phone'), SearchRequest.Eq(), '3333')))
+		self.checkRequestResult(res, [])
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field('age'), SearchRequest.Eq(), '27')))
+		self.checkRequestResult(res, [])
+
+	def testDeleteNonExistentFields(self):
+		"""Check deletion of non-existent fields"""
+		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
+		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
+		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
+
+		self.db.processRequest(DeleteRequest('2', [Field('name'), Field('blablabla')]))
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field('name'), SearchRequest.Eq(), 'Bob')))
+		self.checkRequestResult(res, [])
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field('phone'), SearchRequest.Eq(), '2222')))
+		self.checkRequestResult(res, ['2'])
+
+	def testDeleteAllElements(self):
+		"""Test that deleting all elements does not spoil the database"""
+
+		# Add some objects
+		self.addObject('2', {'name': 'Alex', 'phone': '1111'})
+		self.addObject('3', {'name': 'Bob', 'phone': '2222'})
+
+		# Remove all
+		self.db.processRequest(DeleteRequest('2'))
+		self.db.processRequest(DeleteRequest('3'))
+
+		# Add object again
+		self.addObject('2', {'name': 'Alex', 'phone': '2222'})
+
+		# Check that addition was successful
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field('phone'), SearchRequest.Eq(), '2222')))
+
+		self.checkRequestResult(res, ['2'])
+
+class TestReadRequest(TestRequest):
+	"""Test operation of ReadRequest"""
+
+	def testReadAllFields(self):
+		"""Check the operation of whole object reading"""
+		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
+
+		res = self.db.processRequest(ReadRequest('1'))
+		self.checkRequestResult(res, [
+			Field('name', 'text', 'Alex'),
+			Field('phone', 'text', '1111')])
+
+	def testReadSomeFields(self):
+		"""Check the operation of reading some chosen fields"""
+		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
+
+		res = self.db.processRequest(ReadRequest('1', [Field('name')]))
+		self.checkRequestResult(res, [
+			Field('name', 'text', 'Alex'),
+			])
+
+	def testReadNonExistingField(self):
+		"""Check that non-existent field is ignored during read"""
+		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
+
+		res = self.db.processRequest(ReadRequest('1', [Field('name'), Field('age')]))
+		self.checkRequestResult(res, [
+			Field('name', 'text', 'Alex')
+			])
+
+	def testReadAddedList(self):
+		"""Check that list values can be read"""
+		self.db.processRequest(ModifyRequest('1', [
+			Field(['tracks', 0], value='Track 1'),
+			Field(['tracks', 1], value='Track 2'),
+			Field(['tracks', 2], value='Track 3')]
+			))
+
+		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0], 'text', 'Track 1'),
+			Field(['tracks', 1], 'text', 'Track 2'),
+			Field(['tracks', 2], 'text', 'Track 3')
+			])
+
+	def testReadAddedListComplexCondition(self):
+		"""Check that read request works properly when some list positions are defined"""
+		self.db.processRequest(ModifyRequest('1', [
+			Field(['tracks', 0], value='Track 1'),
+			Field(['tracks', 0, 'Name'], value='Track 1 name'),
+			Field(['tracks', 0, 'Length'], value='Track 1 length'),
+			Field(['tracks', 0, 'Authors', 0], value='Alex'),
+			Field(['tracks', 0, 'Authors', 1], value='Bob'),
+
+			Field(['tracks', 1], value='Track 2'),
+			Field(['tracks', 1, 'Name'], value='Track 2 name'),
+			Field(['tracks', 1, 'Authors', 0], value='Carl')
+			]))
+
+		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None, 'Authors', 0])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0, 'Authors', 0], 'text', 'Alex'),
+			Field(['tracks', 1, 'Authors', 0], 'text', 'Carl')
+			])
+
+	def testReadFromMiddleLevelList(self):
+		"""Check that one can read from list in the middle of the hierarchy"""
+		self.db.processRequest(ModifyRequest('1', [
+			Field(['tracks', 0], value='Track 1'),
+			Field(['tracks', 0, 'Name'], value='Track 1 name'),
+			Field(['tracks', 0, 'Length'], value='Track 1 length'),
+			Field(['tracks', 0, 'Authors', 0], value='Alex'),
+			Field(['tracks', 0, 'Authors', 1], value='Bob'),
+
+			Field(['tracks', 1], value='Track 2'),
+			Field(['tracks', 1, 'Name'], value='Track 2 name'),
+			Field(['tracks', 1, 'Authors', 0], value='Carl I')
+			]))
+
+		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None, 'Name'])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0, 'Name'], 'text', 'Track 1 name'),
+			Field(['tracks', 1, 'Name'], 'text', 'Track 2 name')
+			])
+
 
 def suite():
+	"""Generate test suite for this module"""
 	res = testhelpers.NamedTestSuite()
 
 	parameters = [
 		('memory.sqlite3', database.Sqlite3Database, ':memory:'),
 	]
 
-	requests = [TestModifyRequest, TestSearchRequest, TestRequestDerived]
+	requests = [TestModifyRequest, TestSearchRequest, TestDeleteRequest, TestReadRequest]
 
 	for parameter in parameters:
 		for request in requests:
