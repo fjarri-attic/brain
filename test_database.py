@@ -241,6 +241,20 @@ class TestRequests(unittest.TestCase):
 
 		self.checkSearchResult(res, ['1', '2', '3', '4'])
 
+	def testSearchConditionRegexpOnPart(self):
+		"""Regression for bug when there was match() instead of search() in regexp callback"""
+		self.addObject('1', {'name': 'Alex name', 'phone': '1111'})
+		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
+		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
+		self.addObject('4', {'name': 'Don', 'phone': '4444', 'age': '20'})
+		self.addObject('5', {'name': 'Alex name', 'phone': '1111', 'age': '22'})
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field('name'), SearchRequest.Regexp(), 'name'
+			)))
+
+		self.checkSearchResult(res, ['1', '5'])
+
 	def testDeleteObject(self):
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
@@ -439,6 +453,25 @@ class TestRequests(unittest.TestCase):
 
 		self.checkSearchResult(res, ['1'])
 
+	def testReadFromMiddleLevelList(self):
+		self.db.processRequest(ModifyRequest('1', [
+			Field(['tracks', 0], value='Track 1'),
+			Field(['tracks', 0, 'Name'], value='Track 1 name'),
+			Field(['tracks', 0, 'Length'], value='Track 1 length'),
+			Field(['tracks', 0, 'Authors', 0], value='Alex'),
+			Field(['tracks', 0, 'Authors', 1], value='Bob'),
+
+			Field(['tracks', 1], value='Track 2'),
+			Field(['tracks', 1, 'Name'], value='Track 2 name'),
+			Field(['tracks', 1, 'Authors', 0], value='Carl I')
+			]))
+
+		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None, 'Name'])]))
+		self.checkReadResult(res, [
+			Field(['tracks', 0, 'Name'], 'text', 'Track 1 name'),
+			Field(['tracks', 1, 'Name'], 'text', 'Track 2 name')
+			])
+
 	def testSearchListTwoLevels(self):
 		self.db.processRequest(ModifyRequest('1', [
 			Field(['tracks', 0], value='Track 1'),
@@ -453,7 +486,7 @@ class TestRequests(unittest.TestCase):
 			]))
 
 		self.db.processRequest(ModifyRequest('2', [
-			Field(['tracks', 0], value='Track 1'),
+			Field(['tracks', 0], value='Track 11'),
 			Field(['tracks', 0, 'Name'], value='Track 1 name'),
 			Field(['tracks', 0, 'Length'], value='Track 1 length'),
 			Field(['tracks', 0, 'Authors', 0], value='Carl II'),
@@ -469,13 +502,25 @@ class TestRequests(unittest.TestCase):
 			)))
 
 		self.checkSearchResult(res, ['1'])
-		
+
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			Field(['tracks', 1, 'Authors', None]), SearchRequest.Regexp(), 'Carl'
 			)))
 
 		self.checkSearchResult(res, ['1'])
-		
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+		SearchRequest.Condition(
+			Field(['tracks', None]), SearchRequest.Eq(), 'Track 11'
+			),
+		SearchRequest.And(),
+		SearchRequest.Condition(
+			Field(['tracks', None, 'Name']), SearchRequest.Regexp(), 'name'
+			)
+		)))
+
+		self.checkSearchResult(res, ['2'])
+
 
 def suite():
 	res = testhelpers.NamedTestSuite()
