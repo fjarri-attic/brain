@@ -404,6 +404,24 @@ class TestRequests(unittest.TestCase):
 			Field(['tracks', 0, 'Authors', 0], 'text', 'Alex'),
 			Field(['tracks', 1, 'Authors', 0], 'text', 'Carl')			
 			])
+	
+	def testzzzSearchListOneLevel(self):
+		self.db.processRequest(ModifyRequest('1', [
+			Field(['tracks', 0], value='Track 1'),
+			Field(['tracks', 1], value='Track 2'),
+			Field(['tracks', 2], value='Track 3')]
+			))
+		self.db.processRequest(ModifyRequest('2', [
+			Field(['tracks', 0], value='Track 2'),
+			Field(['tracks', 1], value='Track 1')]
+			))
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field(['tracks', None]), SearchRequest.Eq(), 'Track 2'
+			)))
+
+		self.checkSearchResult(res, ['1', '2'])
+	
 
 def suite():
 	res = testhelpers.NamedTestSuite()
