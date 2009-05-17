@@ -45,17 +45,26 @@ class TestRequest(unittest.TestCase):
 class TestModifyRequest(TestRequest):
 	"""Test different uses of ModifyRequest"""
 
+	def prepareOneElementState(self):
+		"""Prepare DB with one element"""
+		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
+
+	def prepareTwoElementState(self):
+		"""Prepare DB with two elements"""
+		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
+		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
+
 	def testBlankObjectAddition(self):
 		"""Check that object without fields can be created"""
 		self.addObject('1')
 
 	def testAdditionNoCheck(self):
 		"""Check simple object addition"""
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
+		self.prepareOneElementState()
 
 	def testAddition(self):
 		"""Simple object addition with result checking"""
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
+		self.prepareOneElementState()
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			Field('phone'), SearchRequest.Eq(), '1111')))
@@ -79,55 +88,53 @@ class TestModifyRequest(TestRequest):
 
 	def testModificationNoCheck(self):
 		"""Check object modification"""
-		self.addObject('2', {'name': 'Alex', 'phone': '1111'})
+		self.prepareOneElementState()
 
-		self.db.processRequest(ModifyRequest('2', [
+		self.db.processRequest(ModifyRequest('1', [
 			Field('name', 'text', 'Bob')
 		]))
 
 	def testModification(self):
 		"""Object modification with results checking"""
-		self.addObject('2', {'name': 'Alex', 'phone': '1111'})
+		self.prepareOneElementState()
 
-		self.db.processRequest(ModifyRequest('2', [
+		self.db.processRequest(ModifyRequest('1', [
 			Field('name', 'text', 'Bob')
 		]))
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			Field('name'), SearchRequest.Eq(), 'Bob')))
 
-		self.checkRequestResult(res, ['2'])
+		self.checkRequestResult(res, ['1'])
 
 	def testModificationAddsField(self):
 		"""Check that object modification can add a new field"""
-		self.addObject('2', {'name': 'Alex', 'phone': '1111'})
+		self.prepareOneElementState()
 
-		self.db.processRequest(ModifyRequest('2', [
+		self.db.processRequest(ModifyRequest('1', [
 			Field('age', 'text', '27')
 		]))
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			Field('age'), SearchRequest.Eq(), '27')))
 
-		self.checkRequestResult(res, ['2'])
+		self.checkRequestResult(res, ['1'])
 
 	def testModificationAddsFieldTwice(self):
 		"""Regression test for non-updating specification"""
-
-		# Add test object
-		self.addObject('2', {'name': 'Alex', 'phone': '1111'})
+		self.prepareOneElementState()
 
 		# Add new field to object
-		self.db.processRequest(ModifyRequest('2', [
+		self.db.processRequest(ModifyRequest('1', [
 			Field('age', 'text', '27')
 		]))
 
 		# Delete object. If specification was not updated,
 		# new field is still in database
-		self.db.processRequest(DeleteRequest('2'))
+		self.db.processRequest(DeleteRequest('1'))
 
 		# Add object again
-		self.addObject('2', {'name': 'Alex', 'phone': '1111'})
+		self.prepareOneElementState()
 
 		# Check that field from old object is not there
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
@@ -137,21 +144,20 @@ class TestModifyRequest(TestRequest):
 
 	def testModificationPreservesFields(self):
 		"""Check that modification preserves existing fields"""
-		self.addObject('2', {'name': 'Alex', 'phone': '1111'})
+		self.prepareOneElementState()
 
-		self.db.processRequest(ModifyRequest('2', [
+		self.db.processRequest(ModifyRequest('1', [
 			Field('name', 'text', 'Bob')
 		]))
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			Field('phone'), SearchRequest.Eq(), '1111')))
 
-		self.checkRequestResult(res, ['2'])
+		self.checkRequestResult(res, ['1'])
 
 	def testMultipleModification(self):
 		"""Check modification in the presence of multiple objects"""
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
-		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
+		self.prepareTwoElementState()
 
 		self.db.processRequest(ModifyRequest('2', [
 			Field('name', 'text', 'Rob')
