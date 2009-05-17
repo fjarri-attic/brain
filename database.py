@@ -114,10 +114,12 @@ class StructureLayer:
 		if len(l) == 0:
 			self.db.execute("INSERT INTO '" + _ID_TABLE + "' VALUES (?, ?)", (id, name))
 
-	def getFieldsList(self, id):
+	def getFieldsList(self, id, regexp=None):
 		# get element specification
-		l = list(self.db.execute("SELECT field FROM '" + _ID_TABLE + "' WHERE id=:id",
-			{'id': id}))
+		regexp_cond = ((" AND field REGEXP :field") if regexp != None else "")
+
+		l = list(self.db.execute("SELECT field FROM '" + _ID_TABLE + "' WHERE id=:id" + regexp_cond,
+			{'id': id, 'field': regexp}))
 
 		field_names = [x[0] for x in l]
 
@@ -194,18 +196,34 @@ class StructureLayer:
 	def deleteField(self, id, field):
 
 		field_name = _nameFromList(field.name)
+		cond, param_map, query, query_cols, cond_raw = _conditionFromList(field.name)
 
 		# check if table exists
 		if not self.db.tableExists(field_name):
 			return
 
 		# delete value
-		self.db.execute("DELETE FROM '" + field_name + "' WHERE id=:id",
+		self.db.execute("DELETE FROM '" + field_name + "' WHERE id=:id" + cond_raw,
 			{'id': id})
 
 		# check if the table is empty and if it is - delete it too
 		if self.db.tableIsEmpty(field_name):
 			self.db.deleteTable(field_name)
+
+		# if we deleted something from list, we should re-enumerate list elements
+		if cond != "":
+
+			field_cols = list(filter(lambda x: isinstance(x, int), field.name))
+			col_num = len(field_cols) - 1
+			col_name = "c" + str(col_num)
+			col_val = field_cols[col_num]
+
+			fields_to_reenum = self.getFieldsList(id, field_name)
+			for fld in fields_to_reenum:
+				self.db.execute("UPDATE '" + _nameFromList(fld.name) + "' SET " +
+					col_name + "=" + col_name + "-1 WHERE " +
+					"id=:id AND " + col_name + ">=" + str(col_val),
+					{'id': id})
 
 	def __assureFieldTableExists(self, field):
 		values_str = "id TEXT, type TEXT, value TEXT"
@@ -346,7 +364,8 @@ class Sqlite3Database(interfaces.Database):
 
 		result_list = []
 		for result in results:
-			result_list += result
+			if result != None:
+				result_list += result
 		return result_list
 
 	def __processSearchRequest(self, request):
