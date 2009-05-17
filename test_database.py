@@ -42,135 +42,6 @@ class TestRequest(unittest.TestCase):
 		field_objs = [Field(key, 'text', fields[key]) for key in fields.keys()]
 		self.db.processRequest(ModifyRequest(id, field_objs))
 
-class TestModifyRequest(TestRequest):
-	"""Test different uses of ModifyRequest"""
-
-	def prepareOneElementState(self):
-		"""Prepare DB with one element"""
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
-
-	def prepareTwoElementState(self):
-		"""Prepare DB with two elements"""
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
-		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
-
-	def testBlankObjectAddition(self):
-		"""Check that object without fields can be created"""
-		self.addObject('1')
-
-	def testAdditionNoCheck(self):
-		"""Check simple object addition"""
-		self.prepareOneElementState()
-
-	def testAddition(self):
-		"""Simple object addition with result checking"""
-		self.prepareOneElementState()
-
-		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '1111')))
-
-		self.checkRequestResult(res, ['1'])
-
-	def testAdditionSameFields(self):
-		"""Check that several equal fields are handled correctly"""
-		self.db.processRequest(ModifyRequest('1', [
-			Field(['tracks'], value='Track 1'),
-			Field(['tracks'], value='Track 2'),
-			Field(['tracks'], value='Track 3')]
-			))
-
-		res = self.db.processRequest(ReadRequest('1', [Field(['tracks'])]))
-
-		# only last field value should be saved
-		self.checkRequestResult(res, [
-			Field(['tracks'], 'text', 'Track 3')
-			])
-
-	def testModificationNoCheck(self):
-		"""Check object modification"""
-		self.prepareOneElementState()
-
-		self.db.processRequest(ModifyRequest('1', [
-			Field('name', 'text', 'Bob')
-		]))
-
-	def testModification(self):
-		"""Object modification with results checking"""
-		self.prepareOneElementState()
-
-		self.db.processRequest(ModifyRequest('1', [
-			Field('name', 'text', 'Bob')
-		]))
-
-		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('name'), SearchRequest.Eq(), 'Bob')))
-
-		self.checkRequestResult(res, ['1'])
-
-	def testModificationAddsField(self):
-		"""Check that object modification can add a new field"""
-		self.prepareOneElementState()
-
-		self.db.processRequest(ModifyRequest('1', [
-			Field('age', 'text', '27')
-		]))
-
-		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('age'), SearchRequest.Eq(), '27')))
-
-		self.checkRequestResult(res, ['1'])
-
-	def testModificationAddsFieldTwice(self):
-		"""Regression test for non-updating specification"""
-		self.prepareOneElementState()
-
-		# Add new field to object
-		self.db.processRequest(ModifyRequest('1', [
-			Field('age', 'text', '27')
-		]))
-
-		# Delete object. If specification was not updated,
-		# new field is still in database
-		self.db.processRequest(DeleteRequest('1'))
-
-		# Add object again
-		self.prepareOneElementState()
-
-		# Check that field from old object is not there
-		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('age'), SearchRequest.Eq(), '27')))
-
-		self.checkRequestResult(res, [])
-
-	def testModificationPreservesFields(self):
-		"""Check that modification preserves existing fields"""
-		self.prepareOneElementState()
-
-		self.db.processRequest(ModifyRequest('1', [
-			Field('name', 'text', 'Bob')
-		]))
-
-		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '1111')))
-
-		self.checkRequestResult(res, ['1'])
-
-	def testMultipleModification(self):
-		"""Check modification in the presence of multiple objects"""
-		self.prepareTwoElementState()
-
-		self.db.processRequest(ModifyRequest('2', [
-			Field('name', 'text', 'Rob')
-		]))
-
-		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('name'), SearchRequest.Eq(), 'Rob')))
-
-		self.checkRequestResult(res, ['2'])
-
-class TestSearchRequest(TestRequest):
-	"""Test operation of SearchRequest"""
-
 	def prepareStandNoList(self):
 		"""Prepare DB wiht several objects which contain only hashes"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
@@ -216,6 +87,113 @@ class TestSearchRequest(TestRequest):
 			Field(['tracks', 1, 'Name'], value='Track 2 name'),
 			Field(['tracks', 1, 'Authors', 0], value='Alex')
 			]))
+
+class TestModifyRequest(TestRequest):
+	"""Test different uses of ModifyRequest"""
+
+	def testBlankObjectAddition(self):
+		"""Check that object without fields can be created"""
+		self.addObject('1')
+
+	def testAdditionNoCheck(self):
+		"""Check simple object addition"""
+		self.prepareStandNoList()
+
+	def testAddition(self):
+		"""Simple object addition with result checking"""
+		self.prepareStandNoList()
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field('phone'), SearchRequest.Eq(), '1111')))
+
+		self.checkRequestResult(res, ['1', '5'])
+
+	def testAdditionSameFields(self):
+		"""Check that several equal fields are handled correctly"""
+		self.db.processRequest(ModifyRequest('1', [
+			Field(['tracks'], value='Track 1'),
+			Field(['tracks'], value='Track 2'),
+			Field(['tracks'], value='Track 3')]
+			))
+
+		res = self.db.processRequest(ReadRequest('1', [Field(['tracks'])]))
+
+		# only last field value should be saved
+		self.checkRequestResult(res, [
+			Field(['tracks'], 'text', 'Track 3')
+			])
+
+	def testModificationNoCheck(self):
+		"""Check object modification"""
+		self.prepareStandNoList()
+
+		self.db.processRequest(ModifyRequest('1', [
+			Field('name', 'text', 'Zack')
+		]))
+
+	def testModification(self):
+		"""Object modification with results checking"""
+		self.prepareStandNoList()
+
+		self.db.processRequest(ModifyRequest('1', [
+			Field('name', 'text', 'Zack')
+		]))
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field('name'), SearchRequest.Eq(), 'Zack')))
+
+		self.checkRequestResult(res, ['1'])
+
+	def testModificationAddsField(self):
+		"""Check that object modification can add a new field"""
+		self.prepareStandNoList()
+
+		self.db.processRequest(ModifyRequest('1', [
+			Field('age', 'text', '66')
+		]))
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field('age'), SearchRequest.Eq(), '66')))
+
+		self.checkRequestResult(res, ['1'])
+
+	def testModificationAddsFieldTwice(self):
+		"""Regression test for non-updating specification"""
+		self.prepareStandNoList()
+
+		# Add new field to object
+		self.db.processRequest(ModifyRequest('1', [
+			Field('age', 'text', '66')
+		]))
+
+		# Delete object. If specification was not updated,
+		# new field is still in database
+		self.db.processRequest(DeleteRequest('1'))
+
+		# Add object again
+		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
+
+		# Check that field from old object is not there
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field('age'), SearchRequest.Eq(), '66')))
+
+		self.checkRequestResult(res, [])
+
+	def testModificationPreservesFields(self):
+		"""Check that modification preserves existing fields"""
+		self.prepareStandNoList()
+
+		self.db.processRequest(ModifyRequest('2', [
+			Field('name', 'text', 'Zack')
+		]))
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field('phone'), SearchRequest.Eq(), '2222')))
+
+		self.checkRequestResult(res, ['2'])
+
+class TestSearchRequest(TestRequest):
+	"""Test operation of SearchRequest"""
 
 	def testConditionAnd(self):
 		"""Check complex condition with And operator"""
@@ -403,12 +381,6 @@ class TestSearchRequest(TestRequest):
 class TestDeleteRequest(TestRequest):
 	"""Test operation of DeleteRequest"""
 
-	def prepareStandNoList(self):
-		"""Prepare DB wiht several objects which contain only hashes"""
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
-		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
-		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
-
 	def testWholeObject(self):
 		"""Check deletion of the whole object"""
 		self.prepareStandNoList()
@@ -421,7 +393,7 @@ class TestDeleteRequest(TestRequest):
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			Field('phone'), SearchRequest.Eq(), '1111')))
-		self.checkRequestResult(res, ['1'])
+		self.checkRequestResult(res, ['1', '5'])
 
 	def testExistentFields(self):
 		"""Check deletion of existent fields"""
@@ -478,7 +450,7 @@ class TestReadRequest(TestRequest):
 
 	def testAllFields(self):
 		"""Check the operation of whole object reading"""
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
+		self.prepareStandNoList()
 
 		res = self.db.processRequest(ReadRequest('1'))
 		self.checkRequestResult(res, [
@@ -487,7 +459,7 @@ class TestReadRequest(TestRequest):
 
 	def testSomeFields(self):
 		"""Check the operation of reading some chosen fields"""
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
+		self.prepareStandNoList()
 
 		res = self.db.processRequest(ReadRequest('1', [Field('name')]))
 		self.checkRequestResult(res, [
@@ -496,7 +468,7 @@ class TestReadRequest(TestRequest):
 
 	def testNonExistingField(self):
 		"""Check that non-existent field is ignored during read"""
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
+		self.prepareStandNoList()
 
 		res = self.db.processRequest(ReadRequest('1', [Field('name'), Field('age')]))
 		self.checkRequestResult(res, [
@@ -505,11 +477,7 @@ class TestReadRequest(TestRequest):
 
 	def testAddedList(self):
 		"""Check that list values can be read"""
-		self.db.processRequest(ModifyRequest('1', [
-			Field(['tracks', 0], value='Track 1'),
-			Field(['tracks', 1], value='Track 2'),
-			Field(['tracks', 2], value='Track 3')]
-			))
+		self.prepareStandSimpleList()
 
 		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None])]))
 		self.checkRequestResult(res, [
@@ -520,37 +488,17 @@ class TestReadRequest(TestRequest):
 
 	def testAddedListComplexCondition(self):
 		"""Check that read request works properly when some list positions are defined"""
-		self.db.processRequest(ModifyRequest('1', [
-			Field(['tracks', 0], value='Track 1'),
-			Field(['tracks', 0, 'Name'], value='Track 1 name'),
-			Field(['tracks', 0, 'Length'], value='Track 1 length'),
-			Field(['tracks', 0, 'Authors', 0], value='Alex'),
-			Field(['tracks', 0, 'Authors', 1], value='Bob'),
-
-			Field(['tracks', 1], value='Track 2'),
-			Field(['tracks', 1, 'Name'], value='Track 2 name'),
-			Field(['tracks', 1, 'Authors', 0], value='Carl')
-			]))
+		self.prepareStandNestedList()
 
 		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None, 'Authors', 0])]))
 		self.checkRequestResult(res, [
 			Field(['tracks', 0, 'Authors', 0], 'text', 'Alex'),
-			Field(['tracks', 1, 'Authors', 0], 'text', 'Carl')
+			Field(['tracks', 1, 'Authors', 0], 'text', 'Carl I')
 			])
 
 	def testFromMiddleLevelList(self):
 		"""Check that one can read from list in the middle of the hierarchy"""
-		self.db.processRequest(ModifyRequest('1', [
-			Field(['tracks', 0], value='Track 1'),
-			Field(['tracks', 0, 'Name'], value='Track 1 name'),
-			Field(['tracks', 0, 'Length'], value='Track 1 length'),
-			Field(['tracks', 0, 'Authors', 0], value='Alex'),
-			Field(['tracks', 0, 'Authors', 1], value='Bob'),
-
-			Field(['tracks', 1], value='Track 2'),
-			Field(['tracks', 1, 'Name'], value='Track 2 name'),
-			Field(['tracks', 1, 'Authors', 0], value='Carl I')
-			]))
+		self.prepareStandNestedList()
 
 		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None, 'Name'])]))
 		self.checkRequestResult(res, [
