@@ -403,11 +403,15 @@ class TestSearchRequest(TestRequest):
 class TestDeleteRequest(TestRequest):
 	"""Test operation of DeleteRequest"""
 
-	def testWholeObject(self):
-		"""Check deletion of the whole object"""
+	def prepareStandNoList(self):
+		"""Prepare DB wiht several objects which contain only hashes"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
 		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
+
+	def testWholeObject(self):
+		"""Check deletion of the whole object"""
+		self.prepareStandNoList()
 
 		self.db.processRequest(DeleteRequest('3'))
 
@@ -421,9 +425,7 @@ class TestDeleteRequest(TestRequest):
 
 	def testExistentFields(self):
 		"""Check deletion of existent fields"""
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
-		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
-		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
+		self.prepareStandNoList()
 
 		self.db.processRequest(DeleteRequest('3', [Field('age'), Field('phone')]))
 
@@ -441,9 +443,7 @@ class TestDeleteRequest(TestRequest):
 
 	def testNonExistentFields(self):
 		"""Check deletion of non-existent fields"""
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
-		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
-		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
+		self.prepareStandNoList()
 
 		self.db.processRequest(DeleteRequest('2', [Field('name'), Field('blablabla')]))
 
@@ -457,12 +457,10 @@ class TestDeleteRequest(TestRequest):
 
 	def testAllElements(self):
 		"""Test that deleting all elements does not spoil the database"""
-
-		# Add some objects
-		self.addObject('2', {'name': 'Alex', 'phone': '1111'})
-		self.addObject('3', {'name': 'Bob', 'phone': '2222'})
+		self.prepareStandNoList()
 
 		# Remove all
+		self.db.processRequest(DeleteRequest('1'))
 		self.db.processRequest(DeleteRequest('2'))
 		self.db.processRequest(DeleteRequest('3'))
 
