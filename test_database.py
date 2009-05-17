@@ -457,8 +457,8 @@ class TestDeleteRequest(TestRequest):
 
 		self.checkRequestResult(res, ['2'])
 
-	def testSimpleList(self):
-		"""Test deletion from list"""
+	def testSimpleListFromMiddle(self):
+		"""Test deletion from the middle of the list"""
 		self.prepareStandSimpleList()
 
 		self.db.processRequest(DeleteRequest('1', [
@@ -469,6 +469,34 @@ class TestDeleteRequest(TestRequest):
 		self.checkRequestResult(res, [
 			Field(['tracks', 0], 'text', 'Track 1'),
 			Field(['tracks', 1], 'text', 'Track 3')
+			])
+
+	def testSimpleListFromBeginning(self):
+		"""Test deletion from the beginning of the list"""
+		self.prepareStandSimpleList()
+
+		self.db.processRequest(DeleteRequest('1', [
+			Field(['tracks', 0])
+		]))
+
+		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0], 'text', 'Track 2'),
+			Field(['tracks', 1], 'text', 'Track 3')
+			])
+
+	def testSimpleListFromEnd(self):
+		"""Test deletion from the end of the list"""
+		self.prepareStandSimpleList()
+
+		self.db.processRequest(DeleteRequest('1', [
+			Field(['tracks', 2])
+		]))
+
+		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0], 'text', 'Track 1'),
+			Field(['tracks', 1], 'text', 'Track 2')
 			])
 
 class TestReadRequest(TestRequest):
