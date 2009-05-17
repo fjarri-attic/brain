@@ -85,7 +85,11 @@ class TestRequest(unittest.TestCase):
 
 			Field(['tracks', 1], value='Track 2'),
 			Field(['tracks', 1, 'Name'], value='Track 2 name'),
-			Field(['tracks', 1, 'Authors', 0], value='Alex')
+			Field(['tracks', 1, 'Authors', 0], value='Alex'),
+
+			Field(['tracks', 2], value='Track 3'),
+			Field(['tracks', 2, 'Name'], value='Track 3 name'),
+			Field(['tracks', 2, 'Authors', 0], value='Rob'),
 			]))
 
 class TestModifyRequest(TestRequest):
@@ -497,6 +501,72 @@ class TestDeleteRequest(TestRequest):
 		self.checkRequestResult(res, [
 			Field(['tracks', 0], 'text', 'Track 1'),
 			Field(['tracks', 1], 'text', 'Track 2')
+			])
+
+	def testNestedListFromMiddle(self):
+		"""Test deletion from the middle of the nested list"""
+		self.prepareStandNestedList()
+
+		self.db.processRequest(DeleteRequest('2', [
+			Field(['tracks', 1])
+		]))
+
+		# Check that deletion really occurred
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0], 'text', 'Track 11'),
+			Field(['tracks', 1], 'text', 'Track 3')
+			])
+
+		# Check that reenumeration occurred
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Name'])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0, 'Name'], 'text', 'Track 1 name'),
+			Field(['tracks', 1, 'Name'], 'text', 'Track 3 name')
+			])
+
+	def testNestedListFromBeginning(self):
+		"""Test deletion from the beginning of the nested list"""
+		self.prepareStandNestedList()
+
+		self.db.processRequest(DeleteRequest('2', [
+			Field(['tracks', 0])
+		]))
+
+		# Check that deletion really occurred
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0], 'text', 'Track 2'),
+			Field(['tracks', 1], 'text', 'Track 3')
+			])
+
+		# Check that reenumeration occurred
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Name'])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0, 'Name'], 'text', 'Track 2 name'),
+			Field(['tracks', 1, 'Name'], 'text', 'Track 3 name')
+			])
+
+	def testNestedListFromEnd(self):
+		"""Test deletion from the end of the nested list"""
+		self.prepareStandNestedList()
+
+		self.db.processRequest(DeleteRequest('2', [
+			Field(['tracks', 2])
+		]))
+
+		# Check that deletion really occurred
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0], 'text', 'Track 11'),
+			Field(['tracks', 1], 'text', 'Track 2')
+			])
+
+		# Check that reenumeration occurred
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Name'])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0, 'Name'], 'text', 'Track 1 name'),
+			Field(['tracks', 1, 'Name'], 'text', 'Track 2 name')
 			])
 
 class TestReadRequest(TestRequest):
