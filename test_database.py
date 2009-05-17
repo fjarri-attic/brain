@@ -391,12 +391,18 @@ class TestDeleteRequest(TestRequest):
 			Field('phone'), SearchRequest.Eq(), '3333')))
 		self.checkRequestResult(res, [])
 
+	def testWholeObjectPreservesOthers(self):
+		"""Check that deletion of the whole object does not spoil the database"""
+		self.prepareStandNoList()
+
+		self.db.processRequest(DeleteRequest('3'))
+
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			Field('phone'), SearchRequest.Eq(), '1111')))
 		self.checkRequestResult(res, ['1', '5'])
 
-	def testExistentFields(self):
-		"""Check deletion of existent fields"""
+	def testExistentFieldsPreservesOtherFiels(self):
+		"""Check that deletion of existent fields preserves other object fields"""
 		self.prepareStandNoList()
 
 		self.db.processRequest(DeleteRequest('3', [Field('age'), Field('phone')]))
@@ -404,6 +410,12 @@ class TestDeleteRequest(TestRequest):
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			Field('name'), SearchRequest.Eq(), 'Carl')))
 		self.checkRequestResult(res, ['3'])
+
+	def testExistentFieldsReallyDeleted(self):
+		"""Check that deletion of existent fields actually deletes them"""
+		self.prepareStandNoList()
+
+		self.db.processRequest(DeleteRequest('3', [Field('age'), Field('phone')]))
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			Field('phone'), SearchRequest.Eq(), '3333')))
