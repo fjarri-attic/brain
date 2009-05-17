@@ -171,167 +171,16 @@ class TestModifyRequest(TestRequest):
 class TestSearchRequest(TestRequest):
 	"""Test operation of SearchRequest"""
 
-	def testConditionAnd(self):
-		"""Check complex condition with And operator"""
+	def prepareStandNoList(self):
+		"""Prepare DB wiht several objects which contain only hashes"""
 		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
 		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
 		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
 		self.addObject('4', {'name': 'Don', 'phone': '4444', 'age': '20'})
 		self.addObject('5', {'name': 'Alex', 'phone': '1111', 'age': '22'})
 
-		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-		SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '1111'
-			),
-		SearchRequest.And(),
-		SearchRequest.Condition(
-			Field('age'), SearchRequest.Eq(), '22'
-			)
-		)))
-
-		self.checkRequestResult(res, ['5'])
-
-	def testConditionOr(self):
-		"""Check complex condition with Or operator"""
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
-		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
-		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
-		self.addObject('4', {'name': 'Don', 'phone': '4444', 'age': '20'})
-		self.addObject('5', {'name': 'Alex', 'phone': '1111', 'age': '22'})
-
-		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-		SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '2222'
-			),
-		SearchRequest.Or(),
-		SearchRequest.Condition(
-			Field('age'), SearchRequest.Eq(), '27'
-			)
-		)))
-
-		self.checkRequestResult(res, ['2', '3'])
-
-	def testConditionInvert(self):
-		"""Check operation of inversion flag in condition"""
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
-		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
-		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
-		self.addObject('4', {'name': 'Don', 'phone': '4444', 'age': '20'})
-		self.addObject('5', {'name': 'Alex', 'phone': '1111', 'age': '22'})
-
-		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-		SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '1111'
-			),
-		SearchRequest.And(),
-		SearchRequest.Condition(
-			Field('age'), SearchRequest.Eq(), '22', invert=True
-			)
-		)))
-
-		self.checkRequestResult(res, ['1'])
-
-	def testConditionInvertInRoot(self):
-		"""Check if inversion flag works in the root of condition"""
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
-		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
-		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
-		self.addObject('4', {'name': 'Don', 'phone': '4444', 'age': '20'})
-		self.addObject('5', {'name': 'Alex', 'phone': '1111', 'age': '22'})
-
-		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-		SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '1111'
-			),
-		SearchRequest.And(),
-		SearchRequest.Condition(
-			Field('age'), SearchRequest.Eq(), '22', invert=True
-			),
-		invert=True
-		)))
-
-		self.checkRequestResult(res, ['2', '3', '4', '5'])
-
-	def testConditionRegexp(self):
-		"""Check operation of regexp-based condition"""
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
-		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
-		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
-		self.addObject('4', {'name': 'Don', 'phone': '4444', 'age': '20'})
-		self.addObject('5', {'name': 'Alex', 'phone': '1111', 'age': '22'})
-
-		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-		SearchRequest.Condition(
-			Field('phone'), SearchRequest.Regexp(), '\d+'
-			),
-		SearchRequest.And(),
-		SearchRequest.Condition(
-			Field('age'), SearchRequest.Eq(), '22', invert=True
-			)
-		)))
-
-		self.checkRequestResult(res, ['1', '2', '3', '4'])
-
-	def testConditionRegexpOnPart(self):
-		"""Regression for bug when there was match() instead of search() in regexp callback"""
-		self.addObject('1', {'name': 'Alex name', 'phone': '1111'})
-		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
-		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
-		self.addObject('4', {'name': 'Don', 'phone': '4444', 'age': '20'})
-		self.addObject('5', {'name': 'Alex name', 'phone': '1111', 'age': '22'})
-
-		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('name'), SearchRequest.Regexp(), 'name'
-			)))
-
-		self.checkRequestResult(res, ['1', '5'])
-
-	def testNonExistentFieldInAndCondition(self):
-		"""Check that condition on non-existent field works with And operator"""
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
-		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
-		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
-		self.addObject('4', {'name': 'Don', 'phone': '4444', 'age': '20'})
-		self.addObject('5', {'name': 'Alex', 'phone': '1111', 'age': '22'})
-
-		# Second part of the condition should return empty list,
-		# so the whole result should be empty too
-		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-		SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '1111'
-			),
-		SearchRequest.And(),
-		SearchRequest.Condition(
-			Field('blablabla'), SearchRequest.Eq(), '22', invert=True
-			)
-		)))
-
-		self.checkRequestResult(res, [])
-
-	def testNonExistentFieldInOrCondition(self):
-		"""Check that condition on non-existent field works with Or operator"""
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
-		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
-		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
-		self.addObject('4', {'name': 'Don', 'phone': '4444', 'age': '20'})
-		self.addObject('5', {'name': 'Alex', 'phone': '1111', 'age': '22'})
-
-		# Second part of the condition should return empty list,
-		# so the whole result should be equal to the result of the first part
-		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-		SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '1111'
-			),
-		SearchRequest.Or(),
-		SearchRequest.Condition(
-			Field('blablabla'), SearchRequest.Eq(), '22', invert=True
-			)
-		)))
-
-		self.checkRequestResult(res, ['1', '5'])
-
-	def testListOneLevel(self):
-		"""Check searching in simple lists"""
+	def prepareStandSimpleList(self):
+		"""Prepare DB with several objects which contain simple lists"""
 		self.db.processRequest(ModifyRequest('1', [
 			Field(['tracks', 0], value='Track 1'),
 			Field(['tracks', 1], value='Track 2'),
@@ -342,32 +191,8 @@ class TestSearchRequest(TestRequest):
 			Field(['tracks', 1], value='Track 1')]
 			))
 
-		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field(['tracks', None]), SearchRequest.Eq(), 'Track 2'
-			)))
-
-		self.checkRequestResult(res, ['1', '2'])
-
-	def testListOneLevelDefinedPosition(self):
-		"""Check search when some of positions in lists are defined"""
-		self.db.processRequest(ModifyRequest('1', [
-			Field(['tracks', 0], value='Track 1'),
-			Field(['tracks', 1], value='Track 2'),
-			Field(['tracks', 2], value='Track 3')]
-			))
-		self.db.processRequest(ModifyRequest('2', [
-			Field(['tracks', 0], value='Track 2'),
-			Field(['tracks', 1], value='Track 1')]
-			))
-
-		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field(['tracks', 1]), SearchRequest.Eq(), 'Track 2'
-			)))
-
-		self.checkRequestResult(res, ['1'])
-
-	def testListTwoLevels(self):
-		"""Check searching in nested lists"""
+	def prepareStandNestedList(self):
+		"""Prepare DB with several objects which contain nested lists"""
 		self.db.processRequest(ModifyRequest('1', [
 			Field(['tracks', 0], value='Track 1'),
 			Field(['tracks', 0, 'Name'], value='Track 1 name'),
@@ -391,6 +216,157 @@ class TestSearchRequest(TestRequest):
 			Field(['tracks', 1, 'Name'], value='Track 2 name'),
 			Field(['tracks', 1, 'Authors', 0], value='Alex')
 			]))
+
+	def testConditionAnd(self):
+		"""Check complex condition with And operator"""
+		self.prepareStandNoList()
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+		SearchRequest.Condition(
+			Field('phone'), SearchRequest.Eq(), '1111'
+			),
+		SearchRequest.And(),
+		SearchRequest.Condition(
+			Field('age'), SearchRequest.Eq(), '22'
+			)
+		)))
+
+		self.checkRequestResult(res, ['5'])
+
+	def testConditionOr(self):
+		"""Check complex condition with Or operator"""
+		self.prepareStandNoList()
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+		SearchRequest.Condition(
+			Field('phone'), SearchRequest.Eq(), '2222'
+			),
+		SearchRequest.Or(),
+		SearchRequest.Condition(
+			Field('age'), SearchRequest.Eq(), '27'
+			)
+		)))
+
+		self.checkRequestResult(res, ['2', '3'])
+
+	def testConditionInvert(self):
+		"""Check operation of inversion flag in condition"""
+		self.prepareStandNoList()
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+		SearchRequest.Condition(
+			Field('phone'), SearchRequest.Eq(), '1111'
+			),
+		SearchRequest.And(),
+		SearchRequest.Condition(
+			Field('age'), SearchRequest.Eq(), '22', invert=True
+			)
+		)))
+
+		self.checkRequestResult(res, ['1'])
+
+	def testConditionInvertInRoot(self):
+		"""Check if inversion flag works in the root of condition"""
+		self.prepareStandNoList()
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+		SearchRequest.Condition(
+			Field('phone'), SearchRequest.Eq(), '1111'
+			),
+		SearchRequest.And(),
+		SearchRequest.Condition(
+			Field('age'), SearchRequest.Eq(), '22', invert=True
+			),
+		invert=True
+		)))
+
+		self.checkRequestResult(res, ['2', '3', '4', '5'])
+
+	def testConditionRegexp(self):
+		"""Check operation of regexp-based condition"""
+		self.prepareStandNoList()
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+		SearchRequest.Condition(
+			Field('phone'), SearchRequest.Regexp(), '\d+'
+			),
+		SearchRequest.And(),
+		SearchRequest.Condition(
+			Field('age'), SearchRequest.Eq(), '22', invert=True
+			)
+		)))
+
+		self.checkRequestResult(res, ['1', '2', '3', '4'])
+
+	def testConditionRegexpOnPart(self):
+		"""Regression for bug when there was match() instead of search() in regexp callback"""
+		self.prepareStandNoList()
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field('name'), SearchRequest.Regexp(), 'ex'
+			)))
+
+		self.checkRequestResult(res, ['1', '5'])
+
+	def testNonExistentFieldInAndCondition(self):
+		"""Check that condition on non-existent field works with And operator"""
+		self.prepareStandNoList()
+
+		# Second part of the condition should return empty list,
+		# so the whole result should be empty too
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+		SearchRequest.Condition(
+			Field('phone'), SearchRequest.Eq(), '1111'
+			),
+		SearchRequest.And(),
+		SearchRequest.Condition(
+			Field('blablabla'), SearchRequest.Eq(), '22', invert=True
+			)
+		)))
+
+		self.checkRequestResult(res, [])
+
+	def testNonExistentFieldInOrCondition(self):
+		"""Check that condition on non-existent field works with Or operator"""
+		self.prepareStandNoList()
+
+		# Second part of the condition should return empty list,
+		# so the whole result should be equal to the result of the first part
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+		SearchRequest.Condition(
+			Field('phone'), SearchRequest.Eq(), '1111'
+			),
+		SearchRequest.Or(),
+		SearchRequest.Condition(
+			Field('blablabla'), SearchRequest.Eq(), '22', invert=True
+			)
+		)))
+
+		self.checkRequestResult(res, ['1', '5'])
+
+	def testListOneLevel(self):
+		"""Check searching in simple lists"""
+		self.prepareStandSimpleList()
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field(['tracks', None]), SearchRequest.Eq(), 'Track 2'
+			)))
+
+		self.checkRequestResult(res, ['1', '2'])
+
+	def testListOneLevelDefinedPosition(self):
+		"""Check search when some of positions in lists are defined"""
+		self.prepareStandSimpleList()
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field(['tracks', 1]), SearchRequest.Eq(), 'Track 2'
+			)))
+
+		self.checkRequestResult(res, ['1'])
+
+	def testListTwoLevels(self):
+		"""Check searching in nested lists"""
+		self.prepareStandNestedList()
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			Field(['tracks', 0, 'Authors', None]), SearchRequest.Eq(), 'Alex'
