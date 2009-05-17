@@ -457,6 +457,20 @@ class TestDeleteRequest(TestRequest):
 
 		self.checkRequestResult(res, ['2'])
 
+	def testSimpleList(self):
+		"""Test deletion from list"""
+		self.prepareStandSimpleList()
+
+		self.db.processRequest(DeleteRequest('1', [
+			Field(['tracks', 1])
+		]))
+
+		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0], 'text', 'Track 1'),
+			Field(['tracks', 1], 'text', 'Track 3')
+			])
+
 class TestReadRequest(TestRequest):
 	"""Test operation of ReadRequest"""
 
