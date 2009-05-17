@@ -220,6 +220,12 @@ class StructureLayer:
 
 			fields_to_reenum = self.getFieldsList(id, field_name)
 			for fld in fields_to_reenum:
+				self.db.execute("DELETE FROM '" + _nameFromList(fld.name) + "' WHERE id=:id " +
+					" AND " + col_name + "=" + str(col_val), {'id': id})
+
+				if self.db.tableIsEmpty(_nameFromList(fld.name)):
+					self.db.deleteTable(_nameFromList(fld.name))
+
 				self.db.execute("UPDATE '" + _nameFromList(fld.name) + "' SET " +
 					col_name + "=" + col_name + "-1 WHERE " +
 					"id=:id AND " + col_name + ">=" + str(col_val),
