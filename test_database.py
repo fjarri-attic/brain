@@ -364,7 +364,7 @@ class TestSearchRequest(TestRequest):
 
 		self.checkRequestResult(res, ['1'])
 
-	def testListTwoLevels(self):
+	def testNestedList(self):
 		"""Check searching in nested lists"""
 		self.prepareStandNestedList()
 
@@ -374,11 +374,19 @@ class TestSearchRequest(TestRequest):
 
 		self.checkRequestResult(res, ['1'])
 
+	def testNestedListRegexp(self):
+		"""Check regexp searching in nested lists"""
+		self.prepareStandNestedList()
+
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			Field(['tracks', 1, 'Authors', None]), SearchRequest.Regexp(), 'Carl'
 			)))
 
 		self.checkRequestResult(res, ['1'])
+
+	def testNestedListComplexCondition(self):
+		"""Check search in nested list with complex condition"""
+		self.prepareStandNestedList()
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 		SearchRequest.Condition(
