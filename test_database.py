@@ -630,6 +630,30 @@ class TestReadRequest(TestRequest):
 			Field(['tracks', 1, 'Name'], 'text', 'Track 2 name')
 			])
 
+class TestInsertRequest(TestRequest):
+	"""Test operation of InsertRequest"""
+	
+	def testzzzToTheMiddleSimpleList(self):
+		"""Check insertion to the middle of simple list"""
+		self.prepareStandSimpleList()
+		
+		res = self.db.processRequest(InsertRequest('1',
+			Field(['tracks', 1]),
+			[
+				Field(['tracks', None], 'text', 'Track 4'),
+				Field(['tracks', None], 'text', 'Track 5')
+			]
+		))
+
+		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0], 'text', 'Track 1'),
+			Field(['tracks', 1], 'text', 'Track 4'),
+			Field(['tracks', 2], 'text', 'Track 5'),
+			Field(['tracks', 3], 'text', 'Track 2'),
+			Field(['tracks', 4], 'text', 'Track 3'),
+			])
+
 
 def suite():
 	"""Generate test suite for this module"""
@@ -639,7 +663,8 @@ def suite():
 		('memory.sqlite3', database.Sqlite3Database, ':memory:'),
 	]
 
-	requests = [TestModifyRequest, TestSearchRequest, TestDeleteRequest, TestReadRequest]
+	requests = [TestModifyRequest, TestSearchRequest, TestDeleteRequest, 
+		TestReadRequest, TestInsertRequest]
 
 	for parameter in parameters:
 		for request in requests:
