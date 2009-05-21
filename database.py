@@ -160,11 +160,6 @@ class StructureLayer:
 		else:
 			return None
 
-	def __updateFieldValue(self, id, field):
-		field_name = _nameFromList(field.name)
-		self.db.execute("UPDATE '" + field_name + "' SET type=?, value=? WHERE id=?",
-			(field.type, field.value, id))
-
 	def __setFieldValue(self, id, field):
 		self.__assureFieldTableExists(field)
 		field_name = _nameFromList(field.name)
@@ -272,7 +267,7 @@ class StructureLayer:
 		# for each field, check if it already exists
 		for field in fields:
 			if self.elementHasField(id, field):
-				self.__updateFieldValue(id, field)
+				self.__setFieldValue(id, field)
 			else:
 				self.__updateSpecification(id, field)
 				self.__setFieldValue(id, field)
@@ -323,6 +318,33 @@ class StructureLayer:
 
 		return list_res
 
+	def getMaxNumber(self, id, field):
+		field_name = _nameFromList(field.name)
+		cond, param_map, query, query_cols, cond_raw = _conditionFromList(field.name)
+
+		# we assume here that all columns in field are defined except for the last one
+		cond = cond[2:] # removing first ','
+		result = self.db.execute("SELECT MAX (" + cond + ") FROM '" + field_name + "' WHERE " + cond,
+			param_map)
+
+		l = list(result)
+		res = l[0][0]
+		return res
+
+	def reenumerate(self, id, target_field, shift):
+		field_name = _nameFromList(target_field.name)
+		field_cols = list(filter(lambda x: isinstance(x, int), target_field.name))
+		col_num = len(field_cols) - 1
+		col_name = "c" + str(col_num)
+		col_val = field_cols[col_num]
+
+		fields_to_reenum = self.getFieldsList(id, field_name)
+		for fld in fields_to_reenum:
+			self.db.execute("UPDATE '" + _nameFromList(fld.name) + "' SET " +
+				col_name + "=" + col_name + "+" + str(shift) + " WHERE " +
+				"id=:id AND " + col_name + ">=" + str(col_val),
+				{'id': id})
+
 class Sqlite3Database(interfaces.Database):
 
 	def __init__(self, path):
@@ -337,9 +359,39 @@ class Sqlite3Database(interfaces.Database):
 			return self.__processSearchRequest(request)
 		elif isinstance(request, interfaces.ReadRequest):
 			return self.__processReadRequest(request)
+		elif isinstance(request, interfaces.InsertRequest):
+			return self.__processInsertRequest(request)
 		else:
 			raise Exception("Unknown request type: " + request.__class__.__name__)
 
+	def __processInsertRequest(self, request):
+
+		def enumerate(fields, col_num, starting_num, one_position=False):
+			counter = starting_num
+			for field in request.fields:
+				field.name[col_num] = counter
+				if not one_position:
+					counter += 1
+
+		if not self.db.elementExists(request.id):
+			raise Exception("Element " + request.id + " does not exist")
+
+		target_col = len(request.target_field.name) - 1 # last column in name of target field
+
+		if not self.db.elementHasField(request.id, request.target_field):
+			enumerate(request.fields, target_col, 0, request.one_position)
+		elif request.target_field.name[target_col] == None:
+			starting_num = self.db.getMaxNumber(request.id, request.target_field) + 1
+			enumerate(request.fields, target_col, starting_num, request.one_position)
+		else:
+			self.db.reenumerate(request.id, request.target_field,
+				(1 if request.one_position else len(request.fields)))
+			enumerate(request.fields, target_col, request.target_field.name[target_col], request.one_position)
+
+		self.__processModifyRequest(interfaces.ModifyRequest(
+			request.id, request.fields
+		))
+		
 	def __processModifyRequest(self, request):
 
 		# check if the entry with specified id already exists
