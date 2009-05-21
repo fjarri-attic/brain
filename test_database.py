@@ -196,6 +196,26 @@ class TestModifyRequest(TestRequest):
 
 		self.checkRequestResult(res, ['2'])
 
+	def testListAdditions(self):
+		"""Regression test for erroneous modify results for lists"""
+		self.prepareStandSimpleList()
+
+		res = self.db.processRequest(ModifyRequest('1',
+			[
+				Field(['tracks', 3], 'text', 'Track 4'),
+				Field(['tracks', 4], 'text', 'Track 5')
+			]
+		))
+
+		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0], 'text', 'Track 1'),
+			Field(['tracks', 1], 'text', 'Track 2'),
+			Field(['tracks', 2], 'text', 'Track 3'),
+			Field(['tracks', 3], 'text', 'Track 4'),
+			Field(['tracks', 4], 'text', 'Track 5'),
+			])
+
 class TestSearchRequest(TestRequest):
 	"""Test operation of SearchRequest"""
 
@@ -632,11 +652,11 @@ class TestReadRequest(TestRequest):
 
 class TestInsertRequest(TestRequest):
 	"""Test operation of InsertRequest"""
-	
-	def testzzzToTheMiddleSimpleList(self):
+
+	def testToTheMiddleSimpleList(self):
 		"""Check insertion to the middle of simple list"""
 		self.prepareStandSimpleList()
-		
+
 		res = self.db.processRequest(InsertRequest('1',
 			Field(['tracks', 1]),
 			[
@@ -663,7 +683,7 @@ def suite():
 		('memory.sqlite3', database.Sqlite3Database, ':memory:'),
 	]
 
-	requests = [TestModifyRequest, TestSearchRequest, TestDeleteRequest, 
+	requests = [TestModifyRequest, TestSearchRequest, TestDeleteRequest,
 		TestReadRequest, TestInsertRequest]
 
 	for parameter in parameters:
