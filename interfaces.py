@@ -74,6 +74,19 @@ class ReadRequest(_BaseFieldRelatedRequest):
 	def __str__(self):
 		return "ReadRequest for element '" + self.id + "': " + self.__getFieldsStr()
 
+class InsertRequest(_BaseFieldRelatedRequest):
+	def __init__(self, id, target_field, fields, one_position=False):
+		_BaseFieldRelatedRequest.__init__(self, id, fields)
+		
+		if not isinstance(target_field, Field):
+			raise FormatError("Target field must have class Field")
+		self.target_field = target_field
+		self.one_position = one_position
+
+	def __str__(self):
+		return "InsertRequest for element '" + self.id + "' and target " +\
+			str(target_field) + ": " + self.__getFieldsStr()
+
 class SearchRequest:
 
 	class Operator: pass
