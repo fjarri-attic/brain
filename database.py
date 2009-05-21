@@ -323,8 +323,9 @@ class StructureLayer:
 		cond, param_map, query, query_cols, cond_raw = _conditionFromList(field.name)
 
 		# we assume here that all columns in field are defined except for the last one
-		cond = cond[2:] # removing first ','
-		result = self.db.execute("SELECT MAX (" + cond + ") FROM '" + field_name + "' WHERE " + cond,
+		query = query[2:] # removing first ','
+		param_map.update({'id': id})
+		result = self.db.execute("SELECT MAX (" + query + ") FROM '" + field_name + "' WHERE id=:id" + cond,
 			param_map)
 
 		l = list(result)
@@ -391,7 +392,7 @@ class Sqlite3Database(interfaces.Database):
 		self.__processModifyRequest(interfaces.ModifyRequest(
 			request.id, request.fields
 		))
-		
+
 	def __processModifyRequest(self, request):
 
 		# check if the entry with specified id already exists
