@@ -674,6 +674,47 @@ class TestInsertRequest(TestRequest):
 			Field(['tracks', 4], 'text', 'Track 3'),
 			])
 
+	def testToTheBeginningSimpleList(self):
+		"""Check insertion to the beginning of simple list"""
+		self.prepareStandSimpleList()
+
+		res = self.db.processRequest(InsertRequest('1',
+			Field(['tracks', 0]),
+			[
+				Field(['tracks', None], 'text', 'Track 4'),
+				Field(['tracks', None], 'text', 'Track 5')
+			]
+		))
+
+		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0], 'text', 'Track 4'),
+			Field(['tracks', 1], 'text', 'Track 5'),
+			Field(['tracks', 2], 'text', 'Track 1'),
+			Field(['tracks', 3], 'text', 'Track 2'),
+			Field(['tracks', 4], 'text', 'Track 3'),
+			])
+
+	def testToTheEndSimpleList(self):
+		"""Check insertion to the end of simple list"""
+		self.prepareStandSimpleList()
+
+		res = self.db.processRequest(InsertRequest('1',
+			Field(['tracks', None]),
+			[
+				Field(['tracks', None], 'text', 'Track 4'),
+				Field(['tracks', None], 'text', 'Track 5')
+			]
+		))
+
+		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0], 'text', 'Track 1'),
+			Field(['tracks', 1], 'text', 'Track 2'),
+			Field(['tracks', 2], 'text', 'Track 3'),
+			Field(['tracks', 3], 'text', 'Track 4'),
+			Field(['tracks', 4], 'text', 'Track 5'),
+			])
 
 def suite():
 	"""Generate test suite for this module"""
