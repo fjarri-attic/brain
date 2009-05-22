@@ -716,6 +716,93 @@ class TestInsertRequest(TestRequest):
 			Field(['tracks', 4], 'text', 'Track 5'),
 			])
 
+	def testToTheMiddleNestedList(self):
+		"""Test insertion to the middle of nested list"""
+		self.prepareStandNestedList()
+
+		res = self.db.processRequest(InsertRequest('2',
+			Field(['tracks', 1]),
+			[
+				Field(['tracks', None], 'text', 'Track 4'),
+				Field(['tracks', None], 'text', 'Track 5')
+			]
+		))
+
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0], 'text', 'Track 11'),
+			Field(['tracks', 1], 'text', 'Track 4'),
+			Field(['tracks', 2], 'text', 'Track 5'),
+			Field(['tracks', 3], 'text', 'Track 2'),
+			Field(['tracks', 4], 'text', 'Track 3'),
+			])
+
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Authors', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0, 'Authors', 0], 'text', 'Carl II'),
+			Field(['tracks', 0, 'Authors', 1], 'text', 'Dan'),
+			Field(['tracks', 3, 'Authors', 0], 'text', 'Alex'),
+			Field(['tracks', 4, 'Authors', 0], 'text', 'Rob')
+			])
+
+	def testToTheBeginningNestedList(self):
+		"""Test insertion to the beginning of nested list"""
+		self.prepareStandNestedList()
+
+		res = self.db.processRequest(InsertRequest('2',
+			Field(['tracks', 0]),
+			[
+				Field(['tracks', None], 'text', 'Track 4'),
+				Field(['tracks', None], 'text', 'Track 5')
+			]
+		))
+
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0], 'text', 'Track 4'),
+			Field(['tracks', 1], 'text', 'Track 5'),
+			Field(['tracks', 2], 'text', 'Track 11'),
+			Field(['tracks', 3], 'text', 'Track 2'),
+			Field(['tracks', 4], 'text', 'Track 3'),
+			])
+
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Authors', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 2, 'Authors', 0], 'text', 'Carl II'),
+			Field(['tracks', 2, 'Authors', 1], 'text', 'Dan'),
+			Field(['tracks', 3, 'Authors', 0], 'text', 'Alex'),
+			Field(['tracks', 4, 'Authors', 0], 'text', 'Rob')
+			])
+
+	def testToTheEndNestedList(self):
+		"""Test insertion to the end of nested list"""
+		self.prepareStandNestedList()
+
+		res = self.db.processRequest(InsertRequest('2',
+			Field(['tracks', None]),
+			[
+				Field(['tracks', None], 'text', 'Track 4'),
+				Field(['tracks', None], 'text', 'Track 5')
+			]
+		))
+
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0], 'text', 'Track 11'),
+			Field(['tracks', 1], 'text', 'Track 2'),
+			Field(['tracks', 2], 'text', 'Track 3'),
+			Field(['tracks', 3], 'text', 'Track 4'),
+			Field(['tracks', 4], 'text', 'Track 5'),
+			])
+
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Authors', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0, 'Authors', 0], 'text', 'Carl II'),
+			Field(['tracks', 0, 'Authors', 1], 'text', 'Dan'),
+			Field(['tracks', 1, 'Authors', 0], 'text', 'Alex'),
+			Field(['tracks', 2, 'Authors', 0], 'text', 'Rob')
+			])
+
 def suite():
 	"""Generate test suite for this module"""
 	res = testhelpers.NamedTestSuite()
