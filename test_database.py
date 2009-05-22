@@ -39,7 +39,7 @@ class TestRequest(unittest.TestCase):
 
 	def addObject(self, id, fields={}):
 		"""Add object with given fields to database"""
-		field_objs = [Field(key, 'text', fields[key]) for key in fields.keys()]
+		field_objs = [Field(key, fields[key]) for key in fields.keys()]
 		self.db.processRequest(ModifyRequest(id, field_objs))
 
 	def prepareStandNoList(self):
@@ -124,7 +124,7 @@ class TestModifyRequest(TestRequest):
 
 		# only last field value should be saved
 		self.checkRequestResult(res, [
-			Field(['tracks'], 'text', 'Track 3')
+			Field(['tracks'], 'Track 3')
 			])
 
 	def testModificationNoCheck(self):
@@ -132,7 +132,7 @@ class TestModifyRequest(TestRequest):
 		self.prepareStandNoList()
 
 		self.db.processRequest(ModifyRequest('1', [
-			Field('name', 'text', 'Zack')
+			Field('name', 'Zack')
 		]))
 
 	def testModification(self):
@@ -140,7 +140,7 @@ class TestModifyRequest(TestRequest):
 		self.prepareStandNoList()
 
 		self.db.processRequest(ModifyRequest('1', [
-			Field('name', 'text', 'Zack')
+			Field('name', 'Zack')
 		]))
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
@@ -153,7 +153,7 @@ class TestModifyRequest(TestRequest):
 		self.prepareStandNoList()
 
 		self.db.processRequest(ModifyRequest('1', [
-			Field('age', 'text', '66')
+			Field('age', '66')
 		]))
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
@@ -167,7 +167,7 @@ class TestModifyRequest(TestRequest):
 
 		# Add new field to object
 		self.db.processRequest(ModifyRequest('1', [
-			Field('age', 'text', '66')
+			Field('age', '66')
 		]))
 
 		# Delete object. If specification was not updated,
@@ -188,7 +188,7 @@ class TestModifyRequest(TestRequest):
 		self.prepareStandNoList()
 
 		self.db.processRequest(ModifyRequest('2', [
-			Field('name', 'text', 'Zack')
+			Field('name', 'Zack')
 		]))
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
@@ -202,18 +202,18 @@ class TestModifyRequest(TestRequest):
 
 		res = self.db.processRequest(ModifyRequest('1',
 			[
-				Field(['tracks', 3], 'text', 'Track 4'),
-				Field(['tracks', 4], 'text', 'Track 5')
+				Field(['tracks', 3], 'Track 4'),
+				Field(['tracks', 4], 'Track 5')
 			]
 		))
 
 		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0], 'text', 'Track 1'),
-			Field(['tracks', 1], 'text', 'Track 2'),
-			Field(['tracks', 2], 'text', 'Track 3'),
-			Field(['tracks', 3], 'text', 'Track 4'),
-			Field(['tracks', 4], 'text', 'Track 5'),
+			Field(['tracks', 0], 'Track 1'),
+			Field(['tracks', 1], 'Track 2'),
+			Field(['tracks', 2], 'Track 3'),
+			Field(['tracks', 3], 'Track 4'),
+			Field(['tracks', 4], 'Track 5'),
 			])
 
 class TestSearchRequest(TestRequest):
@@ -491,8 +491,8 @@ class TestDeleteRequest(TestRequest):
 
 		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0], 'text', 'Track 1'),
-			Field(['tracks', 1], 'text', 'Track 3')
+			Field(['tracks', 0], 'Track 1'),
+			Field(['tracks', 1], 'Track 3')
 			])
 
 	def testSimpleListFromBeginning(self):
@@ -505,8 +505,8 @@ class TestDeleteRequest(TestRequest):
 
 		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0], 'text', 'Track 2'),
-			Field(['tracks', 1], 'text', 'Track 3')
+			Field(['tracks', 0], 'Track 2'),
+			Field(['tracks', 1], 'Track 3')
 			])
 
 	def testSimpleListFromEnd(self):
@@ -519,8 +519,8 @@ class TestDeleteRequest(TestRequest):
 
 		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0], 'text', 'Track 1'),
-			Field(['tracks', 1], 'text', 'Track 2')
+			Field(['tracks', 0], 'Track 1'),
+			Field(['tracks', 1], 'Track 2')
 			])
 
 	def testNestedListFromMiddle(self):
@@ -534,15 +534,15 @@ class TestDeleteRequest(TestRequest):
 		# Check that deletion really occurred
 		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0], 'text', 'Track 11'),
-			Field(['tracks', 1], 'text', 'Track 3')
+			Field(['tracks', 0], 'Track 11'),
+			Field(['tracks', 1], 'Track 3')
 			])
 
 		# Check that reenumeration occurred
 		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Name'])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0, 'Name'], 'text', 'Track 1 name'),
-			Field(['tracks', 1, 'Name'], 'text', 'Track 3 name')
+			Field(['tracks', 0, 'Name'], 'Track 1 name'),
+			Field(['tracks', 1, 'Name'], 'Track 3 name')
 			])
 
 	def testNestedListFromBeginning(self):
@@ -556,15 +556,15 @@ class TestDeleteRequest(TestRequest):
 		# Check that deletion really occurred
 		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0], 'text', 'Track 2'),
-			Field(['tracks', 1], 'text', 'Track 3')
+			Field(['tracks', 0], 'Track 2'),
+			Field(['tracks', 1], 'Track 3')
 			])
 
 		# Check that reenumeration occurred
 		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Name'])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0, 'Name'], 'text', 'Track 2 name'),
-			Field(['tracks', 1, 'Name'], 'text', 'Track 3 name')
+			Field(['tracks', 0, 'Name'], 'Track 2 name'),
+			Field(['tracks', 1, 'Name'], 'Track 3 name')
 			])
 
 	def testNestedListFromEnd(self):
@@ -578,15 +578,15 @@ class TestDeleteRequest(TestRequest):
 		# Check that deletion really occurred
 		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0], 'text', 'Track 11'),
-			Field(['tracks', 1], 'text', 'Track 2')
+			Field(['tracks', 0], 'Track 11'),
+			Field(['tracks', 1], 'Track 2')
 			])
 
 		# Check that reenumeration occurred
 		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Name'])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0, 'Name'], 'text', 'Track 1 name'),
-			Field(['tracks', 1, 'Name'], 'text', 'Track 2 name')
+			Field(['tracks', 0, 'Name'], 'Track 1 name'),
+			Field(['tracks', 1, 'Name'], 'Track 2 name')
 			])
 
 class TestReadRequest(TestRequest):
@@ -598,8 +598,8 @@ class TestReadRequest(TestRequest):
 
 		res = self.db.processRequest(ReadRequest('1'))
 		self.checkRequestResult(res, [
-			Field('name', 'text', 'Alex'),
-			Field('phone', 'text', '1111')])
+			Field('name', 'Alex'),
+			Field('phone', '1111')])
 
 	def testSomeFields(self):
 		"""Check the operation of reading some chosen fields"""
@@ -607,7 +607,7 @@ class TestReadRequest(TestRequest):
 
 		res = self.db.processRequest(ReadRequest('1', [Field('name')]))
 		self.checkRequestResult(res, [
-			Field('name', 'text', 'Alex'),
+			Field('name', 'Alex'),
 			])
 
 	def testNonExistingField(self):
@@ -616,7 +616,7 @@ class TestReadRequest(TestRequest):
 
 		res = self.db.processRequest(ReadRequest('1', [Field('name'), Field('age')]))
 		self.checkRequestResult(res, [
-			Field('name', 'text', 'Alex')
+			Field('name', 'Alex')
 			])
 
 	def testAddedList(self):
@@ -625,9 +625,9 @@ class TestReadRequest(TestRequest):
 
 		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0], 'text', 'Track 1'),
-			Field(['tracks', 1], 'text', 'Track 2'),
-			Field(['tracks', 2], 'text', 'Track 3')
+			Field(['tracks', 0], 'Track 1'),
+			Field(['tracks', 1], 'Track 2'),
+			Field(['tracks', 2], 'Track 3')
 			])
 
 	def testAddedListComplexCondition(self):
@@ -636,8 +636,8 @@ class TestReadRequest(TestRequest):
 
 		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None, 'Authors', 0])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0, 'Authors', 0], 'text', 'Alex'),
-			Field(['tracks', 1, 'Authors', 0], 'text', 'Carl I')
+			Field(['tracks', 0, 'Authors', 0], 'Alex'),
+			Field(['tracks', 1, 'Authors', 0], 'Carl I')
 			])
 
 	def testFromMiddleLevelList(self):
@@ -646,8 +646,8 @@ class TestReadRequest(TestRequest):
 
 		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None, 'Name'])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0, 'Name'], 'text', 'Track 1 name'),
-			Field(['tracks', 1, 'Name'], 'text', 'Track 2 name')
+			Field(['tracks', 0, 'Name'], 'Track 1 name'),
+			Field(['tracks', 1, 'Name'], 'Track 2 name')
 			])
 
 class TestInsertRequest(TestRequest):
@@ -660,18 +660,18 @@ class TestInsertRequest(TestRequest):
 		res = self.db.processRequest(InsertRequest('1',
 			Field(['tracks', 1]),
 			[
-				Field(['tracks', None], 'text', 'Track 4'),
-				Field(['tracks', None], 'text', 'Track 5')
+				Field(['tracks', None], 'Track 4'),
+				Field(['tracks', None], 'Track 5')
 			]
 		))
 
 		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0], 'text', 'Track 1'),
-			Field(['tracks', 1], 'text', 'Track 4'),
-			Field(['tracks', 2], 'text', 'Track 5'),
-			Field(['tracks', 3], 'text', 'Track 2'),
-			Field(['tracks', 4], 'text', 'Track 3'),
+			Field(['tracks', 0], 'Track 1'),
+			Field(['tracks', 1], 'Track 4'),
+			Field(['tracks', 2], 'Track 5'),
+			Field(['tracks', 3], 'Track 2'),
+			Field(['tracks', 4], 'Track 3'),
 			])
 
 	def testToTheBeginningSimpleList(self):
@@ -681,18 +681,18 @@ class TestInsertRequest(TestRequest):
 		res = self.db.processRequest(InsertRequest('1',
 			Field(['tracks', 0]),
 			[
-				Field(['tracks', None], 'text', 'Track 4'),
-				Field(['tracks', None], 'text', 'Track 5')
+				Field(['tracks', None], 'Track 4'),
+				Field(['tracks', None], 'Track 5')
 			]
 		))
 
 		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0], 'text', 'Track 4'),
-			Field(['tracks', 1], 'text', 'Track 5'),
-			Field(['tracks', 2], 'text', 'Track 1'),
-			Field(['tracks', 3], 'text', 'Track 2'),
-			Field(['tracks', 4], 'text', 'Track 3'),
+			Field(['tracks', 0], 'Track 4'),
+			Field(['tracks', 1], 'Track 5'),
+			Field(['tracks', 2], 'Track 1'),
+			Field(['tracks', 3], 'Track 2'),
+			Field(['tracks', 4], 'Track 3'),
 			])
 
 	def testToTheEndSimpleList(self):
@@ -702,18 +702,18 @@ class TestInsertRequest(TestRequest):
 		res = self.db.processRequest(InsertRequest('1',
 			Field(['tracks', None]),
 			[
-				Field(['tracks', None], 'text', 'Track 4'),
-				Field(['tracks', None], 'text', 'Track 5')
+				Field(['tracks', None], 'Track 4'),
+				Field(['tracks', None], 'Track 5')
 			]
 		))
 
 		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0], 'text', 'Track 1'),
-			Field(['tracks', 1], 'text', 'Track 2'),
-			Field(['tracks', 2], 'text', 'Track 3'),
-			Field(['tracks', 3], 'text', 'Track 4'),
-			Field(['tracks', 4], 'text', 'Track 5'),
+			Field(['tracks', 0], 'Track 1'),
+			Field(['tracks', 1], 'Track 2'),
+			Field(['tracks', 2], 'Track 3'),
+			Field(['tracks', 3], 'Track 4'),
+			Field(['tracks', 4], 'Track 5'),
 			])
 
 	def testToTheMiddleNestedList(self):
@@ -723,26 +723,26 @@ class TestInsertRequest(TestRequest):
 		res = self.db.processRequest(InsertRequest('2',
 			Field(['tracks', 1]),
 			[
-				Field(['tracks', None], 'text', 'Track 4'),
-				Field(['tracks', None], 'text', 'Track 5')
+				Field(['tracks', None], 'Track 4'),
+				Field(['tracks', None], 'Track 5')
 			]
 		))
 
 		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0], 'text', 'Track 11'),
-			Field(['tracks', 1], 'text', 'Track 4'),
-			Field(['tracks', 2], 'text', 'Track 5'),
-			Field(['tracks', 3], 'text', 'Track 2'),
-			Field(['tracks', 4], 'text', 'Track 3'),
+			Field(['tracks', 0], 'Track 11'),
+			Field(['tracks', 1], 'Track 4'),
+			Field(['tracks', 2], 'Track 5'),
+			Field(['tracks', 3], 'Track 2'),
+			Field(['tracks', 4], 'Track 3'),
 			])
 
 		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Authors', None])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0, 'Authors', 0], 'text', 'Carl II'),
-			Field(['tracks', 0, 'Authors', 1], 'text', 'Dan'),
-			Field(['tracks', 3, 'Authors', 0], 'text', 'Alex'),
-			Field(['tracks', 4, 'Authors', 0], 'text', 'Rob')
+			Field(['tracks', 0, 'Authors', 0], 'Carl II'),
+			Field(['tracks', 0, 'Authors', 1], 'Dan'),
+			Field(['tracks', 3, 'Authors', 0], 'Alex'),
+			Field(['tracks', 4, 'Authors', 0], 'Rob')
 			])
 
 	def testToTheBeginningNestedList(self):
@@ -752,26 +752,26 @@ class TestInsertRequest(TestRequest):
 		res = self.db.processRequest(InsertRequest('2',
 			Field(['tracks', 0]),
 			[
-				Field(['tracks', None], 'text', 'Track 4'),
-				Field(['tracks', None], 'text', 'Track 5')
+				Field(['tracks', None], 'Track 4'),
+				Field(['tracks', None], 'Track 5')
 			]
 		))
 
 		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0], 'text', 'Track 4'),
-			Field(['tracks', 1], 'text', 'Track 5'),
-			Field(['tracks', 2], 'text', 'Track 11'),
-			Field(['tracks', 3], 'text', 'Track 2'),
-			Field(['tracks', 4], 'text', 'Track 3'),
+			Field(['tracks', 0], 'Track 4'),
+			Field(['tracks', 1], 'Track 5'),
+			Field(['tracks', 2], 'Track 11'),
+			Field(['tracks', 3], 'Track 2'),
+			Field(['tracks', 4], 'Track 3'),
 			])
 
 		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Authors', None])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 2, 'Authors', 0], 'text', 'Carl II'),
-			Field(['tracks', 2, 'Authors', 1], 'text', 'Dan'),
-			Field(['tracks', 3, 'Authors', 0], 'text', 'Alex'),
-			Field(['tracks', 4, 'Authors', 0], 'text', 'Rob')
+			Field(['tracks', 2, 'Authors', 0], 'Carl II'),
+			Field(['tracks', 2, 'Authors', 1], 'Dan'),
+			Field(['tracks', 3, 'Authors', 0], 'Alex'),
+			Field(['tracks', 4, 'Authors', 0], 'Rob')
 			])
 
 	def testToTheEndNestedList(self):
@@ -781,26 +781,26 @@ class TestInsertRequest(TestRequest):
 		res = self.db.processRequest(InsertRequest('2',
 			Field(['tracks', None]),
 			[
-				Field(['tracks', None], 'text', 'Track 4'),
-				Field(['tracks', None], 'text', 'Track 5')
+				Field(['tracks', None], 'Track 4'),
+				Field(['tracks', None], 'Track 5')
 			]
 		))
 
 		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0], 'text', 'Track 11'),
-			Field(['tracks', 1], 'text', 'Track 2'),
-			Field(['tracks', 2], 'text', 'Track 3'),
-			Field(['tracks', 3], 'text', 'Track 4'),
-			Field(['tracks', 4], 'text', 'Track 5'),
+			Field(['tracks', 0], 'Track 11'),
+			Field(['tracks', 1], 'Track 2'),
+			Field(['tracks', 2], 'Track 3'),
+			Field(['tracks', 3], 'Track 4'),
+			Field(['tracks', 4], 'Track 5'),
 			])
 
 		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Authors', None])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0, 'Authors', 0], 'text', 'Carl II'),
-			Field(['tracks', 0, 'Authors', 1], 'text', 'Dan'),
-			Field(['tracks', 1, 'Authors', 0], 'text', 'Alex'),
-			Field(['tracks', 2, 'Authors', 0], 'text', 'Rob')
+			Field(['tracks', 0, 'Authors', 0], 'Carl II'),
+			Field(['tracks', 0, 'Authors', 1], 'Dan'),
+			Field(['tracks', 1, 'Authors', 0], 'Alex'),
+			Field(['tracks', 2, 'Authors', 0], 'Rob')
 			])
 
 def suite():

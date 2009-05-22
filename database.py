@@ -144,7 +144,7 @@ class StructureLayer:
 
 		res = []
 		for elem in l:
-			f = interfaces.Field(field.name, 'text', elem[0])
+			f = interfaces.Field(field.name, elem[0])
 
 			counter = 1
 			for col in query_cols:

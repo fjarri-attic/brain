@@ -1,21 +1,20 @@
-class FormatError(Exception): pass
+"""Interface for database layer"""
 
-# Request parser interface
-class RequestParser:
-	def parseRequest(self, request):
-		raise Exception("Not implemented")
+class FormatError(Exception): 
+	"""Request format error exception"""
+	pass
 
-# Database interface
 class Database:
-	def __init__(self, path):
-		raise Exception("Not implemented")
+	"""Database layer class interface"""
 
 	def processRequest(self, request):
 		raise Exception("Not implemented")
 
 class Field:
-	def __init__(self, name, type=None, value=None):
-		self.type = type
+	"""Structure, representing object field"""
+
+	def __init__(self, name, value=None):
+		self.type = 'text' # hardcoded now
 		self.value = value
 
 		if isinstance(name, str):
