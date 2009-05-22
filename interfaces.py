@@ -1,6 +1,6 @@
 """Interface for database layer"""
 
-class FormatError(Exception): 
+class FormatError(Exception):
 	"""Request format error exception"""
 	pass
 
@@ -17,12 +17,22 @@ class Field:
 		self.type = 'text' # hardcoded now
 		self.value = value
 
-		if isinstance(name, str):
-			self.name = [name]
-		elif isinstance(name, list):
-			self.name = name[:] # clone given list
-		else:
-			raise FormatError("Field name must be a list")
+		# check given name
+		if name == None or name == '':
+			raise FormatError("Field name cannot be empty")
+
+		if not isinstance(name, list):
+			name = [name]
+
+		# check that list contains only strings, ints and Nones
+		for elem in name:
+			if not isinstance(elem, str) and \
+					not isinstance(elem, int) and \
+					not elem == None:
+				raise FormatError("Field name list must contain only integers, strings or Nones")
+
+		# clone given list
+		self.name = name[:]
 
 	def __eq__(self, other):
 		if other == None:
@@ -41,52 +51,57 @@ class Field:
 	def __repr__(self):
 		return str(self)
 
-class _BaseFieldRelatedRequest:
+class _BaseRequest:
+	"""Base class for request with common format checks"""
+
 	def __init__(self, id, fields=None):
 		self.id = id
+
+		if fields != None and not isinstance(fields, list):
+			raise FormatError("Data should be a list")
+
+		if fields != None:
+			for field in fields:
+				if not isinstance(field, Field):
+					raise FormatError("Data should be a list of Field objects")
+
 		self.fields = fields
 
-		if self.fields != None and not isinstance(fields, list):
-			raise FormatError("Data should be list of fields")
-
-	def getFieldsStr(self):
-		if self.fields:
-			return ", ".join([str(field) for field in self.fields])
-		else:
-			return ""
-
-class ModifyRequest(_BaseFieldRelatedRequest):
-	def __init__(self, id, fields=None):
-		_BaseFieldRelatedRequest.__init__(self, id, fields)
-		for field in self.fields:
-			if not isinstance(field, Field):
-				raise FormatError("Field list element must have class Field")
-
 	def __str__(self):
-		return "ModifyRequest for element '" + self.id + "': " + self.getFieldsStr()
+		return self.__class__.__name__ + " for object '" + self.id + "': " + str(self.fields)
 
-class DeleteRequest(_BaseFieldRelatedRequest):
-	def __str__(self):
-		return "DeleteRequest for element '" + self.id + "': " + self.getFieldsStr()
 
-class ReadRequest(_BaseFieldRelatedRequest):
-	def __str__(self):
-		return "ReadRequest for element '" + self.id + "': " + self.__getFieldsStr()
+class ModifyRequest(_BaseRequest):
+	"""Request for modification of existing objects or adding new ones"""
+	pass
 
-class InsertRequest(_BaseFieldRelatedRequest):
+class DeleteRequest(_BaseRequest):
+	"""Request for deletion of existing objects"""
+	pass
+
+class ReadRequest(_BaseRequest):
+	"""Request for reading existing objects"""
+	pass
+
+class InsertRequest(_BaseRequest):
+	"""Request for insertion into list of fields"""
+
 	def __init__(self, id, target_field, fields, one_position=False):
-		_BaseFieldRelatedRequest.__init__(self, id, fields)
-		
+		_BaseRequest.__init__(self, id, fields)
+
 		if not isinstance(target_field, Field):
 			raise FormatError("Target field must have class Field")
+
 		self.target_field = target_field
 		self.one_position = one_position
 
 	def __str__(self):
-		return "InsertRequest for element '" + self.id + "' and target " +\
-			str(target_field) + ": " + self.__getFieldsStr()
+		return _BaseRequest.__str__(self) + ", target: " + str(self.target_field)
 
 class SearchRequest:
+	"""Request for searching in database"""
+
+	# Helper classes
 
 	class Operator: pass
 	class Comparison: pass
@@ -104,6 +119,8 @@ class SearchRequest:
 		def __str__(self): return "=~"
 
 	class Condition:
+		"""Class for main element of search request"""
+
 		def __init__(self, operand1, operator, operand2, invert=False):
 
 			if isinstance(operator, SearchRequest.Comparison):
