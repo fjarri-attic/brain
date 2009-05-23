@@ -2,9 +2,49 @@
 
 import copy
 
+#
+# Exceptions
+#
+
 class FormatError(Exception):
 	"""Request format error exception"""
 	pass
+
+#
+# Classes
+#
+
+class Engine:
+	"""Engine layer class interface"""
+
+	def dump(self):
+		"""Dump the whole database to string; used for debug purposes"""
+		raise Exception("Not implemented")
+
+	def execute(self, sql_str, params=None): raise Exception("Not implemented")
+	def tableExists(self, name): raise Exception("Not implemented")
+	def tableIsEmpty(self, name): raise Exception("Not implemented")
+	def deleteTable(self, name): raise Exception("Not implemented")
+
+	def getEmptyCondition(self):
+		"""Returns condition for compound SELECT which evaluates to empty table"""
+		raise Exception("Not implemented")
+
+	def getSafeValueFromString(self, s):
+		"""Transform string to something which can be safely used in query as a value"""
+		raise Exception("Not implemented")
+
+	def getStringFromSafeValue(self, val):
+		"""Transform value back to original string"""
+		raise Exception("Not implemented")
+
+	def getSafeTableNameFromString(self, l):
+		"""Transform list of strings to something which can be safely used as a part of table name"""
+		raise Exception("Not implemented")
+
+	def getStringFromSafeTableName(self, name):
+		"""Transform table name back to original list"""
+		raise Exception("Not implemented")
 
 class Database:
 	"""Database layer class interface"""
