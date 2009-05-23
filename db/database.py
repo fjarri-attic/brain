@@ -116,7 +116,7 @@ class StructureLayer:
 			self.engine.execute("INSERT INTO '" + _ID_TABLE + "' VALUES (?, ?)", (id, name))
 
 	def getFieldsList(self, id, regexp=None):
-		# get element specification
+		# get object specification
 		regexp_cond = ((" AND field REGEXP :field") if regexp != None else "")
 
 		l = list(self.engine.execute("SELECT field FROM '" + _ID_TABLE + "' WHERE id=:id" + regexp_cond,
@@ -126,7 +126,7 @@ class StructureLayer:
 
 		return [interface.Field(_listFromName(field_name)) for field_name in field_names]
 
-	def elementExists(self, id):
+	def objectExists(self, id):
 		l = list(self.engine.execute("SELECT field FROM '" + _ID_TABLE + "' WHERE id=:id",
 			{'id': id}))
 		return len(l) > 0
@@ -239,9 +239,9 @@ class StructureLayer:
 		self.engine.execute("CREATE TABLE IF NOT EXISTS '" + _nameFromList(field.name) +
 			"' (" + values_str + ")")
 
-	def createElement(self, id, fields):
+	def createObject(self, id, fields):
 
-		# create element header
+		# create object header
 		self.__createSpecification(id, fields)
 
 		# update field tables
@@ -249,7 +249,7 @@ class StructureLayer:
 			self.__assureFieldTableExists(field)
 			self.__setFieldValue(id, field)
 
-	def deleteElement(self, id):
+	def deleteObject(self, id):
 
 		fields = self.getFieldsList(id)
 
@@ -259,22 +259,22 @@ class StructureLayer:
 
 		self.__deleteSpecification(id)
 
-	def elementHasField(self, id, field):
+	def objectHasField(self, id, field):
 		existing_fields = self.getFieldsList(id)
 		existing_names = [existing_field.name for existing_field in existing_fields]
 		return _cleanColsFromList(field.name) in existing_names
 
-	def modifyElement(self, id, fields):
+	def modifyObject(self, id, fields):
 
 		# for each field, check if it already exists
 		for field in fields:
-			if self.elementHasField(id, field):
+			if self.objectHasField(id, field):
 				self.__setFieldValue(id, field)
 			else:
 				self.__updateSpecification(id, field)
 				self.__setFieldValue(id, field)
 
-	def searchForElements(self, condition):
+	def searchForObjects(self, condition):
 		def buildSqlQuery(condition):
 
 			if not condition.leaf:
@@ -376,12 +376,12 @@ class Sqlite3Database(interface.Database):
 				if not one_position:
 					counter += 1
 
-		if not self.db.elementExists(request.id):
-			raise Exception("Element " + request.id + " does not exist")
+		if not self.db.objectExists(request.id):
+			raise Exception("Object " + request.id + " does not exist")
 
 		target_col = len(request.target_field.name) - 1 # last column in name of target field
 
-		if not self.db.elementHasField(request.id, request.target_field):
+		if not self.db.objectHasField(request.id, request.target_field):
 			enumerate(request.fields, target_col, 0, request.one_position)
 		elif request.target_field.name[target_col] == None:
 			starting_num = self.db.getMaxNumber(request.id, request.target_field) + 1
@@ -399,10 +399,10 @@ class Sqlite3Database(interface.Database):
 
 		# check if the entry with specified id already exists
 		# if no, just add it to the database
-		if not self.db.elementExists(request.id):
-			self.db.createElement(request.id, request.fields)
+		if not self.db.objectExists(request.id):
+			self.db.createObject(request.id, request.fields)
 		else:
-			self.db.modifyElement(request.id, request.fields)
+			self.db.modifyObject(request.id, request.fields)
 
 	def __processDeleteRequest(self, request):
 
@@ -413,11 +413,11 @@ class Sqlite3Database(interface.Database):
 			return
 		else:
 			# delete whole object
-			self.db.deleteElement(request.id)
+			self.db.deleteObject(request.id)
 
 	def __processReadRequest(self, request):
 		if request.fields:
-			fields_to_read = filter(lambda x: self.db.elementHasField(request.id, x), request.fields)
+			fields_to_read = filter(lambda x: self.db.objectHasField(request.id, x), request.fields)
 		else:
 			fields_to_read = self.db.getFieldsList(request.id)
 
@@ -450,4 +450,4 @@ class Sqlite3Database(interface.Database):
 
 		propagateInversion(request.condition)
 
-		return self.db.searchForElements(request.condition)
+		return self.db.searchForObjects(request.condition)
