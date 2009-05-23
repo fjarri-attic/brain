@@ -8,6 +8,8 @@ from interfaces import *
 class InterfaceTests(unittest.TestCase):
 	"""Class which contains all interface testcases"""
 
+	# Tests for Field class
+
 	def testFieldInitWithStr(self):
 		"""Test field creation with string name"""
 		f = Field('test', '1')
@@ -57,6 +59,26 @@ class InterfaceTests(unittest.TestCase):
 		f1 = Field(['test1', 1, None], 1)
 		f2 = Field(['test2', 1, None], 2)
 		self.failIfEqual(f1, f2)
+
+	# Tests for common part of field-oriented requests
+
+	def testRequestNoFields(self):
+		"""Test that request can be created without fields"""
+		r = ModifyRequest('1')
+
+	def testRequestOneField(self):
+		"""Test that request cannot be created if field is given as is"""
+		self.failUnlessRaises(FormatError, ModifyRequest,
+			'1', Field('test', 1))
+
+	def testRequestListOfFields(self):
+		"""Test that request can be created from list of fields"""
+		r = ModifyRequest('1', [Field('test', 1), Field('test', 2)])
+
+	def testRequestListOfNonFields(self):
+		"""Test that request cannot be created if one of list elements is not Field"""
+		self.failUnlessRaises(FormatError, ModifyRequest,
+			'1', [Field('test', 1), "aaa"])
 
 def suite():
 	"""Generate test suite for this module"""
