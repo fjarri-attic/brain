@@ -118,6 +118,71 @@ class InterfaceTests(unittest.TestCase):
 			'1', Field(['test', 1, 'aaa']),
 			[Field('test', 1)])
 
+	# Checks for SearchRequest
+
+	def testSearchRequestProperlyFormed(self):
+		"""Test that properly formed SearchRequest does not raise anything"""
+		SearchRequest(SearchRequest.Condition(
+			SearchRequest.Condition(
+				Field('phone'), SearchRequest.Eq(), '1111'
+			),
+			SearchRequest.Or(),
+			SearchRequest.Condition(
+				SearchRequest.Condition(
+					Field('phone'), SearchRequest.Eq(), '1111'
+				),
+				SearchRequest.And(),
+				SearchRequest.Condition(
+					Field('blablabla'), SearchRequest.Regexp(), '22', invert=True
+				)
+			)
+		))
+
+	def testSearchRequestLeafOperandIsNotField(self):
+		"""Test that condition raises error if first operand in leaf is not Field"""
+		self.failUnlessRaises(FormatError, SearchRequest.Condition,
+			'phone', SearchRequest.Eq(), '1111'
+		)
+
+	def testSearchRequestFirstOperandIsNotCondition(self):
+		"""Test that condition raises error if first operand in node is not Condition"""
+		self.failUnlessRaises(FormatError, SearchRequest.Condition,
+			Field('aaa', 1),
+			SearchRequest.And(),
+			SearchRequest.Condition(
+				Field('blablabla'), SearchRequest.Regexp(), '22', invert=True
+			)
+		)
+
+	def testSearchRequestSecondOperandIsNotCondition(self):
+		"""Test that condition raises error if second operand in node is not Condition"""
+		self.failUnlessRaises(FormatError, SearchRequest.Condition,
+			SearchRequest.Condition(
+				Field('blablabla'), SearchRequest.Regexp(), '22', invert=True
+			),
+			SearchRequest.And(),
+			Field('aaa', 1)
+		)
+
+	def testSearchRequestWrongConditionOperator(self):
+		"""Test that condition raises error if condition operator is unknown"""
+		self.failUnlessRaises(FormatError, SearchRequest.Condition,
+			SearchRequest.Condition(
+				Field('phone'), SearchRequest.Eq(), '1111'
+			),
+			'something',
+			SearchRequest.Condition(
+				Field('blablabla'), SearchRequest.Eq(), '22', invert=True
+			)
+		)
+
+	def testSearchRequestWrongComparisonOperator(self):
+		"""Test that condition raises error if comparison operator is unknown"""
+		self.failUnlessRaises(FormatError, SearchRequest.Condition,
+			'phone', 'something', '1111'
+		)
+
+
 def suite():
 	"""Generate test suite for this module"""
 	res = testhelpers.NamedTestSuite()
