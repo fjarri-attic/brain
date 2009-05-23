@@ -19,36 +19,28 @@ class Delete(TestRequest):
 
 		self.db.processRequest(DeleteRequest('3'))
 
+		# check that field of deleted object is gone
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			Field('phone'), SearchRequest.Eq(), '3333')))
 		self.checkRequestResult(res, [])
 
-	def testWholeObjectPreservesOthers(self):
-		"""Check that deletion of the whole object does not spoil the database"""
-		self.prepareStandNoList()
-
-		self.db.processRequest(DeleteRequest('3'))
-
+		# Check that other objects are intact
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			Field('phone'), SearchRequest.Eq(), '1111')))
 		self.checkRequestResult(res, ['1', '5'])
 
-	def testExistentFieldsPreservesOtherFiels(self):
+	def testExistentFields(self):
 		"""Check that deletion of existent fields preserves other object fields"""
 		self.prepareStandNoList()
 
 		self.db.processRequest(DeleteRequest('3', [Field('age'), Field('phone')]))
 
+		# Check that other fields are intact
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			Field('name'), SearchRequest.Eq(), 'Carl')))
 		self.checkRequestResult(res, ['3'])
 
-	def testExistentFieldsReallyDeleted(self):
-		"""Check that deletion of existent fields actually deletes them"""
-		self.prepareStandNoList()
-
-		self.db.processRequest(DeleteRequest('3', [Field('age'), Field('phone')]))
-
+		# Check that fields were really deleted
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			Field('phone'), SearchRequest.Eq(), '3333')))
 		self.checkRequestResult(res, [])
@@ -63,10 +55,12 @@ class Delete(TestRequest):
 
 		self.db.processRequest(DeleteRequest('2', [Field('name'), Field('blablabla')]))
 
+		# Check that existent field was deleted
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			Field('name'), SearchRequest.Eq(), 'Bob')))
 		self.checkRequestResult(res, [])
 
+		# Check that other fields are intact
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			Field('phone'), SearchRequest.Eq(), '2222')))
 		self.checkRequestResult(res, ['2'])
