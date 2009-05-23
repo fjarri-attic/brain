@@ -16,8 +16,6 @@ class Field:
 	"""Structure, representing object field"""
 
 	def __init__(self, name, value=None):
-		self.type = 'text' # hardcoded now
-		self.value = value
 
 		# check given name
 		if name == None or name == '':
@@ -33,7 +31,9 @@ class Field:
 					not elem == None:
 				raise FormatError("Field name list must contain only integers, strings or Nones")
 
-		# clone given list
+		# initialize fields
+		self.type = 'text' # hardcoded now
+		self.value = value
 		self.name = copy.deepcopy(name)
 
 	def __eq__(self, other):
@@ -57,7 +57,6 @@ class _BaseRequest:
 	"""Base class for request with common format checks"""
 
 	def __init__(self, id, fields=None):
-		self.id = id
 
 		if fields != None and not isinstance(fields, list):
 			raise FormatError("Data should be a list")
@@ -67,6 +66,8 @@ class _BaseRequest:
 				if not isinstance(field, Field):
 					raise FormatError("Data should be a list of Field objects")
 
+		# Initialize fields
+		self.id = id
 		self.fields = copy.deepcopy(fields)
 
 	def __str__(self):
@@ -89,11 +90,23 @@ class InsertRequest(_BaseRequest):
 	"""Request for insertion into list of fields"""
 
 	def __init__(self, id, target_field, fields, one_position=False):
-		_BaseRequest.__init__(self, id, fields)
 
+		# target field should be an object of Field
 		if not isinstance(target_field, Field):
 			raise FormatError("Target field must have class Field")
 
+		# target field should be determined, except maybe for the last element
+		for elem in target_field.name[:-1]:
+			if elem == None:
+				raise FormatError("Target field should not have None parts in name, " +
+					"except for the last one")
+
+		# target field should point on list
+		if target_field.name[-1] != None and not isinstance(target_field.name[-1], int):
+			raise FormatError("Last element of target field name should be None or integer")
+
+		# Initialize fields
+		_BaseRequest.__init__(self, id, fields)
 		self.target_field = copy.deepcopy(target_field)
 		self.one_position = one_position
 
