@@ -80,6 +80,16 @@ class InterfaceTests(unittest.TestCase):
 		self.failUnlessRaises(FormatError, ModifyRequest,
 			'1', [Field('test', 1), "aaa"])
 
+	def testRequestCopiesListOfFiels(self):
+		"""Test that request constructor copies given list of fields"""
+		f = Field('test', 2)
+		l = [Field('test', 1), f]
+		r = ModifyRequest('1', l)
+
+		f.value = 3
+
+		self.failUnlessEqual(r.fields[1].value, 2)
+
 def suite():
 	"""Generate test suite for this module"""
 	res = testhelpers.NamedTestSuite()
