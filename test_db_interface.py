@@ -1,12 +1,11 @@
 """Unit-tests for database layer interface"""
 
 import unittest
-
 import testhelpers
-from interfaces import *
+from db.interface import *
 
-class InterfaceTests(unittest.TestCase):
-	"""Class which contains all interface testcases"""
+class FormatTests(unittest.TestCase):
+	"""Class which contains all request format testcases"""
 
 	# Tests for Field class
 
@@ -220,7 +219,7 @@ class InterfaceTests(unittest.TestCase):
 def suite():
 	"""Generate test suite for this module"""
 	res = testhelpers.NamedTestSuite()
-	res.addTest(unittest.TestLoader().loadTestsFromTestCase(InterfaceTests))
+	res.addTest(unittest.TestLoader().loadTestsFromTestCase(FormatTests))
 	return res
 
 if __name__ == '__main__':

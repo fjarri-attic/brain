@@ -1,10 +1,9 @@
 """Unit tests for database layer"""
 
 import unittest
-
 import testhelpers
-import database
-from interfaces import *
+import db.database
+from db.interface import *
 
 def _compareLists(l1, l2):
 	"""Check if all elements of the first list exist in the second list"""
@@ -808,7 +807,7 @@ def suite():
 	res = testhelpers.NamedTestSuite()
 
 	parameters = [
-		('memory.sqlite3', database.Sqlite3Database, ':memory:'),
+		('memory.sqlite3', db.database.Sqlite3Database, ':memory:'),
 	]
 
 	requests = [TestModifyRequest, TestSearchRequest, TestDeleteRequest,

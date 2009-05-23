@@ -1,6 +1,7 @@
 import sqlite3
-import interfaces
 import re
+
+from . import interface
 
 _FIELD_SEP = '.'
 _ID_TABLE = 'id'
@@ -123,7 +124,7 @@ class StructureLayer:
 
 		field_names = [x[0] for x in l]
 
-		return [interfaces.Field(_listFromName(field_name)) for field_name in field_names]
+		return [interface.Field(_listFromName(field_name)) for field_name in field_names]
 
 	def elementExists(self, id):
 		l = list(self.db.execute("SELECT field FROM '" + _ID_TABLE + "' WHERE id=:id",
@@ -144,7 +145,7 @@ class StructureLayer:
 
 		res = []
 		for elem in l:
-			f = interfaces.Field(field.name, elem[0])
+			f = interface.Field(field.name, elem[0])
 
 			counter = 1
 			for col in query_cols:
@@ -276,10 +277,10 @@ class StructureLayer:
 		def buildSqlQuery(condition):
 
 			if not condition.leaf:
-				if isinstance(condition.operator, interfaces.SearchRequest.And):
+				if isinstance(condition.operator, interface.SearchRequest.And):
 					return "SELECT * FROM (" + buildSqlQuery(condition.operand1) + \
 						") INTERSECT SELECT * FROM (" + buildSqlQuery(condition.operand2) + ")"
-				elif isinstance(condition.operator, interfaces.SearchRequest.Or):
+				elif isinstance(condition.operator, interface.SearchRequest.Or):
 					return "SELECT * FROM (" + buildSqlQuery(condition.operand1) + \
 						") UNION SELECT * FROM (" + buildSqlQuery(condition.operand2) + ")"
 				else:
@@ -297,10 +298,10 @@ class StructureLayer:
 			else:
 				not_str = " "
 
-			if isinstance(condition.operator, interfaces.SearchRequest.Eq):
+			if isinstance(condition.operator, interface.SearchRequest.Eq):
 				result = "SELECT DISTINCT id FROM '" + field_name + "' WHERE" + not_str + \
 					"value = '" + condition.operand2 + "'" + cond_raw
-			elif isinstance(condition.operator, interfaces.SearchRequest.Regexp):
+			elif isinstance(condition.operator, interface.SearchRequest.Regexp):
 				result = "SELECT DISTINCT id FROM '" + field_name + "' WHERE" + not_str + \
 					"value REGEXP '" + condition.operand2 + "'" + cond_raw
 			else:
@@ -346,21 +347,21 @@ class StructureLayer:
 				"id=:id AND " + col_name + ">=" + str(col_val),
 				{'id': id})
 
-class Sqlite3Database(interfaces.Database):
+class Sqlite3Database(interface.Database):
 
 	def __init__(self, path):
 		self.db = StructureLayer(path)
 
 	def processRequest(self, request):
-		if isinstance(request, interfaces.ModifyRequest):
+		if isinstance(request, interface.ModifyRequest):
 			self.__processModifyRequest(request)
-		elif isinstance(request, interfaces.DeleteRequest):
+		elif isinstance(request, interface.DeleteRequest):
 			self.__processDeleteRequest(request)
-		elif isinstance(request, interfaces.SearchRequest):
+		elif isinstance(request, interface.SearchRequest):
 			return self.__processSearchRequest(request)
-		elif isinstance(request, interfaces.ReadRequest):
+		elif isinstance(request, interface.ReadRequest):
 			return self.__processReadRequest(request)
-		elif isinstance(request, interfaces.InsertRequest):
+		elif isinstance(request, interface.InsertRequest):
 			return self.__processInsertRequest(request)
 		else:
 			raise Exception("Unknown request type: " + request.__class__.__name__)
@@ -389,7 +390,7 @@ class Sqlite3Database(interfaces.Database):
 				(1 if request.one_position else len(request.fields)))
 			enumerate(request.fields, target_col, request.target_field.name[target_col], request.one_position)
 
-		self.__processModifyRequest(interfaces.ModifyRequest(
+		self.__processModifyRequest(interface.ModifyRequest(
 			request.id, request.fields
 		))
 
@@ -438,10 +439,10 @@ class Sqlite3Database(interfaces.Database):
 					condition.operand1.invert = not condition.operand1.invert
 					condition.operand2.invert = not condition.operand2.invert
 
-					if isinstance(condition.operator, interfaces.SearchRequest.And):
-						condition.operator = interfaces.SearchRequest.Or()
-					elif isinstance(condition.operator, interfaces.SearchRequest.Or):
-						condition.operator = interfaces.SearchRequest.And()
+					if isinstance(condition.operator, interface.SearchRequest.And):
+						condition.operator = interface.SearchRequest.Or()
+					elif isinstance(condition.operator, interface.SearchRequest.Or):
+						condition.operator = interface.SearchRequest.And()
 
 				propagateInversion(condition.operand1)
 				propagateInversion(condition.operand2)
