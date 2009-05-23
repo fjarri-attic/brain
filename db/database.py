@@ -89,6 +89,18 @@ class EngineLayer:
 
 	def getEmptyCondition(self):
 		return "SELECT 0 limit 0"
+	
+	def getSafeValueFromString(self, s):
+		return s
+	
+	def getStringFromSafeValue(self, val):
+		return val
+	
+	def getSafeTableNameFromString(self, s):
+		return s
+	
+	def getStringFromSafeTableName(self, name):
+		return name
 
 class StructureLayer:
 	def __init__(self, path):
