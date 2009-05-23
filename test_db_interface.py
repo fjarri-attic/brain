@@ -182,6 +182,40 @@ class InterfaceTests(unittest.TestCase):
 			'phone', 'something', '1111'
 		)
 
+	def testSearchRequestCopiesCondition(self):
+		"""Test that SearchRequest uses deepcopy for given condition"""
+		c = SearchRequest.Condition(
+			SearchRequest.Condition(
+				Field('phone'), SearchRequest.Eq(), '1111'
+			),
+			SearchRequest.And(),
+			SearchRequest.Condition(
+				Field('blablabla'), SearchRequest.Eq(), '22', invert=True
+			)
+		)
+		r = SearchRequest(c)
+
+		c.operand1.operand1.name = ['name']
+
+		self.failUnlessEqual(r.condition.operand1.operand1.name, ['phone'])
+
+	def testSearchRequestConditionCopiesSubconditions(self):
+		"""Test that SearchRequest.Condition uses deepcopy for subconditions"""
+		subc = SearchRequest.Condition(
+				Field('phone'), SearchRequest.Eq(), '1111'
+			)
+		c = SearchRequest.Condition(
+			subc,
+			SearchRequest.And(),
+			SearchRequest.Condition(
+				Field('blablabla'), SearchRequest.Eq(), '22', invert=True
+			)
+		)
+
+		subc.operand1.name = ['name']
+
+		self.failUnlessEqual(c.operand1.operand1.name, ['phone'])
+
 
 def suite():
 	"""Generate test suite for this module"""
