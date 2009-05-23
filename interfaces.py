@@ -116,16 +116,19 @@ class InsertRequest(_BaseRequest):
 class SearchRequest:
 	"""Request for searching in database"""
 
-	# Helper classes
+	# Operator classes
 
 	class Operator: pass
-	class Comparison: pass
 
 	class And(Operator):
 		def __str__(self): return "And"
 
 	class Or(Operator):
 		def __str__(self): return "Or"
+
+	# Comparison classes
+
+	class Comparison: pass
 
 	class Eq(Comparison):
 		def __str__(self): return "=="
@@ -139,8 +142,12 @@ class SearchRequest:
 		def __init__(self, operand1, operator, operand2, invert=False):
 
 			if isinstance(operator, SearchRequest.Comparison):
+				# if node operator is a Comparison, it is a leaf of condition tree
+				if not isinstance(operand1, Field):
+					raise FormatError("First operand of comparison should be Field")
 				self.leaf = True
 			elif isinstance(operator, SearchRequest.Operator):
+				# if node operator is an Operator, both operands should be Conditions
 				if not isinstance(operand1, SearchRequest.Condition):
 					raise FormatError("Wrong condition type: " + operand1.__class__.__name__)
 				if not isinstance(operand2, SearchRequest.Condition):
@@ -153,6 +160,7 @@ class SearchRequest:
 				raise FormatError("First operand should be Field, but it is " +
 					operand1.__class__.__name__)
 
+			# Initialize fields
 			self.operand1 = operand1
 			self.operand2 = operand2
 			self.operator = operator
