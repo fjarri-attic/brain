@@ -158,8 +158,11 @@ class SearchRequest:
 				raise FormatError("Wrong operator type: " + operator.__class__.__name__)
 
 			# Initialize fields
-			self.operand1 = operand1
-			self.operand2 = operand2
+			# Using deepcopy for reliability, because we do not know which part
+			# of complex condition is reusable; user can store and change conditions
+			# without creating SearchRequest
+			self.operand1 = copy.deepcopy(operand1)
+			self.operand2 = copy.deepcopy(operand2)
 			self.operator = operator
 			self.invert = invert
 
