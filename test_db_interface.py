@@ -90,6 +90,22 @@ class InterfaceTests(unittest.TestCase):
 
 		self.failUnlessEqual(r.fields[1].value, 2)
 
+	# Additional checks for InsertRequest
+
+	def testInsertRequestTargetIsNotField(self):
+		"""Test that InsertRequest constructor fails if target is not Field"""
+		self.failUnlessRaises(FormatError, InsertRequest,
+			'1', "aaa", [Field('test', 1)])
+
+	def testInsertRequestCopiesTarget(self):
+		"""Test that InsertRequest constructor clones target field object"""
+		f = Field('test', 2)
+		r = InsertRequest('1', f, [Field('test', 1)])
+
+		f.value = 3
+
+		self.failUnlessEqual(r.target_field.value, 2)
+
 def suite():
 	"""Generate test suite for this module"""
 	res = testhelpers.NamedTestSuite()
