@@ -207,9 +207,10 @@ class StructureLayer:
 			self.db.deleteTable(field_name)
 
 		# if we deleted something from list, we should re-enumerate list elements
-		if cond != "":
+		temp_list = list(filter(lambda x: not isinstance(x, str), field.name))
+		if len(temp_list) > 0 and temp_list[-1] != None:
 
-			field_cols = list(filter(lambda x: isinstance(x, int), field.name))
+			field_cols = list(filter(lambda x: not isinstance(x, str), field.name))
 			col_num = len(field_cols) - 1
 			col_name = "c" + str(col_num)
 			col_val = field_cols[col_num]
