@@ -1,3 +1,5 @@
+"""Custom unit-test module"""
+
 import unittest
 import sys
 import traceback

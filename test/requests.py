@@ -1,8 +1,12 @@
 """Unit tests for database layer"""
 
+import sys, os.path
+scriptdir, scriptfile = os.path.split(sys.argv[0])
+sys.path.append(os.path.join(scriptdir, ".."))
+
 import unittest
-import testhelpers
-import db.database
+from . import helpers
+from db.database import *
 from db.interface import *
 
 def _compareLists(l1, l2):
@@ -804,10 +808,10 @@ class TestInsertRequest(TestRequest):
 
 def suite():
 	"""Generate test suite for this module"""
-	res = testhelpers.NamedTestSuite()
+	res = helpers.NamedTestSuite()
 
 	parameters = [
-		('memory.sqlite3', db.database.Sqlite3Database, ':memory:'),
+		('memory.sqlite3', Sqlite3Database, ':memory:'),
 	]
 
 	requests = [TestModifyRequest, TestSearchRequest, TestDeleteRequest,
@@ -819,6 +823,3 @@ def suite():
 				_getParameterized(request, *parameter)))
 
 	return res
-
-if __name__ == '__main__':
-	testhelpers.TextTestRunner(verbosity=2).run(suite())

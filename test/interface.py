@@ -1,7 +1,11 @@
 """Unit-tests for database layer interface"""
 
+import sys, os.path
+scriptdir, scriptfile = os.path.split(sys.argv[0])
+sys.path.append(os.path.join(scriptdir, ".."))
+
 import unittest
-import testhelpers
+from . import helpers
 from db.interface import *
 
 class FormatTests(unittest.TestCase):
@@ -218,10 +222,6 @@ class FormatTests(unittest.TestCase):
 
 def suite():
 	"""Generate test suite for this module"""
-	res = testhelpers.NamedTestSuite()
+	res = helpers.NamedTestSuite()
 	res.addTest(unittest.TestLoader().loadTestsFromTestCase(FormatTests))
 	return res
-
-if __name__ == '__main__':
-	testhelpers.TextTestRunner(verbosity=2).run(suite())
-
