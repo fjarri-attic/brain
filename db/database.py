@@ -55,7 +55,7 @@ def _conditionFromList(name_list):
 
 	return cond, param_map, query, query_cols, cond_raw
 
-class DatabaseLayer:
+class EngineLayer:
 	def __init__(self, path):
 		self.__conn = sqlite3.connect(path)
 		self.__conn.create_function("regexp", 2, self.__regexp)
@@ -89,7 +89,7 @@ class DatabaseLayer:
 
 class StructureLayer:
 	def __init__(self, path):
-		self.db = DatabaseLayer(path)
+		self.engine = EngineLayer(path)
 		self.__createSpecificationTable()
 
 	#
@@ -97,29 +97,29 @@ class StructureLayer:
 	#
 
 	def __createSpecificationTable(self):
-		self.db.execute("CREATE table IF NOT EXISTS '" + _ID_TABLE + "' (id TEXT, field TEXT)")
+		self.engine.execute("CREATE table IF NOT EXISTS '" + _ID_TABLE + "' (id TEXT, field TEXT)")
 
 	def __createSpecification(self, id, fields):
 		for field in fields:
 			self.__updateSpecification(id, field)
 
 	def __deleteSpecification(self, id):
-		self.db.execute("DELETE FROM '" + _ID_TABLE + "' WHERE id=:id",	{'id': id})
+		self.engine.execute("DELETE FROM '" + _ID_TABLE + "' WHERE id=:id",	{'id': id})
 
 	def __updateSpecification(self, id, field):
 		name = _nameFromList(field.name)
 
-		l = list(self.db.execute("SELECT field FROM '" + _ID_TABLE + "' WHERE id=:id AND field=:field",
+		l = list(self.engine.execute("SELECT field FROM '" + _ID_TABLE + "' WHERE id=:id AND field=:field",
 			{'id': id, 'field': name}))
 
 		if len(l) == 0:
-			self.db.execute("INSERT INTO '" + _ID_TABLE + "' VALUES (?, ?)", (id, name))
+			self.engine.execute("INSERT INTO '" + _ID_TABLE + "' VALUES (?, ?)", (id, name))
 
 	def getFieldsList(self, id, regexp=None):
 		# get element specification
 		regexp_cond = ((" AND field REGEXP :field") if regexp != None else "")
 
-		l = list(self.db.execute("SELECT field FROM '" + _ID_TABLE + "' WHERE id=:id" + regexp_cond,
+		l = list(self.engine.execute("SELECT field FROM '" + _ID_TABLE + "' WHERE id=:id" + regexp_cond,
 			{'id': id, 'field': regexp}))
 
 		field_names = [x[0] for x in l]
@@ -127,7 +127,7 @@ class StructureLayer:
 		return [interface.Field(_listFromName(field_name)) for field_name in field_names]
 
 	def elementExists(self, id):
-		l = list(self.db.execute("SELECT field FROM '" + _ID_TABLE + "' WHERE id=:id",
+		l = list(self.engine.execute("SELECT field FROM '" + _ID_TABLE + "' WHERE id=:id",
 			{'id': id}))
 		return len(l) > 0
 
@@ -140,7 +140,7 @@ class StructureLayer:
 		cond, param_map, query, query_cols, cond_raw = _conditionFromList(field.name)
 
 		param_map.update({'id': id})
-		l = list(self.db.execute("SELECT value" + query + " FROM '" + field_name +
+		l = list(self.engine.execute("SELECT value" + query + " FROM '" + field_name +
 			"' WHERE id=:id" + cond, param_map))
 
 		res = []
@@ -185,8 +185,8 @@ class StructureLayer:
 		cols_to_delete.update(numerical_cols)
 		delete_condition = "id=:id" + delete_condition
 
-		self.db.execute("DELETE FROM '" + field_name + "' WHERE " + delete_condition, cols_to_delete)
-		self.db.execute("INSERT INTO '" + field_name + "' VALUES (:id, :type, :value" +
+		self.engine.execute("DELETE FROM '" + field_name + "' WHERE " + delete_condition, cols_to_delete)
+		self.engine.execute("INSERT INTO '" + field_name + "' VALUES (:id, :type, :value" +
 			numerical_vals + ")", cols_to_insert)
 
 	def deleteField(self, id, field):
@@ -195,16 +195,16 @@ class StructureLayer:
 		cond, param_map, query, query_cols, cond_raw = _conditionFromList(field.name)
 
 		# check if table exists
-		if not self.db.tableExists(field_name):
+		if not self.engine.tableExists(field_name):
 			return
 
 		# delete value
-		self.db.execute("DELETE FROM '" + field_name + "' WHERE id=:id" + cond_raw,
+		self.engine.execute("DELETE FROM '" + field_name + "' WHERE id=:id" + cond_raw,
 			{'id': id})
 
 		# check if the table is empty and if it is - delete it too
-		if self.db.tableIsEmpty(field_name):
-			self.db.deleteTable(field_name)
+		if self.engine.tableIsEmpty(field_name):
+			self.engine.deleteTable(field_name)
 
 		# if we deleted something from list, we should re-enumerate list elements
 		temp_list = list(filter(lambda x: not isinstance(x, str), field.name))
@@ -217,13 +217,13 @@ class StructureLayer:
 
 			fields_to_reenum = self.getFieldsList(id, field_name)
 			for fld in fields_to_reenum:
-				self.db.execute("DELETE FROM '" + _nameFromList(fld.name) + "' WHERE id=:id " +
+				self.engine.execute("DELETE FROM '" + _nameFromList(fld.name) + "' WHERE id=:id " +
 					" AND " + col_name + "=" + str(col_val), {'id': id})
 
-				if self.db.tableIsEmpty(_nameFromList(fld.name)):
-					self.db.deleteTable(_nameFromList(fld.name))
+				if self.engine.tableIsEmpty(_nameFromList(fld.name)):
+					self.engine.deleteTable(_nameFromList(fld.name))
 
-				self.db.execute("UPDATE '" + _nameFromList(fld.name) + "' SET " +
+				self.engine.execute("UPDATE '" + _nameFromList(fld.name) + "' SET " +
 					col_name + "=" + col_name + "-1 WHERE " +
 					"id=:id AND " + col_name + ">=" + str(col_val),
 					{'id': id})
@@ -236,7 +236,7 @@ class StructureLayer:
 				values_str += ", c" + str(counter) + " INTEGER"
 				counter += 1
 
-		self.db.execute("CREATE TABLE IF NOT EXISTS '" + _nameFromList(field.name) +
+		self.engine.execute("CREATE TABLE IF NOT EXISTS '" + _nameFromList(field.name) +
 			"' (" + values_str + ")")
 
 	def createElement(self, id, fields):
@@ -291,7 +291,7 @@ class StructureLayer:
 			field_name = _nameFromList(condition.operand1.name)
 			cond, param_map, query, query_cols, cond_raw = _conditionFromList(condition.operand1.name)
 
-			if not self.db.tableExists(field_name):
+			if not self.engine.tableExists(field_name):
 				return "SELECT 0 limit 0" # returns empty result
 
 			if condition.invert:
@@ -315,7 +315,7 @@ class StructureLayer:
 			return result
 
 		request = buildSqlQuery(condition)
-		result = self.db.execute(request)
+		result = self.engine.execute(request)
 		list_res = [x[0] for x in result]
 
 		return list_res
@@ -327,7 +327,7 @@ class StructureLayer:
 		# we assume here that all columns in field are defined except for the last one
 		query = query[2:] # removing first ','
 		param_map.update({'id': id})
-		result = self.db.execute("SELECT MAX (" + query + ") FROM '" + field_name + "' WHERE id=:id" + cond,
+		result = self.engine.execute("SELECT MAX (" + query + ") FROM '" + field_name + "' WHERE id=:id" + cond,
 			param_map)
 
 		l = list(result)
@@ -343,7 +343,7 @@ class StructureLayer:
 
 		fields_to_reenum = self.getFieldsList(id, field_name)
 		for fld in fields_to_reenum:
-			self.db.execute("UPDATE '" + _nameFromList(fld.name) + "' SET " +
+			self.engine.execute("UPDATE '" + _nameFromList(fld.name) + "' SET " +
 				col_name + "=" + col_name + "+" + str(shift) + " WHERE " +
 				"id=:id AND " + col_name + ">=" + str(col_val),
 				{'id': id})
