@@ -1,5 +1,7 @@
 """Interface for database layer"""
 
+import copy
+
 class FormatError(Exception):
 	"""Request format error exception"""
 	pass
@@ -32,7 +34,7 @@ class Field:
 				raise FormatError("Field name list must contain only integers, strings or Nones")
 
 		# clone given list
-		self.name = name[:]
+		self.name = copy.deepcopy(name)
 
 	def __eq__(self, other):
 		if other == None:
@@ -65,7 +67,7 @@ class _BaseRequest:
 				if not isinstance(field, Field):
 					raise FormatError("Data should be a list of Field objects")
 
-		self.fields = fields
+		self.fields = copy.deepcopy(fields)
 
 	def __str__(self):
 		return self.__class__.__name__ + " for object '" + self.id + "': " + str(self.fields)
@@ -92,7 +94,7 @@ class InsertRequest(_BaseRequest):
 		if not isinstance(target_field, Field):
 			raise FormatError("Target field must have class Field")
 
-		self.target_field = target_field
+		self.target_field = copy.deepcopy(target_field)
 		self.one_position = one_position
 
 	def __str__(self):
@@ -152,7 +154,7 @@ class SearchRequest:
 		if not condition.__class__ == self.Condition:
 			raise FormatError("Wrong condition type: " + condition.__class__.__name__)
 
-		self.condition = condition
+		self.condition = copy.deepcopy(condition)
 
 	def __str__(self):
 		return "SearchRequest: " + str(self.condition)
