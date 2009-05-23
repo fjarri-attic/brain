@@ -99,12 +99,24 @@ class InterfaceTests(unittest.TestCase):
 
 	def testInsertRequestCopiesTarget(self):
 		"""Test that InsertRequest constructor clones target field object"""
-		f = Field('test', 2)
+		f = Field(['test', 1], 2)
 		r = InsertRequest('1', f, [Field('test', 1)])
 
 		f.value = 3
 
 		self.failUnlessEqual(r.target_field.value, 2)
+
+	def testInsertRequestNotDeterminedTarget(self):
+		"""Test that InsertRequest requires determined target"""
+		self.failUnlessRaises(FormatError, InsertRequest,
+			'1', Field(['test', None, 1]),
+			[Field('test', 1)])
+
+	def testInsertRequestTargetPointsToHash(self):
+		"""Test that InsertRequest requires target pointing to list"""
+		self.failUnlessRaises(FormatError, InsertRequest,
+			'1', Field(['test', 1, 'aaa']),
+			[Field('test', 1)])
 
 def suite():
 	"""Generate test suite for this module"""
