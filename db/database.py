@@ -87,6 +87,9 @@ class EngineLayer:
 	def deleteTable(self, name):
 		self.__conn.execute("DROP TABLE IF EXISTS '" + name + "'")
 
+	def getEmptyCondition(self):
+		return "SELECT 0 limit 0"
+
 class StructureLayer:
 	def __init__(self, path):
 		self.engine = EngineLayer(path)
@@ -292,7 +295,7 @@ class StructureLayer:
 			cond, param_map, query, query_cols, cond_raw = _conditionFromList(condition.operand1.name)
 
 			if not self.engine.tableExists(field_name):
-				return "SELECT 0 limit 0" # returns empty result
+				return self.engine.getEmptyCondition()
 
 			if condition.invert:
 				not_str = " NOT "
