@@ -144,7 +144,8 @@ class SearchRequest:
 			if isinstance(operator, SearchRequest.Comparison):
 				# if node operator is a Comparison, it is a leaf of condition tree
 				if not isinstance(operand1, Field):
-					raise FormatError("First operand of comparison should be Field")
+					raise FormatError("First operand should be Field, but it is " +
+						operand1.__class__.__name__)
 				self.leaf = True
 			elif isinstance(operator, SearchRequest.Operator):
 				# if node operator is an Operator, both operands should be Conditions
@@ -155,10 +156,6 @@ class SearchRequest:
 				self.leaf = False
 			else:
 				raise FormatError("Wrong operator type: " + operator.__class__.__name__)
-
-			if self.leaf and not isinstance(operand1, Field):
-				raise FormatError("First operand should be Field, but it is " +
-					operand1.__class__.__name__)
 
 			# Initialize fields
 			self.operand1 = operand1
