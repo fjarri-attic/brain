@@ -8,7 +8,7 @@ import unittest
 from test import helpers
 from db.interface import *
 
-class FormatTests(unittest.TestCase):
+class Format(unittest.TestCase):
 	"""Class which contains all request format testcases"""
 
 	# Tests for Field class
@@ -223,5 +223,5 @@ class FormatTests(unittest.TestCase):
 def suite():
 	"""Generate test suite for this module"""
 	res = helpers.NamedTestSuite()
-	res.addTest(unittest.TestLoader().loadTestsFromTestCase(FormatTests))
+	res.addTest(unittest.TestLoader().loadTestsFromTestCase(Format))
 	return res

@@ -6,11 +6,11 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import unittest
 from test import helpers
-from test.db.requests_base import TestRequest
+from test.db.requests import TestRequest
 from db.database import *
 from db.interface import *
 
-class TestSearchRequest(TestRequest):
+class Search(TestRequest):
 	"""Test operation of SearchRequest"""
 
 	def testConditionAnd(self):
@@ -197,4 +197,4 @@ class TestSearchRequest(TestRequest):
 		self.checkRequestResult(res, ['2'])
 
 def get_class():
-	return TestSearchRequest
+	return Search

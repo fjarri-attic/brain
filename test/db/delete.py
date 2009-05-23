@@ -6,11 +6,11 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import unittest
 from test import helpers
-from test.db.requests_base import TestRequest
+from test.db.requests import TestRequest
 from db.database import *
 from db.interface import *
 
-class TestDeleteRequest(TestRequest):
+class Delete(TestRequest):
 	"""Test operation of DeleteRequest"""
 
 	def testWholeObject(self):
@@ -198,4 +198,4 @@ class TestDeleteRequest(TestRequest):
 			])
 
 def get_class():
-	return TestDeleteRequest
+	return Delete

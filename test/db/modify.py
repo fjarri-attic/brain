@@ -6,11 +6,11 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import unittest
 from test import helpers
-from test.db.requests_base import TestRequest
+from test.db.requests import TestRequest
 from db.database import *
 from db.interface import *
 
-class TestModifyRequest(TestRequest):
+class Modify(TestRequest):
 	"""Test different uses of ModifyRequest"""
 
 	def testBlankObjectAddition(self):
@@ -135,4 +135,4 @@ class TestModifyRequest(TestRequest):
 			])
 
 def get_class():
-	return TestModifyRequest
+	return Modify

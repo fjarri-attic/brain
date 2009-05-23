@@ -6,11 +6,11 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import unittest
 from test import helpers
-from test.db.requests_base import TestRequest
+from test.db.requests import TestRequest
 from db.database import *
 from db.interface import *
 
-class TestInsertRequest(TestRequest):
+class Insert(TestRequest):
 	"""Test operation of InsertRequest"""
 
 	def testToTheMiddleSimpleList(self):
@@ -164,4 +164,4 @@ class TestInsertRequest(TestRequest):
 			])
 
 def get_class():
-	return TestInsertRequest
+	return Insert
