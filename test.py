@@ -11,4 +11,4 @@ def suite():
 	return res
 
 if __name__ == '__main__':
-	test.helpers.TextTestRunner(verbosity=3).run(suite())
+	test.helpers.TextTestRunner(verbosity=2).run(suite())
