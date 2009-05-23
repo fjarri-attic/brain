@@ -132,7 +132,7 @@ class Modify(TestRequest):
 			Field(['tracks', 2], 'Track 3'),
 			Field(['tracks', 3], 'Track 4'),
 			Field(['tracks', 4], 'Track 5'),
-			])
+		])
 
 def get_class():
 	return Modify
