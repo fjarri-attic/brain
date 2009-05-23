@@ -5,7 +5,7 @@ scriptdir, scriptfile = os.path.split(sys.argv[0])
 sys.path.append(os.path.join(scriptdir, ".."))
 
 import unittest
-from . import helpers
+from test import helpers
 from db.interface import *
 
 class FormatTests(unittest.TestCase):

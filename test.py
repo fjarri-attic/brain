@@ -1,13 +1,14 @@
 """Module which gathers all unittests"""
 
 import test.interface
-import test.requests
+import test.db.requests
+import test.db.interface
 import test.helpers
 
 def suite():
 	res = test.helpers.NamedTestSuite()
-	res.addTest(test.requests.suite())
-	res.addTest(test.interface.suite())
+	res.addTest(test.db.requests.suite())
+	res.addTest(test.db.interface.suite())
 	return res
 
 if __name__ == '__main__':
