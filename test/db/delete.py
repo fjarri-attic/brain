@@ -215,7 +215,7 @@ class Delete(TestRequest):
 
 		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Authors', None])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 1, 'Authors', 1], 'Dan')
+			Field(['tracks', 0, 'Authors', 0], 'Dan')
 		])
 
 def get_class():
