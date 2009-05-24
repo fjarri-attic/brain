@@ -10,13 +10,17 @@ _ID_COLUMN = 'id'
 class InternalField:
 
 	def __init__(self, field, engine):
-		if not isinstance(field, interfaces.Field):
+		if not isinstance(field, interface.Field):
 			raise Exception("field should be an instance of Field class")
-		if not isinstance(engine, interfaces.Engine):
+		if not isinstance(engine, interface.Engine):
 			raise Exception("engine should be derived from Engine class")
 
 		self.__field = field
 		self.__engine = engine
+
+		self.name = field.name
+		self.value = field.value
+		self.type = field.type
 
 	def __get_safe_value(self):
 		return self.__engine.getSafeValueFromString(self.__field.value)
@@ -344,17 +348,29 @@ class SimpleDatabase(interface.Database):
 		self.structure = StructureLayer(self.engine)
 
 	def processRequest(self, request):
+
+		def convertFields(fields, engine):
+			if fields != None:
+				return [InternalField(x, engine) for x in fields]
+			else:
+				return None
+
 		if isinstance(request, interface.ModifyRequest):
-			self.__processModifyRequest(request.id, request.fields)
+			self.__processModifyRequest(request.id,
+				convertFields(request.fields, self.engine))
 		elif isinstance(request, interface.DeleteRequest):
-			self.__processDeleteRequest(request.id, request.fields)
+			self.__processDeleteRequest(request.id,
+				convertFields(request.fields, self.engine))
 		elif isinstance(request, interface.SearchRequest):
 			return self.__processSearchRequest(request.condition)
 		elif isinstance(request, interface.ReadRequest):
-			return self.__processReadRequest(request.id, request.fields)
+			return self.__processReadRequest(request.id,
+				convertFields(request.fields, self.engine))
 		elif isinstance(request, interface.InsertRequest):
-			self.__processInsertRequest(request.id, request.target_field,
-				request.fields, request.one_position)
+			self.__processInsertRequest(request.id,
+				InternalField(request.target_field, self.engine),
+				convertFields(request.fields, self.engine),
+				request.one_position)
 		else:
 			raise Exception("Unknown request type: " + request.__class__.__name__)
 
@@ -416,7 +432,7 @@ class SimpleDatabase(interface.Database):
 		for result in results:
 			if result != None:
 				result_list += result
-		return result_list
+		return [interface.Field(x.name, x.value) for x in result_list]
 
 	def __processSearchRequest(self, condition):
 
