@@ -5,9 +5,6 @@ import copy
 from . import interface
 from . import engine
 
-_ID_TABLE = 'id'
-_ID_COLUMN = 'id'
-
 class InternalField:
 
 	def __init__(self, field, engine):
@@ -24,64 +21,100 @@ class InternalField:
 		self.type = field.type
 
 	def __get_safe_value(self):
-		return self.__engine.getSafeValueFromString(self.__field.value)
+		return self.__engine.getSafeValue(self.__field.value)
 
 	def __set_safe_value(self, val):
-		self.__field.value = self.__engine.getStringFromSafeValue(val)
+		self.__field.value = self.__engine.getUnsafeValue(val)
 
 	def __get_safe_name(self):
-		return "field." + self.__engine.getSafeTableNameFromList(self.__field.name)
+		return self.__engine.getSafeTableName(['field'] + self.__field.name)
 
 	def __set_safe_name(self, val):
-		self.__field.name = (self.__engine.getListFromSafeTableName(val))[6:]
+		self.__field.name = (self.__engine.getFieldName(val))[1:]
+
+	def __get_name_as_safe_value(self):
+		return "'" + self.safe_name + "'"
+
+	def __get_clean_name(self):
+		return [(x if isinstance(x, str) else None) for x in self.name]
+
+	def __get_columns_query(self):
+		numeric_columns = filter(lambda x: not isinstance(x, str), self.name)
+		counter = 0
+		l = []
+		for column in numeric_columns:
+			if column == None:
+				l.append("c" + str(counter))
+			counter += 1
+
+		return (', '.join([''] + l) if len(l) > 0 else '')
+
+	def __get_columns_condition(self):
+		numeric_columns = filter(lambda x: not isinstance(x, str), self.name)
+		counter = 0
+		l = []
+		for column in numeric_columns:
+			if column != None:
+				l.append("c" + str(counter) + "=" + str(column))
+			counter += 1
+
+		return (' AND '.join([''] + l) if len(l) > 0 else '')
+
+	def __get_undefined_positions(self):
+		counter = 0
+		l = []
+		for elem in self.name:
+			if elem == None:
+				l.append(counter)
+			counter += 1
+
+		return l
+
+	def __get_creation_str(self):
+		counter = 0
+		res = ""
+		for elem in self.name:
+			if not isinstance(elem, str):
+				res += ", c" + str(counter) + " INTEGER"
+				counter += 1
+
+		return res
+
+	def __get_columns_values(self):
+		res = ""
+		for elem in self.name:
+			if not isinstance(elem, str):
+				res += ", " + str(elem)
+
+		return res
 
 	safe_value = property(__get_safe_value, __set_safe_value)
 	safe_name = property(__get_safe_name, __set_safe_name)
+	name_as_safe_value = property(__get_name_as_safe_value)
+	clean_name = property(__get_clean_name)
+	columns_query = property(__get_columns_query)
+	columns_condition = property(__get_columns_condition)
+	undefined_positions = property(__get_undefined_positions)
+	creation_str = property(__get_creation_str)
+	columns_values = property(__get_columns_values)
 
-def _cleanColsFromList(name_list):
-	return [(x if isinstance(x, str) else None) for x in name_list]
+	def __str__(self):
+		return "IField ('" + str(self.name) + "'" + \
+			(", type=" + str(self.type) if self.type else "") + \
+			(", value=" + str(self.value) if self.value else "") + ")"
 
-def _conditionFromList(name_list):
-	num_cols = filter(lambda x: not isinstance(x, str), name_list)
-
-	counter = 0
-	cond_list = []
-	cond_raw_list = []
-	query_list = []
-	query_cols = []
-	param_map = {}
-	for num_col in num_cols:
-		if num_col != None:
-			cond_list.append("c" + str(counter) + "=:c" + str(counter))
-			param_map["c" + str(counter)] = num_col
-			cond_raw_list.append("c" + str(counter) + "=" + str(num_col))
-		else:
-			query_list.append("c" + str(counter))
-		counter += 1
-
-	counter = 0
-	for elem in name_list:
-		if elem == None:
-			query_cols.append(counter)
-		counter += 1
-
-	cond = ""
-	if len(cond_list) > 0:
-		cond = " AND " + " AND ".join(cond_list)
-
-	query = ""
-	if len(query_list) > 0:
-		query = ", " + ", ".join(query_list)
-
-	cond_raw = ""
-	if len(cond_raw_list) > 0:
-		cond_raw = " AND " + " AND ".join(cond_raw_list)
-
-	return cond, param_map, query, query_cols, cond_raw
+	def __repr__(self):
+		return str(self)
 
 class StructureLayer:
+
+	__ID_TABLE = 'id' # name of table with object specifications
+	__ID_COLUMN = 'id' # name of column with object id in all tables
+	__FIELD_COLUMN = 'field' # name of column with field names in specification table
+
 	def __init__(self, engine):
 		self.engine = engine
+		self.__id_table = engine.getSafeTableName([self.__ID_TABLE])
 		self.__createSpecificationTable()
 
 	#
@@ -89,38 +122,46 @@ class StructureLayer:
 	#
 
 	def __createSpecificationTable(self):
-		self.engine.execute("CREATE table IF NOT EXISTS '" + _ID_TABLE + "' (id TEXT, field TEXT)")
+		self.engine.execute("CREATE table IF NOT EXISTS {id_table} ({id_column} TEXT, {field_column} TEXT)"
+			.format(id_table=self.__id_table, id_column=self.__ID_COLUMN,
+			field_column=self.__FIELD_COLUMN))
 
 	def __createSpecification(self, id, fields):
 		for field in fields:
 			self.__updateSpecification(id, field)
 
 	def __deleteSpecification(self, id):
-		self.engine.execute("DELETE FROM '" + _ID_TABLE + "' WHERE id=:id", {'id': id})
+		self.engine.execute("DELETE FROM {id_table} WHERE id={id}"
+			.format(id_table=self.__id_table, id=id))
 
 	def __updateSpecification(self, id, field):
-		name = self.engine.getSafeTableNameFromList(field.name)
 
-		l = list(self.engine.execute("SELECT field FROM '" + _ID_TABLE + "' WHERE id=:id AND field=:field",
-			{'id': id, 'field': name}))
+		l = self.engine.execute("SELECT field FROM {id_table} WHERE id={id} AND field={field_name}"
+			.format(id_table=self.__id_table, id=id, field_name=field.name_as_safe_value))
 
 		if len(l) == 0:
-			self.engine.execute("INSERT INTO '" + _ID_TABLE + "' VALUES (?, ?)", (id, name))
+			self.engine.execute("INSERT INTO {id_table} VALUES ({id}, {field_name})"
+				.format(id_table=self.__id_table, id=id, field_name=field.name_as_safe_value))
 
-	def getFieldsList(self, id, regexp=None):
+	def getFieldsList(self, id, field=None):
 		# get object specification
-		regexp_cond = ((" AND field REGEXP :field") if regexp != None else "")
 
-		l = list(self.engine.execute("SELECT field FROM '" + _ID_TABLE + "' WHERE id=:id" + regexp_cond,
-			{'id': id, 'field': regexp}))
+		# FIXME: we should use ^{field_name} regexp
+		regexp_cond = ((" AND field REGEXP '{regexp}'") if field != None else "")
 
-		field_names = [x[0] for x in l]
+		# FIXME: we should not depend on "safe table name" format here
+		regexp_val = (field.safe_name[1:-1] if field != None else None)
 
-		return [interface.Field(self.engine.getListFromSafeTableName(field_name)) for field_name in field_names]
+		l = self.engine.execute(("SELECT field FROM {id_table} WHERE id={id}" + regexp_cond)
+			.format(id_table=self.__id_table, id=id, regexp=regexp_val))
+
+		field_names = [self.engine.getFieldName(x[0])[1:] for x in l]
+
+		return [InternalField(interface.Field(x), self.engine) for x in field_names]
 
 	def objectExists(self, id):
-		l = list(self.engine.execute("SELECT field FROM '" + _ID_TABLE + "' WHERE id=:id",
-			{'id': id}))
+		l = self.engine.execute("SELECT field FROM {id_table} WHERE id={id}"
+			.format(id_table=self.__id_table, id=id))
 		return len(l) > 0
 
 	#
@@ -128,19 +169,18 @@ class StructureLayer:
 	#
 
 	def getFieldValue(self, id, field):
-		field_name = self.engine.getSafeTableNameFromList(field.name)
-		cond, param_map, query, query_cols, cond_raw = _conditionFromList(field.name)
 
-		param_map.update({'id': id})
-		l = list(self.engine.execute("SELECT value" + query + " FROM '" + field_name +
-			"' WHERE id=:id" + cond, param_map))
+		l = self.engine.execute("SELECT value{columns_query} FROM {field_name} WHERE id={id}{columns_condition}"
+			.format(columns_query=field.columns_query, field_name=field.safe_name,
+			id=id, columns_condition=field.columns_condition))
 
 		res = []
+
 		for elem in l:
-			f = interface.Field(field.name, elem[0])
+			f = InternalField(interface.Field(field.name, elem[0]), self.engine)
 
 			counter = 1
-			for col in query_cols:
+			for col in field.undefined_positions:
 				f.name[col] = elem[counter]
 				counter += 1
 
@@ -155,81 +195,52 @@ class StructureLayer:
 
 	def __setFieldValue(self, id, field):
 		self.__assureFieldTableExists(field)
-		field_name = self.engine.getSafeTableNameFromList(field.name)
 
-		numerical_cols = {}
-		numerical_vals = ""
-		delete_condition = ""
-		counter = 0
-		for elem in field.name:
-			if isinstance(elem, int):
-				numerical_cols['c' + str(counter)] = elem
-				numerical_vals += ", :c" + str(counter)
-
-				delete_condition += " AND c" + str(counter) + "=:c" + str(counter)
-
-				counter += 1
-
-		cols_to_insert = {'id': id, 'type': field.type, 'value': field.value}
-		cols_to_insert.update(numerical_cols)
-
-		cols_to_delete = {'id': id}
-		cols_to_delete.update(numerical_cols)
-		delete_condition = "id=:id" + delete_condition
-
-		self.engine.execute("DELETE FROM '" + field_name + "' WHERE " + delete_condition, cols_to_delete)
-		self.engine.execute("INSERT INTO '" + field_name + "' VALUES (:id, :type, :value" +
-			numerical_vals + ")", cols_to_insert)
+		self.engine.execute("DELETE FROM {field_name} WHERE id={id} {delete_condition}"
+			.format(field_name=field.safe_name, id=id, delete_condition=field.columns_condition))
+		self.engine.execute("INSERT INTO {field_name} VALUES ({id}, '{type}', {value}{columns_values})"
+			.format(field_name=field.safe_name, id=id, type=field.type,
+			value=field.safe_value, columns_values=field.columns_values))
 
 	def deleteField(self, id, field):
 
-		field_name = self.engine.getSafeTableNameFromList(field.name)
-		cond, param_map, query, query_cols, cond_raw = _conditionFromList(field.name)
-
 		# check if table exists
-		if not self.engine.tableExists(field_name):
+		if not self.engine.tableExists(field.safe_name):
 			return
 
 		# delete value
-		self.engine.execute("DELETE FROM '" + field_name + "' WHERE id=:id" + cond_raw,
-			{'id': id})
+		self.engine.execute("DELETE FROM {field_name} WHERE id={id}{delete_condition}"
+			.format(field_name=field.safe_name, id=id, delete_condition=field.columns_condition))
 
 		# check if the table is empty and if it is - delete it too
-		if self.engine.tableIsEmpty(field_name):
-			self.engine.deleteTable(field_name)
+		if self.engine.tableIsEmpty(field.safe_name):
+			self.engine.deleteTable(field.safe_name)
 
 		# if we deleted something from list, we should re-enumerate list elements
-		temp_list = list(filter(lambda x: not isinstance(x, str), field.name))
-		if len(temp_list) > 0 and temp_list[-1] != None:
+		field_cols = list(filter(lambda x: not isinstance(x, str), field.name))
+		if len(field_cols) > 0 and field_cols[-1] != None:
 
-			field_cols = list(filter(lambda x: not isinstance(x, str), field.name))
 			col_num = len(field_cols) - 1
 			col_name = "c" + str(col_num)
 			col_val = field_cols[col_num]
 
-			fields_to_reenum = self.getFieldsList(id, field_name)
+			fields_to_reenum = self.getFieldsList(id, field)
 			for fld in fields_to_reenum:
-				self.engine.execute("DELETE FROM '" + self.engine.getSafeTableNameFromList(fld.name) + "' WHERE id=:id " +
-					" AND " + col_name + "=" + str(col_val), {'id': id})
+				self.engine.execute("DELETE FROM {field_name} WHERE id={id} AND {col_name}={col_val}"
+					.format(field_name=fld.safe_name, id=id,
+					col_name=col_name, col_val=col_val))
 
-				if self.engine.tableIsEmpty(self.engine.getSafeTableNameFromList(fld.name)):
-					self.engine.deleteTable(self.engine.getSafeTableNameFromList(fld.name))
+				if self.engine.tableIsEmpty(fld.safe_name):
+					self.engine.deleteTable(fld.safe_name)
 
-				self.engine.execute("UPDATE '" + self.engine.getSafeTableNameFromList(fld.name) + "' SET " +
-					col_name + "=" + col_name + "-1 WHERE " +
-					"id=:id AND " + col_name + ">=" + str(col_val),
-					{'id': id})
+				self.engine.execute("UPDATE {field_name} SET {col_name}={col_name}-1 WHERE id={id} AND {col_name}>={col_val}"
+					.format(field_name=fld.safe_name, col_name=col_name, id=id, col_val=col_val))
 
 	def __assureFieldTableExists(self, field):
-		values_str = "id TEXT, type TEXT, value TEXT"
-		counter = 0
-		for elem in field.name:
-			if isinstance(elem, int):
-				values_str += ", c" + str(counter) + " INTEGER"
-				counter += 1
+		values_str = "id TEXT, type TEXT, value TEXT" + field.creation_str
 
-		self.engine.execute("CREATE TABLE IF NOT EXISTS '" + self.engine.getSafeTableNameFromList(field.name) +
-			"' (" + values_str + ")")
+		self.engine.execute("CREATE TABLE IF NOT EXISTS {field_name} ({values_str})"
+			.format(field_name=field.safe_name, values_str=values_str))
 
 	def createObject(self, id, fields):
 
@@ -254,7 +265,7 @@ class StructureLayer:
 	def objectHasField(self, id, field):
 		existing_fields = self.getFieldsList(id)
 		existing_names = [existing_field.name for existing_field in existing_fields]
-		return _cleanColsFromList(field.name) in existing_names
+		return field.clean_name in existing_names
 
 	def modifyObject(self, id, fields):
 
@@ -271,19 +282,20 @@ class StructureLayer:
 
 			if not condition.leaf:
 				if isinstance(condition.operator, interface.SearchRequest.And):
-					return "SELECT * FROM (" + buildSqlQuery(condition.operand1) + \
-						") INTERSECT SELECT * FROM (" + buildSqlQuery(condition.operand2) + ")"
+					return ("SELECT * FROM ({cond1}) INTERSECT SELECT * FROM ({cond2})")\
+						.format(cond1=buildSqlQuery(condition.operand1),\
+						cond2=buildSqlQuery(condition.operand2))
 				elif isinstance(condition.operator, interface.SearchRequest.Or):
-					return "SELECT * FROM (" + buildSqlQuery(condition.operand1) + \
-						") UNION SELECT * FROM (" + buildSqlQuery(condition.operand2) + ")"
+					return ("SELECT * FROM ({cond1}) UNION SELECT * FROM ({cond2})")\
+						.format(cond1=buildSqlQuery(condition.operand1),\
+						cond2=buildSqlQuery(condition.operand2))
 				else:
 					raise Exception("Operator unsupported: " + str(condition.operator))
 				return
 
-			field_name = self.engine.getSafeTableNameFromList(condition.operand1.name)
-			cond, param_map, query, query_cols, cond_raw = _conditionFromList(condition.operand1.name)
+			safe_name = condition.operand1.safe_name
 
-			if not self.engine.tableExists(field_name):
+			if not self.engine.tableExists(safe_name):
 				return self.engine.getEmptyCondition()
 
 			if condition.invert:
@@ -292,17 +304,19 @@ class StructureLayer:
 				not_str = " "
 
 			if isinstance(condition.operator, interface.SearchRequest.Eq):
-				result = "SELECT DISTINCT id FROM '" + field_name + "' WHERE" + not_str + \
-					"value = '" + condition.operand2 + "'" + cond_raw
+				result = "SELECT DISTINCT id FROM {field_name} WHERE{not_str}value='{val}'{columns_condition}"\
+					.format(field_name=safe_name, not_str=not_str,
+					val=condition.operand2, columns_condition=condition.operand1.columns_condition)
 			elif isinstance(condition.operator, interface.SearchRequest.Regexp):
-				result = "SELECT DISTINCT id FROM '" + field_name + "' WHERE" + not_str + \
-					"value REGEXP '" + condition.operand2 + "'" + cond_raw
+				result = "SELECT DISTINCT id FROM {field_name} WHERE{not_str}value REGEXP '{val}'{columns_condition}"\
+					.format(field_name=safe_name, not_str=not_str,
+					val=condition.operand2, columns_condition=condition.operand1.columns_condition)
 			else:
 				raise Exception("Comparison unsupported: " + str(condition.operator))
 
 			if condition.invert:
-				result = result + " UNION SELECT * FROM (SELECT id FROM '" + _ID_TABLE + \
-					"' EXCEPT SELECT id FROM '" + field_name + "')"
+				result += " UNION SELECT * FROM (SELECT id FROM {id_table} EXCEPT SELECT id FROM {field_name})"\
+					.format(id_table=self.__id_table, field_name=safe_name)
 
 			return result
 
@@ -313,32 +327,26 @@ class StructureLayer:
 		return list_res
 
 	def getMaxNumber(self, id, field):
-		field_name = self.engine.getSafeTableNameFromList(field.name)
-		cond, param_map, query, query_cols, cond_raw = _conditionFromList(field.name)
 
 		# we assume here that all columns in field are defined except for the last one
-		query = query[2:] # removing first ','
-		param_map.update({'id': id})
-		result = self.engine.execute("SELECT MAX (" + query + ") FROM '" + field_name + "' WHERE id=:id" + cond,
-			param_map)
+		query = field.columns_query[2:] # removing first ','
+		l = self.engine.execute("SELECT MAX ({query}) FROM {field_name} WHERE id={id}{columns_condition}"
+			.format(query=query, field_name=field.safe_name, id=id,
+			columns_condition=field.columns_condition))
 
-		l = list(result)
 		res = l[0][0]
 		return res
 
 	def reenumerate(self, id, target_field, shift):
-		field_name = self.engine.getSafeTableNameFromList(target_field.name)
 		field_cols = list(filter(lambda x: isinstance(x, int), target_field.name))
 		col_num = len(field_cols) - 1
 		col_name = "c" + str(col_num)
 		col_val = field_cols[col_num]
 
-		fields_to_reenum = self.getFieldsList(id, field_name)
+		fields_to_reenum = self.getFieldsList(id, target_field)
 		for fld in fields_to_reenum:
-			self.engine.execute("UPDATE '" + self.engine.getSafeTableNameFromList(fld.name) + "' SET " +
-				col_name + "=" + col_name + "+" + str(shift) + " WHERE " +
-				"id=:id AND " + col_name + ">=" + str(col_val),
-				{'id': id})
+			self.engine.execute("UPDATE {field_name} SET {col_name}={col_name}+{shift} WHERE id={id} AND {col_name}>={col_val}"
+				.format(field_name=fld.safe_name, col_name=col_name, shift=shift, id=id, col_val=col_val))
 
 class SimpleDatabase(interface.Database):
 
@@ -364,20 +372,28 @@ class SimpleDatabase(interface.Database):
 				convertCondition(condition.operand2, engine)
 
 		if isinstance(request, interface.ModifyRequest):
-			self.__processModifyRequest(request.id,
+			self.__processModifyRequest(
+				self.engine.getSafeValue(request.id),
 				convertFields(request.fields, self.engine))
+
 		elif isinstance(request, interface.DeleteRequest):
-			self.__processDeleteRequest(request.id,
+			self.__processDeleteRequest(
+				self.engine.getSafeValue(request.id),
 				convertFields(request.fields, self.engine))
+
 		elif isinstance(request, interface.SearchRequest):
 			condition_copy = copy.deepcopy(request.condition)
 			convertCondition(condition_copy, self.engine)
 			return self.__processSearchRequest(condition_copy)
+
 		elif isinstance(request, interface.ReadRequest):
-			return self.__processReadRequest(request.id,
+			return self.__processReadRequest(
+				self.engine.getSafeValue(request.id),
 				convertFields(request.fields, self.engine))
+
 		elif isinstance(request, interface.InsertRequest):
-			self.__processInsertRequest(request.id,
+			self.__processInsertRequest(
+				self.engine.getSafeValue(request.id),
 				InternalField(request.target_field, self.engine),
 				convertFields(request.fields, self.engine),
 				request.one_position)
