@@ -7,6 +7,32 @@ from . import engine
 _ID_TABLE = 'id'
 _ID_COLUMN = 'id'
 
+class InternalField:
+
+	def __init__(self, field, engine):
+		if not isinstance(field, interfaces.Field):
+			raise Exception("field should be an instance of Field class")
+		if not isinstance(engine, interfaces.Engine):
+			raise Exception("engine should be derived from Engine class")
+
+		self.__field = field
+		self.__engine = engine
+
+	def __get_safe_value(self):
+		return self.__engine.getSafeValueFromString(self.__field.value)
+
+	def __set_safe_value(self, val):
+		self.__field.value = self.__engine.getStringFromSafeValue(val)
+
+	def __get_safe_name(self):
+		return "field." + self.__engine.getSafeTableNameFromList(self.__field.name)
+
+	def __set_safe_name(self, val):
+		self.__field.name = (self.__engine.getListFromSafeTableName(val))[6:]
+
+	safe_value = property(__get_safe_value, __set_safe_value)
+	safe_name = property(__get_safe_name, __set_safe_name)
+
 def _cleanColsFromList(name_list):
 	return [(x if isinstance(x, str) else None) for x in name_list]
 
@@ -65,7 +91,7 @@ class StructureLayer:
 			self.__updateSpecification(id, field)
 
 	def __deleteSpecification(self, id):
-		self.engine.execute("DELETE FROM '" + _ID_TABLE + "' WHERE id=:id",	{'id': id})
+		self.engine.execute("DELETE FROM '" + _ID_TABLE + "' WHERE id=:id", {'id': id})
 
 	def __updateSpecification(self, id, field):
 		name = self.engine.getSafeTableNameFromList(field.name)
@@ -319,73 +345,72 @@ class SimpleDatabase(interface.Database):
 
 	def processRequest(self, request):
 		if isinstance(request, interface.ModifyRequest):
-			self.__processModifyRequest(request)
+			self.__processModifyRequest(request.id, request.fields)
 		elif isinstance(request, interface.DeleteRequest):
-			self.__processDeleteRequest(request)
+			self.__processDeleteRequest(request.id, request.fields)
 		elif isinstance(request, interface.SearchRequest):
-			return self.__processSearchRequest(request)
+			return self.__processSearchRequest(request.condition)
 		elif isinstance(request, interface.ReadRequest):
-			return self.__processReadRequest(request)
+			return self.__processReadRequest(request.id, request.fields)
 		elif isinstance(request, interface.InsertRequest):
-			return self.__processInsertRequest(request)
+			self.__processInsertRequest(request.id, request.target_field,
+				request.fields, request.one_position)
 		else:
 			raise Exception("Unknown request type: " + request.__class__.__name__)
 
-	def __processInsertRequest(self, request):
+	def __processInsertRequest(self, id, target_field, fields, one_position):
 
-		def enumerate(fields, col_num, starting_num, one_position=False):
+		def enumerate(fields_list, col_num, starting_num, one_position=False):
 			counter = starting_num
-			for field in request.fields:
+			for field in fields_list:
 				field.name[col_num] = counter
 				if not one_position:
 					counter += 1
 
-		if not self.structure.objectExists(request.id):
-			raise Exception("Object " + request.id + " does not exist")
+		if not self.structure.objectExists(id):
+			raise Exception("Object " + id + " does not exist")
 
-		target_col = len(request.target_field.name) - 1 # last column in name of target field
+		target_col = len(target_field.name) - 1 # last column in name of target field
 
-		if not self.structure.objectHasField(request.id, request.target_field):
-			enumerate(request.fields, target_col, 0, request.one_position)
-		elif request.target_field.name[target_col] == None:
-			starting_num = self.structure.getMaxNumber(request.id, request.target_field) + 1
-			enumerate(request.fields, target_col, starting_num, request.one_position)
+		if not self.structure.objectHasField(id, target_field):
+			enumerate(fields, target_col, 0, one_position)
+		elif target_field.name[target_col] == None:
+			starting_num = self.structure.getMaxNumber(id, target_field) + 1
+			enumerate(fields, target_col, starting_num, one_position)
 		else:
-			self.structure.reenumerate(request.id, request.target_field,
-				(1 if request.one_position else len(request.fields)))
-			enumerate(request.fields, target_col, request.target_field.name[target_col], request.one_position)
+			self.structure.reenumerate(id, target_field,
+				(1 if one_position else len(fields)))
+			enumerate(fields, target_col, target_field.name[target_col], one_position)
 
-		self.__processModifyRequest(interface.ModifyRequest(
-			request.id, request.fields
-		))
+		self.__processModifyRequest(id, fields)
 
-	def __processModifyRequest(self, request):
+	def __processModifyRequest(self, id, fields):
 
 		# check if the entry with specified id already exists
 		# if no, just add it to the database
-		if not self.structure.objectExists(request.id):
-			self.structure.createObject(request.id, request.fields)
+		if not self.structure.objectExists(id):
+			self.structure.createObject(id, fields)
 		else:
-			self.structure.modifyObject(request.id, request.fields)
+			self.structure.modifyObject(id, fields)
 
-	def __processDeleteRequest(self, request):
+	def __processDeleteRequest(self, id, fields):
 
-		if request.fields != None:
+		if fields != None:
 			# remove specified fields
-			for field in request.fields:
-				self.structure.deleteField(request.id, field)
+			for field in fields:
+				self.structure.deleteField(id, field)
 			return
 		else:
 			# delete whole object
-			self.structure.deleteObject(request.id)
+			self.structure.deleteObject(id)
 
-	def __processReadRequest(self, request):
-		if request.fields:
-			fields_to_read = filter(lambda x: self.structure.objectHasField(request.id, x), request.fields)
+	def __processReadRequest(self, id, fields):
+		if fields:
+			fields_to_read = filter(lambda x: self.structure.objectHasField(id, x), fields)
 		else:
-			fields_to_read = self.structure.getFieldsList(request.id)
+			fields_to_read = self.structure.getFieldsList(id)
 
-		results = [self.structure.getFieldValue(request.id, field) for field in fields_to_read]
+		results = [self.structure.getFieldValue(id, field) for field in fields_to_read]
 
 		result_list = []
 		for result in results:
@@ -393,7 +418,7 @@ class SimpleDatabase(interface.Database):
 				result_list += result
 		return result_list
 
-	def __processSearchRequest(self, request):
+	def __processSearchRequest(self, condition):
 
 		def propagateInversion(condition):
 			if not condition.leaf:
@@ -412,6 +437,6 @@ class SimpleDatabase(interface.Database):
 				propagateInversion(condition.operand1)
 				propagateInversion(condition.operand2)
 
-		propagateInversion(request.condition)
+		propagateInversion(condition)
 
-		return self.structure.searchForObjects(request.condition)
+		return self.structure.searchForObjects(condition)
