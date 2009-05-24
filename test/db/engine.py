@@ -26,8 +26,8 @@ class EngineTest(unittest.TestCase):
 		vals = ['a', 'b b']
 
 		for val in vals:
-			safe_val = self.db.getSafeValueFromString(val)
-			unsafe_val = self.db.getStringFromSafeValue(safe_val)
+			safe_val = self.db.getSafeValue(val)
+			unsafe_val = self.db.getUnsafeValue(safe_val)
 			self.failUnlessEqual(val, unsafe_val)
 
 	def testTableNameTransformation(self):
@@ -43,8 +43,8 @@ class EngineTest(unittest.TestCase):
 			if expected_res == None:
 				expected_res = name
 
-			safe_name = self.db.getSafeTableNameFromList(name)
-			unsafe_name = self.db.getListFromSafeTableName(safe_name)
+			safe_name = self.db.getSafeTableName(name)
+			unsafe_name = self.db.getFieldName(safe_name)
 			self.failUnlessEqual(expected_res, unsafe_name)
 
 	def testExecuteWithoutParameters(self):

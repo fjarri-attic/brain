@@ -30,15 +30,15 @@ class Engine:
 		"""Returns condition for compound SELECT which evaluates to empty table"""
 		raise Exception("Not implemented")
 
-	def getSafeValueFromString(self, s):
+	def getSafeValue(self, s):
 		"""Transform string to something which can be safely used in query as a value"""
 		raise Exception("Not implemented")
 
-	def getStringFromSafeValue(self, val):
+	def getUnsafeValue(self, val):
 		"""Transform value back to original string"""
 		raise Exception("Not implemented")
 
-	def getSafeTableNameFromList(self, l):
+	def getSafeTableName(self, l):
 		"""Transform list of strings to something which can be safely used as a part of table name"""
 		raise Exception("Not implemented")
 

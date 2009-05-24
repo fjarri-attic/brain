@@ -32,12 +32,17 @@ class Sqlite3Engine(interface.Engine):
 			return list(self.__conn.execute(sql_str))
 
 	def tableExists(self, name):
-		res = list(self.__conn.execute("SELECT name FROM sqlite_master WHERE type='table'"))
-		res = [x[0] for x in res]
-		return name in res
+		# FIXME: we should not depend on "safe table name" format here
+		if name[0] == '"':
+			safe_name = name[1:-1]
+		else:
+			safe_name = name
+		res = list(self.__conn.execute("SELECT * FROM sqlite_master WHERE type='table' AND name='{name}'"
+			.format(name=safe_name)))
+		return len(res) > 0
 
 	def tableIsEmpty(self, name):
-		return len(list(self.__conn.execute("SELECT * FROM '" + name + "'"))) == 0
+		return len(list(self.__conn.execute("SELECT * FROM " + name))) == 0
 
 	def deleteTable(self, name):
 		self.__conn.execute("DROP TABLE IF EXISTS '" + name + "'")
@@ -46,19 +51,19 @@ class Sqlite3Engine(interface.Engine):
 		"""Returns condition for compound SELECT which evaluates to empty table"""
 		return "SELECT 0 limit 0"
 
-	def getSafeValueFromString(self, s):
+	def getSafeValue(self, s):
 		"""Transform string to something which can be safely used in query as a value"""
 		return "'" + s + "'"
 
-	def getStringFromSafeValue(self, val):
+	def getUnsafeValue(self, val):
 		"""Transform value back to original string"""
 		return val[1:-1]
 
-	def getSafeTableNameFromList(self, l):
+	def getSafeTableName(self, l):
 		"""Transform list of strings to something which can be safely used as a part of table name"""
 		temp_list = [(x if isinstance(x, str) else '') for x in l]
-		return self.__FIELD_SEP.join(temp_list)
+		return '"' + self.__FIELD_SEP.join(temp_list) + '"'
 
-	def getListFromSafeTableName(self, name):
+	def getFieldName(self, name):
 		"""Transform table name back to original list"""
-		return [(x if x != '' else None) for x in name.split(self.__FIELD_SEP)]
+		return [(x if x != '' else None) for x in name[1:-1].split(self.__FIELD_SEP)]
