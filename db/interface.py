@@ -38,11 +38,11 @@ class Engine:
 		"""Transform value back to original string"""
 		raise Exception("Not implemented")
 
-	def getSafeTableNameFromString(self, l):
+	def getSafeTableNameFromList(self, l):
 		"""Transform list of strings to something which can be safely used as a part of table name"""
 		raise Exception("Not implemented")
 
-	def getStringFromSafeTableName(self, name):
+	def getListFromSafeTableName(self, name):
 		"""Transform table name back to original list"""
 		raise Exception("Not implemented")
 
@@ -51,6 +51,10 @@ class Database:
 
 	def processRequest(self, request):
 		raise Exception("Not implemented")
+
+#
+# Requests
+#
 
 class Field:
 	"""Structure, representing object field"""
