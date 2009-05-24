@@ -27,9 +27,9 @@ class Sqlite3Engine(interface.Engine):
 
 	def execute(self, sql_str, params=None):
 		if params:
-			return self.__conn.execute(sql_str, params)
+			return list(self.__conn.execute(sql_str, params))
 		else:
-			return self.__conn.execute(sql_str)
+			return list(self.__conn.execute(sql_str))
 
 	def tableExists(self, name):
 		res = list(self.__conn.execute("SELECT name FROM sqlite_master WHERE type='table'"))
