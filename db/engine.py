@@ -57,8 +57,8 @@ class Sqlite3Engine(interface.Engine):
 	def getSafeTableNameFromList(self, l):
 		"""Transform list of strings to something which can be safely used as a part of table name"""
 		temp_list = [(x if isinstance(x, str) else '') for x in l]
-		return "_" + self.__FIELD_SEP.join(temp_list)
+		return self.__FIELD_SEP.join(temp_list)
 
 	def getListFromSafeTableName(self, name):
 		"""Transform table name back to original list"""
-		return [(x if x != '' else None) for x in name[1:].split(self.__FIELD_SEP)]
+		return [(x if x != '' else None) for x in name.split(self.__FIELD_SEP)]
