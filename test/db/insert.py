@@ -163,5 +163,69 @@ class Insert(TestRequest):
 			Field(['tracks', 2, 'Authors', 0], 'Rob')
 			])
 
+	def testToTheBeginningNestedListOnePosition(self):
+		"""Test insertion to the beginning of nested list, one position shift"""
+		self.prepareStandNestedList()
+
+		res = self.db.processRequest(InsertRequest('2',
+			Field(['tracks', 0]),
+			[
+				Field(['tracks', 0], 'Track 0'),
+				Field(['tracks', 0, 'Authors', 0], 'Earl'),
+				Field(['tracks', 0, 'Authors', 1], 'Fred')
+			],
+			True
+		))
+
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0], 'Track 0'),
+			Field(['tracks', 1], 'Track 11'),
+			Field(['tracks', 2], 'Track 2'),
+			Field(['tracks', 3], 'Track 3'),
+		])
+
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Authors', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0, 'Authors', 0], 'Earl'),
+			Field(['tracks', 0, 'Authors', 1], 'Fred'),
+			Field(['tracks', 1, 'Authors', 0], 'Carl II'),
+			Field(['tracks', 1, 'Authors', 1], 'Dan'),
+			Field(['tracks', 2, 'Authors', 0], 'Alex'),
+			Field(['tracks', 3, 'Authors', 0], 'Rob')
+		])
+
+	def testToTheEndNestedListOnePosition(self):
+		"""Test insertion to the end of nested list, one position shift"""
+		self.prepareStandNestedList()
+
+		res = self.db.processRequest(InsertRequest('2',
+			Field(['tracks', None]),
+			[
+				Field(['tracks', 0], 'Track 0'),
+				Field(['tracks', 0, 'Authors', 0], 'Earl'),
+				Field(['tracks', 0, 'Authors', 1], 'Fred')
+			],
+			True
+		))
+
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0], 'Track 11'),
+			Field(['tracks', 1], 'Track 2'),
+			Field(['tracks', 2], 'Track 3'),
+			Field(['tracks', 3], 'Track 0'),
+		])
+
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Authors', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0, 'Authors', 0], 'Carl II'),
+			Field(['tracks', 0, 'Authors', 1], 'Dan'),
+			Field(['tracks', 1, 'Authors', 0], 'Alex'),
+			Field(['tracks', 2, 'Authors', 0], 'Rob'),
+			Field(['tracks', 3, 'Authors', 0], 'Earl'),
+			Field(['tracks', 3, 'Authors', 1], 'Fred')
+		])
+
 def get_class():
 	return Insert
