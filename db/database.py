@@ -1,5 +1,6 @@
 import sqlite3
 import re
+import copy
 
 from . import interface
 from . import engine
@@ -355,6 +356,13 @@ class SimpleDatabase(interface.Database):
 			else:
 				return None
 
+		def convertCondition(condition, engine):
+			if condition.leaf:
+				condition.operand1 = InternalField(condition.operand1, engine)
+			else:
+				convertCondition(condition.operand1, engine)
+				convertCondition(condition.operand2, engine)
+
 		if isinstance(request, interface.ModifyRequest):
 			self.__processModifyRequest(request.id,
 				convertFields(request.fields, self.engine))
@@ -362,7 +370,9 @@ class SimpleDatabase(interface.Database):
 			self.__processDeleteRequest(request.id,
 				convertFields(request.fields, self.engine))
 		elif isinstance(request, interface.SearchRequest):
-			return self.__processSearchRequest(request.condition)
+			condition_copy = copy.deepcopy(request.condition)
+			convertCondition(condition_copy, self.engine)
+			return self.__processSearchRequest(condition_copy)
 		elif isinstance(request, interface.ReadRequest):
 			return self.__processReadRequest(request.id,
 				convertFields(request.fields, self.engine))
