@@ -15,11 +15,11 @@ def _compareLists(l1, l2):
 		else:
 			raise Exception("Cannot find " + str(elem) + " in second list")
 
-def getParameterized(base_class, name_prefix, db_class, db_file_name):
+def getParameterized(base_class, name_prefix, db_class, *params):
 	"""Get named test suite with predefined setUp()"""
 	class Derived(base_class):
 		def setUp(self):
-			self.db = db_class(db_file_name)
+			self.db = db_class(*params)
 
 	Derived.__name__ = name_prefix + "." + base_class.__name__
 

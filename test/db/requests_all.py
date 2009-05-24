@@ -8,13 +8,14 @@ import unittest
 from test import helpers
 from test.db import delete, insert, modify, read, search, requests
 from db.database import *
+from db.engine import *
 
 def suite():
 	"""Generate test suite for this module"""
 	res = helpers.NamedTestSuite()
-	
+
 	parameters = [
-		('memory.sqlite3', Sqlite3Database, ':memory:'),
+		('memory.sqlite3', SimpleDatabase, ':memory:', Sqlite3Engine),
 	]
 
 	modules = [delete, insert, modify, read, search]
@@ -23,5 +24,5 @@ def suite():
 		for module in modules:
 			res.addTest(unittest.TestLoader().loadTestsFromTestCase(
 				requests.getParameterized(module.get_class(), *parameter)))
-	
+
 	return res

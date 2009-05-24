@@ -49,8 +49,8 @@ def _conditionFromList(name_list):
 	return cond, param_map, query, query_cols, cond_raw
 
 class StructureLayer:
-	def __init__(self, path):
-		self.engine = engine.Sqlite3Engine(path)
+	def __init__(self, engine):
+		self.engine = engine
 		self.__createSpecificationTable()
 
 	#
@@ -309,10 +309,13 @@ class StructureLayer:
 				"id=:id AND " + col_name + ">=" + str(col_val),
 				{'id': id})
 
-class Sqlite3Database(interface.Database):
+class SimpleDatabase(interface.Database):
 
-	def __init__(self, path):
-		self.db = StructureLayer(path)
+	def __init__(self, path, engine_class):
+		if not issubclass(engine_class, interface.Engine):
+			raise Exception("Engine class must be derived from Engine interface")
+		self.engine = engine_class(path)
+		self.structure = StructureLayer(self.engine)
 
 	def processRequest(self, request):
 		if isinstance(request, interface.ModifyRequest):
@@ -337,18 +340,18 @@ class Sqlite3Database(interface.Database):
 				if not one_position:
 					counter += 1
 
-		if not self.db.objectExists(request.id):
+		if not self.structure.objectExists(request.id):
 			raise Exception("Object " + request.id + " does not exist")
 
 		target_col = len(request.target_field.name) - 1 # last column in name of target field
 
-		if not self.db.objectHasField(request.id, request.target_field):
+		if not self.structure.objectHasField(request.id, request.target_field):
 			enumerate(request.fields, target_col, 0, request.one_position)
 		elif request.target_field.name[target_col] == None:
-			starting_num = self.db.getMaxNumber(request.id, request.target_field) + 1
+			starting_num = self.structure.getMaxNumber(request.id, request.target_field) + 1
 			enumerate(request.fields, target_col, starting_num, request.one_position)
 		else:
-			self.db.reenumerate(request.id, request.target_field,
+			self.structure.reenumerate(request.id, request.target_field,
 				(1 if request.one_position else len(request.fields)))
 			enumerate(request.fields, target_col, request.target_field.name[target_col], request.one_position)
 
@@ -360,29 +363,29 @@ class Sqlite3Database(interface.Database):
 
 		# check if the entry with specified id already exists
 		# if no, just add it to the database
-		if not self.db.objectExists(request.id):
-			self.db.createObject(request.id, request.fields)
+		if not self.structure.objectExists(request.id):
+			self.structure.createObject(request.id, request.fields)
 		else:
-			self.db.modifyObject(request.id, request.fields)
+			self.structure.modifyObject(request.id, request.fields)
 
 	def __processDeleteRequest(self, request):
 
 		if request.fields != None:
 			# remove specified fields
 			for field in request.fields:
-				self.db.deleteField(request.id, field)
+				self.structure.deleteField(request.id, field)
 			return
 		else:
 			# delete whole object
-			self.db.deleteObject(request.id)
+			self.structure.deleteObject(request.id)
 
 	def __processReadRequest(self, request):
 		if request.fields:
-			fields_to_read = filter(lambda x: self.db.objectHasField(request.id, x), request.fields)
+			fields_to_read = filter(lambda x: self.structure.objectHasField(request.id, x), request.fields)
 		else:
-			fields_to_read = self.db.getFieldsList(request.id)
+			fields_to_read = self.structure.getFieldsList(request.id)
 
-		results = [self.db.getFieldValue(request.id, field) for field in fields_to_read]
+		results = [self.structure.getFieldValue(request.id, field) for field in fields_to_read]
 
 		result_list = []
 		for result in results:
@@ -411,4 +414,4 @@ class Sqlite3Database(interface.Database):
 
 		propagateInversion(request.condition)
 
-		return self.db.searchForObjects(request.condition)
+		return self.structure.searchForObjects(request.condition)
