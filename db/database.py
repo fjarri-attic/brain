@@ -2,17 +2,10 @@ import sqlite3
 import re
 
 from . import interface
+from . import engine
 
-_FIELD_SEP = '.'
 _ID_TABLE = 'id'
 _ID_COLUMN = 'id'
-
-def _nameFromList(name_list):
-	temp_list = [(x if isinstance(x, str) else '') for x in name_list]
-	return "_" + _FIELD_SEP.join(temp_list)
-
-def _listFromName(name):
-	return [(x if x != '' else None) for x in name[1:].split(_FIELD_SEP)]
 
 def _cleanColsFromList(name_list):
 	return [(x if isinstance(x, str) else None) for x in name_list]
@@ -55,56 +48,9 @@ def _conditionFromList(name_list):
 
 	return cond, param_map, query, query_cols, cond_raw
 
-class EngineLayer:
-	def __init__(self, path):
-		self.__conn = sqlite3.connect(path)
-		self.__conn.create_function("regexp", 2, self.__regexp)
-
-	def dump(self):
-		print("Dump:")
-		for str in self.__conn.iterdump():
-			print(str)
-		print("--------")
-
-	def __regexp(self, expr, item):
-		r = re.compile(expr)
-		return r.search(item) is not None
-
-	def execute(self, sql_str, params=None):
-		if params:
-			return self.__conn.execute(sql_str, params)
-		else:
-			return self.__conn.execute(sql_str)
-
-	def tableExists(self, name):
-		res = list(self.__conn.execute("SELECT name FROM sqlite_master WHERE type='table'"))
-		res = [x[0] for x in res]
-		return name in res
-
-	def tableIsEmpty(self, name):
-		return len(list(self.__conn.execute("SELECT * FROM '" + name + "'"))) == 0
-
-	def deleteTable(self, name):
-		self.__conn.execute("DROP TABLE IF EXISTS '" + name + "'")
-
-	def getEmptyCondition(self):
-		return "SELECT 0 limit 0"
-	
-	def getSafeValueFromString(self, s):
-		return s
-	
-	def getStringFromSafeValue(self, val):
-		return val
-	
-	def getSafeTableNameFromString(self, s):
-		return s
-	
-	def getStringFromSafeTableName(self, name):
-		return name
-
 class StructureLayer:
 	def __init__(self, path):
-		self.engine = EngineLayer(path)
+		self.engine = engine.Sqlite3Engine(path)
 		self.__createSpecificationTable()
 
 	#
@@ -122,7 +68,7 @@ class StructureLayer:
 		self.engine.execute("DELETE FROM '" + _ID_TABLE + "' WHERE id=:id",	{'id': id})
 
 	def __updateSpecification(self, id, field):
-		name = _nameFromList(field.name)
+		name = self.engine.getSafeTableNameFromList(field.name)
 
 		l = list(self.engine.execute("SELECT field FROM '" + _ID_TABLE + "' WHERE id=:id AND field=:field",
 			{'id': id, 'field': name}))
@@ -139,7 +85,7 @@ class StructureLayer:
 
 		field_names = [x[0] for x in l]
 
-		return [interface.Field(_listFromName(field_name)) for field_name in field_names]
+		return [interface.Field(self.engine.getListFromSafeTableName(field_name)) for field_name in field_names]
 
 	def objectExists(self, id):
 		l = list(self.engine.execute("SELECT field FROM '" + _ID_TABLE + "' WHERE id=:id",
@@ -151,7 +97,7 @@ class StructureLayer:
 	#
 
 	def getFieldValue(self, id, field):
-		field_name = _nameFromList(field.name)
+		field_name = self.engine.getSafeTableNameFromList(field.name)
 		cond, param_map, query, query_cols, cond_raw = _conditionFromList(field.name)
 
 		param_map.update({'id': id})
@@ -178,7 +124,7 @@ class StructureLayer:
 
 	def __setFieldValue(self, id, field):
 		self.__assureFieldTableExists(field)
-		field_name = _nameFromList(field.name)
+		field_name = self.engine.getSafeTableNameFromList(field.name)
 
 		numerical_cols = {}
 		numerical_vals = ""
@@ -206,7 +152,7 @@ class StructureLayer:
 
 	def deleteField(self, id, field):
 
-		field_name = _nameFromList(field.name)
+		field_name = self.engine.getSafeTableNameFromList(field.name)
 		cond, param_map, query, query_cols, cond_raw = _conditionFromList(field.name)
 
 		# check if table exists
@@ -232,13 +178,13 @@ class StructureLayer:
 
 			fields_to_reenum = self.getFieldsList(id, field_name)
 			for fld in fields_to_reenum:
-				self.engine.execute("DELETE FROM '" + _nameFromList(fld.name) + "' WHERE id=:id " +
+				self.engine.execute("DELETE FROM '" + self.engine.getSafeTableNameFromList(fld.name) + "' WHERE id=:id " +
 					" AND " + col_name + "=" + str(col_val), {'id': id})
 
-				if self.engine.tableIsEmpty(_nameFromList(fld.name)):
-					self.engine.deleteTable(_nameFromList(fld.name))
+				if self.engine.tableIsEmpty(self.engine.getSafeTableNameFromList(fld.name)):
+					self.engine.deleteTable(self.engine.getSafeTableNameFromList(fld.name))
 
-				self.engine.execute("UPDATE '" + _nameFromList(fld.name) + "' SET " +
+				self.engine.execute("UPDATE '" + self.engine.getSafeTableNameFromList(fld.name) + "' SET " +
 					col_name + "=" + col_name + "-1 WHERE " +
 					"id=:id AND " + col_name + ">=" + str(col_val),
 					{'id': id})
@@ -251,7 +197,7 @@ class StructureLayer:
 				values_str += ", c" + str(counter) + " INTEGER"
 				counter += 1
 
-		self.engine.execute("CREATE TABLE IF NOT EXISTS '" + _nameFromList(field.name) +
+		self.engine.execute("CREATE TABLE IF NOT EXISTS '" + self.engine.getSafeTableNameFromList(field.name) +
 			"' (" + values_str + ")")
 
 	def createObject(self, id, fields):
@@ -303,7 +249,7 @@ class StructureLayer:
 					raise Exception("Operator unsupported: " + str(condition.operator))
 				return
 
-			field_name = _nameFromList(condition.operand1.name)
+			field_name = self.engine.getSafeTableNameFromList(condition.operand1.name)
 			cond, param_map, query, query_cols, cond_raw = _conditionFromList(condition.operand1.name)
 
 			if not self.engine.tableExists(field_name):
@@ -336,7 +282,7 @@ class StructureLayer:
 		return list_res
 
 	def getMaxNumber(self, id, field):
-		field_name = _nameFromList(field.name)
+		field_name = self.engine.getSafeTableNameFromList(field.name)
 		cond, param_map, query, query_cols, cond_raw = _conditionFromList(field.name)
 
 		# we assume here that all columns in field are defined except for the last one
@@ -350,7 +296,7 @@ class StructureLayer:
 		return res
 
 	def reenumerate(self, id, target_field, shift):
-		field_name = _nameFromList(target_field.name)
+		field_name = self.engine.getSafeTableNameFromList(target_field.name)
 		field_cols = list(filter(lambda x: isinstance(x, int), target_field.name))
 		col_num = len(field_cols) - 1
 		col_name = "c" + str(col_num)
@@ -358,7 +304,7 @@ class StructureLayer:
 
 		fields_to_reenum = self.getFieldsList(id, field_name)
 		for fld in fields_to_reenum:
-			self.engine.execute("UPDATE '" + _nameFromList(fld.name) + "' SET " +
+			self.engine.execute("UPDATE '" + self.engine.getSafeTableNameFromList(fld.name) + "' SET " +
 				col_name + "=" + col_name + "+" + str(shift) + " WHERE " +
 				"id=:id AND " + col_name + ">=" + str(col_val),
 				{'id': id})
