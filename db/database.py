@@ -219,20 +219,6 @@ class StructureLayer:
 		# if we deleted something from list, we should re-enumerate list elements
 		field_cols = list(filter(lambda x: not isinstance(x, str), field.name))
 		if len(field_cols) > 0 and field_cols[-1] != None:
-
-			col_num = len(field_cols) - 1
-			col_name = "c" + str(col_num)
-			col_val = field_cols[col_num]
-
-			fields_to_reenum = self.getFieldsList(id, field)
-			for fld in fields_to_reenum:
-				self.engine.execute("DELETE FROM {field_name} WHERE id={id} AND {col_name}={col_val}"
-					.format(field_name=fld.safe_name, id=id,
-					col_name=col_name, col_val=col_val))
-
-				if self.engine.tableIsEmpty(fld.safe_name):
-					self.engine.deleteTable(fld.safe_name)
-
 			self.reenumerate(id, field, -1)
 
 	def __assureFieldTableExists(self, field):
@@ -344,6 +330,15 @@ class StructureLayer:
 
 		fields_to_reenum = self.getFieldsList(id, target_field)
 		for fld in fields_to_reenum:
+
+			# if shift is negative, we should delete elements first
+			if shift < 0:
+				self.engine.execute("DELETE FROM {field_name} WHERE id={id} AND {col_name}={col_val}"
+					.format(field_name=fld.safe_name, id=id, col_name=col_name, col_val=col_val))
+
+				if self.engine.tableIsEmpty(fld.safe_name):
+					self.engine.deleteTable(fld.safe_name)
+
 			self.engine.execute("UPDATE {field_name} SET {col_name}={col_name}+{shift} WHERE id={id} AND {col_name}>={col_val}"
 				.format(field_name=fld.safe_name, col_name=col_name, shift=shift, id=id, col_val=col_val))
 
