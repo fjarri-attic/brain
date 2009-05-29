@@ -233,8 +233,7 @@ class StructureLayer:
 				if self.engine.tableIsEmpty(fld.safe_name):
 					self.engine.deleteTable(fld.safe_name)
 
-				self.engine.execute("UPDATE {field_name} SET {col_name}={col_name}-1 WHERE id={id} AND {col_name}>={col_val}"
-					.format(field_name=fld.safe_name, col_name=col_name, id=id, col_val=col_val))
+			self.reenumerate(id, field, -1)
 
 	def __assureFieldTableExists(self, field):
 		values_str = "id TEXT, type TEXT, value TEXT" + field.creation_str
@@ -338,7 +337,7 @@ class StructureLayer:
 		return res
 
 	def reenumerate(self, id, target_field, shift):
-		field_cols = list(filter(lambda x: isinstance(x, int), target_field.name))
+		field_cols = list(filter(lambda x: not isinstance(x, str), target_field.name))
 		col_num = len(field_cols) - 1
 		col_name = "c" + str(col_num)
 		col_val = field_cols[col_num]
