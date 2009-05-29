@@ -208,18 +208,18 @@ class StructureLayer:
 		if not self.engine.tableExists(field.safe_name):
 			return
 
-		# delete value
-		self.engine.execute("DELETE FROM {field_name} WHERE id={id}{delete_condition}"
-			.format(field_name=field.safe_name, id=id, delete_condition=field.columns_condition))
-
-		# check if the table is empty and if it is - delete it too
-		if self.engine.tableIsEmpty(field.safe_name):
-			self.engine.deleteTable(field.safe_name)
-
 		# if we deleted something from list, we should re-enumerate list elements
 		field_cols = list(filter(lambda x: not isinstance(x, str), field.name))
 		if len(field_cols) > 0 and field_cols[-1] != None:
 			self.reenumerate(id, field, -1)
+		else:
+			# delete value
+			self.engine.execute("DELETE FROM {field_name} WHERE id={id}{delete_condition}"
+				.format(field_name=field.safe_name, id=id, delete_condition=field.columns_condition))
+
+			# check if the table is empty and if it is - delete it too
+			if self.engine.tableIsEmpty(field.safe_name):
+				self.engine.deleteTable(field.safe_name)
 
 	def __assureFieldTableExists(self, field):
 		values_str = "id TEXT, type TEXT, value TEXT" + field.creation_str
