@@ -131,37 +131,39 @@ class StructureLayer:
 			self.__updateSpecification(id, field)
 
 	def __deleteSpecification(self, id):
-		self.engine.execute("DELETE FROM {id_table} WHERE id={id}"
-			.format(id_table=self.__id_table, id=id))
+		self.engine.execute("DELETE FROM {id_table} WHERE {id_column}={id}"
+			.format(id_table=self.__id_table, id_column=self.__ID_COLUMN, id=id))
 
 	def __updateSpecification(self, id, field):
 
-		l = self.engine.execute("SELECT field FROM {id_table} WHERE id={id} AND field={field_name}"
-			.format(id_table=self.__id_table, id=id, field_name=field.name_as_safe_value))
+		l = self.engine.execute("SELECT field FROM {id_table} WHERE {id_column}={id} AND {field_column}={field_name}"
+			.format(id_table=self.__id_table, id_column=self.__ID_COLUMN, id=id,
+			field_column=self.__FIELD_COLUMN, field_name=field.name_as_safe_value))
 
 		if len(l) == 0:
 			self.engine.execute("INSERT INTO {id_table} VALUES ({id}, {field_name})"
 				.format(id_table=self.__id_table, id=id, field_name=field.name_as_safe_value))
 
 	def getFieldsList(self, id, field=None):
-		# get object specification
 
 		# FIXME: we should use ^{field_name} regexp
-		regexp_cond = ((" AND field REGEXP '{regexp}'") if field != None else "")
+		regexp_cond = ((" AND {field_column} REGEXP '{regexp}'") if field != None else "")
 
 		# FIXME: we should not depend on "safe table name" format here
 		regexp_val = (field.safe_name[1:-1] if field != None else None)
 
-		l = self.engine.execute(("SELECT field FROM {id_table} WHERE id={id}" + regexp_cond)
-			.format(id_table=self.__id_table, id=id, regexp=regexp_val))
+		l = self.engine.execute(("SELECT {field_column} FROM {id_table} WHERE {id_column}={id}" + regexp_cond)
+			.format(id_table=self.__id_table, id=id, regexp=regexp_val,
+			id_column=self.__ID_COLUMN, field_column=self.__FIELD_COLUMN))
 
 		field_names = [self.engine.getFieldName(x[0])[1:] for x in l]
 
 		return [InternalField(interface.Field(x), self.engine) for x in field_names]
 
 	def objectExists(self, id):
-		l = self.engine.execute("SELECT field FROM {id_table} WHERE id={id}"
-			.format(id_table=self.__id_table, id=id))
+		l = self.engine.execute("SELECT {field_column} FROM {id_table} WHERE {id_column}={id}"
+			.format(id_table=self.__id_table, id=id,
+			id_column=self.__ID_COLUMN, field_column=self.__FIELD_COLUMN))
 		return len(l) > 0
 
 	#
