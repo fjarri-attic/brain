@@ -43,9 +43,9 @@ class EngineTest(unittest.TestCase):
 			if expected_res == None:
 				expected_res = name
 
-			safe_name = self.db.getSafeTableName(name)
-			unsafe_name = self.db.getFieldName(safe_name)
-			self.failUnlessEqual(expected_res, unsafe_name)
+			name_str = self.db.getNameString(name)
+			name_list = self.db.getNameList(name_str)
+			self.failUnlessEqual(expected_res, name_list)
 
 	def testExecuteWithoutParameters(self):
 		"""Test that execute() method works with missing parameters"""

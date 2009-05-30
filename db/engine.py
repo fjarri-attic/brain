@@ -52,18 +52,26 @@ class Sqlite3Engine(interface.Engine):
 		return "SELECT 0 limit 0"
 
 	def getSafeValue(self, s):
-		"""Transform string to something which can be safely used in query as a value"""
+		"""Transform string to something which can be safely used as a part of a value"""
+		return s
+
+	def getUnsafeValue(self, s):
+		"""Transform part of safe value to unsafe original"""
+		return s
+
+	def getQuotedSafeValue(self, s):
+		"""Quote safe value so that it can be used as a part in a query"""
 		return "'" + s + "'"
 
-	def getUnsafeValue(self, val):
-		"""Transform value back to original string"""
-		return val[1:-1]
-
-	def getSafeTableName(self, l):
-		"""Transform list of strings to something which can be safely used as a part of table name"""
+	def getNameString(self, l):
 		temp_list = [(x if isinstance(x, str) else '') for x in l]
-		return '"' + self.__FIELD_SEP.join(temp_list) + '"'
+		return self.__FIELD_SEP.join(temp_list)
 
-	def getFieldName(self, name):
-		"""Transform table name back to original list"""
-		return [(x if x != '' else None) for x in name[1:-1].split(self.__FIELD_SEP)]
+	def getNameList(self, s):
+		return [(x if x != '' else None) for x in s.split(self.__FIELD_SEP)]
+
+	def getSafeName(self, s):
+		return s
+
+	def getQuotedSafeName(self, s):
+		return '"' + s + '"'
