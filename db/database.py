@@ -19,45 +19,28 @@ class InternalField:
 		self.value = field.value
 		self.type = field.type
 
-	def __get_quoted_safe_value(self):
-		return self.__engine.getQuotedSafeValue(
-			self.__engine.getSafeValue(self.value))
+	def __get_safe_value(self):
+		return self.__engine.getSafeValue(self.value)
 
-	quoted_safe_value = property(__get_quoted_safe_value)
-
-	def __set_safe_value(self, val):
-		self.value = self.__engine.getUnsafeValue(val)
-
-	safe_value = property(None, __set_safe_value)
+	safe_value = property(__get_safe_value)
 
 	def __get_name_str(self):
-		return self.__engine.getNameString(self.name)
+		return self.__engine.getNameString(['field'] + self.name)
 
-	name_str = property(__get_name_str)
+	def __set_name_str(self, val):
+		self.name = self.__engine.getNameList(val)[1:]
 
-	def __get_safe_table_name(self):
-		return self.__engine.getQuotedSafeName(
-			self.__engine.getSafeName(self.name_str)
-		)
+	name_str = property(__get_name_str, __set_name_str)
 
-	safe_table_name = property(__get_safe_table_name)
+	def __get_name_as_table(self):
+		return self.__engine.getSafeName(self.name_str)
 
-	def __set_name_as_safe_value(self, val):
-		self.name = self.__engine.getNameList(
-			self.__engine.getUnsafeValue(val))
+	name_as_table = property(__get_name_as_table)
 
-	name_as_safe_value = property(None, __set_name_as_safe_value)
+	def __get_name_as_value(self):
+		return self.__engine.getSafeValue(self.name_str)
 
-	def __get_name_as_quoted_safe_value(self):
-		return self.__engine.getQuotedSafeValue(
-			self.__engine.getSafeValue(
-				self.__engine.getNameString(
-					['field'] + self.name
-				)
-			)
-		)
-
-	name_as_quoted_safe_value = property(__get_name_as_quoted_safe_value)
+	name_as_value = property(__get_name_as_value)
 
 	def __get_clean_name(self):
 		return [(x if isinstance(x, str) else None) for x in self.name]
@@ -135,12 +118,8 @@ class StructureLayer:
 
 	def __init__(self, engine):
 		self.engine = engine
-		self.__id_table = self.engine.getQuotedSafeName(
-			self.engine.getSafeName(
-				self.engine.getNameString(
-					[self.__ID_TABLE]
-				)
-			)
+		self.__id_table = self.engine.getSafeName(
+			self.engine.getNameString([self.__ID_TABLE])
 		)
 		self.__createSpecificationTable()
 
@@ -165,26 +144,25 @@ class StructureLayer:
 
 		l = self.engine.execute("SELECT field FROM {id_table} WHERE {id_column}={id} AND {field_column}={field_name}"
 			.format(id_table=self.__id_table, id_column=self.__ID_COLUMN, id=id,
-			field_column=self.__FIELD_COLUMN, field_name=field.name_as_quoted_safe_value))
+			field_column=self.__FIELD_COLUMN, field_name=field.name_as_value))
 
 		if len(l) == 0:
 			self.engine.execute("INSERT INTO {id_table} VALUES ({id}, {field_name})"
-				.format(id_table=self.__id_table, id=id, field_name=field.name_as_quoted_safe_value))
+				.format(id_table=self.__id_table, id=id, field_name=field.name_as_value))
 
 	def getFieldsList(self, id, field=None):
 
 		# FIXME: we should use ^{field_name} regexp
 		regexp_cond = ((" AND {field_column} REGEXP {regexp}") if field != None else "")
 
-		regexp_val = (field.name_as_quoted_safe_value if field != None else None)
+		regexp_val = (self.engine.getSafeValue(field.name_str) if field != None else None)
 
 		l = self.engine.execute(("SELECT {field_column} FROM {id_table} WHERE {id_column}={id}" + regexp_cond)
 			.format(id_table=self.__id_table, id=id, regexp=regexp_val,
 			id_column=self.__ID_COLUMN, field_column=self.__FIELD_COLUMN))
 
 		# FIXME: hide this inside InternalField
-		# (it is done in name_as_safe_value setter)
-		field_names = [self.engine.getNameList(self.engine.getUnsafeValue(x[0]))[1:] for x in l]
+		field_names = [self.engine.getNameList(x[0])[1:] for x in l]
 
 		return [InternalField(interface.Field(x), self.engine) for x in field_names]
 
@@ -201,14 +179,15 @@ class StructureLayer:
 	def getFieldValue(self, id, field):
 
 		l = self.engine.execute("SELECT value{columns_query} FROM {field_name} WHERE id={id}{columns_condition}"
-			.format(columns_query=field.columns_query, field_name=field.safe_table_name,
+			.format(columns_query=field.columns_query, field_name=field.name_as_table,
 			id=id, columns_condition=field.columns_condition))
 
 		res = []
 
 		for elem in l:
+			# FIXME: hide this inside InternalField
 			f = InternalField(interface.Field(field.name), self.engine)
-			f.safe_value = elem[0]
+			f.value = elem[0]
 
 			counter = 1
 			for col in field.undefined_positions:
@@ -228,10 +207,10 @@ class StructureLayer:
 		self.__assureFieldTableExists(field)
 
 		self.engine.execute("DELETE FROM {field_name} WHERE id={id} {delete_condition}"
-			.format(field_name=field.safe_table_name, id=id, delete_condition=field.columns_condition))
+			.format(field_name=field.name_as_table, id=id, delete_condition=field.columns_condition))
 		self.engine.execute("INSERT INTO {field_name} VALUES ({id}, '{type}', {value}{columns_values})"
-			.format(field_name=field.safe_table_name, id=id, type=field.type,
-			value=field.quoted_safe_value, columns_values=field.columns_values))
+			.format(field_name=field.name_as_table, id=id, type=field.type,
+			value=field.safe_value, columns_values=field.columns_values))
 
 	def deleteField(self, id, field):
 
@@ -246,7 +225,7 @@ class StructureLayer:
 		else:
 			# delete value
 			self.engine.execute("DELETE FROM {field_name} WHERE id={id}{delete_condition}"
-				.format(field_name=field.safe_table_name, id=id, delete_condition=field.columns_condition))
+				.format(field_name=field.name_as_table, id=id, delete_condition=field.columns_condition))
 
 			# check if the table is empty and if it is - delete it too
 			if self.engine.tableIsEmpty(field.name_str):
@@ -256,7 +235,7 @@ class StructureLayer:
 		values_str = "id TEXT, type TEXT, value TEXT" + field.creation_str
 
 		self.engine.execute("CREATE TABLE IF NOT EXISTS {field_name} ({values_str})"
-			.format(field_name=field.safe_table_name, values_str=values_str))
+			.format(field_name=field.name_as_table, values_str=values_str))
 
 	def createObject(self, id, fields):
 
@@ -309,7 +288,7 @@ class StructureLayer:
 					raise Exception("Operator unsupported: " + str(condition.operator))
 				return
 
-			safe_name = condition.operand1.safe_table_name
+			safe_name = condition.operand1.name_as_table
 
 			if not self.engine.tableExists(condition.operand1.name_str):
 				return self.engine.getEmptyCondition()
@@ -322,12 +301,12 @@ class StructureLayer:
 			if isinstance(condition.operator, interface.SearchRequest.Eq):
 				result = "SELECT DISTINCT id FROM {field_name} WHERE{not_str}value={val}{columns_condition}"\
 					.format(field_name=safe_name, not_str=not_str,
-					val=self.engine.getQuotedSafeValue(self.engine.getSafeValue(condition.operand2)),
+					val=self.engine.getSafeValue(condition.operand2),
 					columns_condition=condition.operand1.columns_condition)
 			elif isinstance(condition.operator, interface.SearchRequest.Regexp):
 				result = "SELECT DISTINCT id FROM {field_name} WHERE{not_str}value REGEXP {val}{columns_condition}"\
 					.format(field_name=safe_name, not_str=not_str,
-					val=self.engine.getSafeRegexp(condition.operand2),
+					val=self.engine.getSafeValue(condition.operand2),
 					columns_condition=condition.operand1.columns_condition)
 			else:
 				raise Exception("Comparison unsupported: " + str(condition.operator))
@@ -349,7 +328,7 @@ class StructureLayer:
 		# we assume here that all columns in field are defined except for the last one
 		query = field.columns_query[2:] # removing first ','
 		l = self.engine.execute("SELECT MAX ({query}) FROM {field_name} WHERE id={id}{columns_condition}"
-			.format(query=query, field_name=field.safe_table_name, id=id,
+			.format(query=query, field_name=field.name_as_table, id=id,
 			columns_condition=field.columns_condition))
 
 		res = l[0][0]
@@ -367,13 +346,13 @@ class StructureLayer:
 			# if shift is negative, we should delete elements first
 			if shift < 0:
 				self.engine.execute("DELETE FROM {field_name} WHERE id={id} AND {col_name}={col_val}"
-					.format(field_name=fld.safe_table_name, id=id, col_name=col_name, col_val=col_val))
+					.format(field_name=fld.name_as_table, id=id, col_name=col_name, col_val=col_val))
 
 				if self.engine.tableIsEmpty(fld.name_str):
 					self.engine.deleteTable(fld.name_str)
 
 			self.engine.execute("UPDATE {field_name} SET {col_name}={col_name}+{shift} WHERE id={id} AND {col_name}>={col_val}"
-				.format(field_name=fld.safe_table_name, col_name=col_name, shift=shift, id=id, col_val=col_val))
+				.format(field_name=fld.name_as_table, col_name=col_name, shift=shift, id=id, col_val=col_val))
 
 class SimpleDatabase(interface.Database):
 

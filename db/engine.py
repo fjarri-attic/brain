@@ -33,42 +33,21 @@ class Sqlite3Engine(interface.Engine):
 
 	def tableExists(self, name):
 		res = list(self.__conn.execute("SELECT * FROM sqlite_master WHERE type='table' AND name={name}"
-			.format(name=self.getQuotedSafeValue(self.getSafeValue(name)))))
+			.format(name=self.getSafeValue(name))))
 		return len(res) > 0
 
 	def tableIsEmpty(self, name):
-		return len(list(self.__conn.execute("SELECT * FROM " +
-			self.getQuotedSafeName(self.getSafeName(name))))) == 0
+		return len(list(self.__conn.execute("SELECT * FROM " + self.getSafeName(name)))) == 0
 
 	def deleteTable(self, name):
-		self.__conn.execute("DROP TABLE IF EXISTS " +
-			self.getQuotedSafeName(self.getSafeName(name)))
+		self.__conn.execute("DROP TABLE IF EXISTS " + self.getSafeName(name))
 
 	def getEmptyCondition(self):
 		"""Returns condition for compound SELECT which evaluates to empty table"""
 		return "SELECT 0 limit 0"
 
 	def getSafeValue(self, s):
-		"""
-		Transform string to something which can be safely used as a part of a value
-		Be sure to keep the property: f^-1(f(a) + f(b)) = a + b
-		"""
-		return s
-
-	def getUnsafeValue(self, s):
-		"""
-		Transform part of safe value to unsafe original
-		Be sure to keep the property: f^-1(f(a) + f(b)) = a + b
-		"""
-		return s
-
-	def getSafeRegexp(self, s):
-		"""Transform given regexp so that it can be used as a part of a query"""
-		return "'" + s + "'"
-
-	def getQuotedSafeValue(self, s):
-		"""Quote safe value so that it can be used as a part of a query"""
-		return "'" + s + "'"
+		return "'" + s.replace("'", "''") + "'"
 
 	def getNameString(self, l):
 		"""Get field name from list"""
@@ -80,7 +59,4 @@ class Sqlite3Engine(interface.Engine):
 		return [(x if x != '' else None) for x in s.split(self.__FIELD_SEP)]
 
 	def getSafeName(self, s):
-		return s
-
-	def getQuotedSafeName(self, s):
-		return '"' + s + '"'
+		return '"' + s.replace('"', '""') + '"'
