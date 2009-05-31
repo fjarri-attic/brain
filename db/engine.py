@@ -32,20 +32,17 @@ class Sqlite3Engine(interface.Engine):
 			return list(self.__conn.execute(sql_str))
 
 	def tableExists(self, name):
-		# FIXME: we should not depend on "safe table name" format here
-		if name[0] == '"':
-			safe_name = name[1:-1]
-		else:
-			safe_name = name
-		res = list(self.__conn.execute("SELECT * FROM sqlite_master WHERE type='table' AND name='{name}'"
-			.format(name=safe_name)))
+		res = list(self.__conn.execute("SELECT * FROM sqlite_master WHERE type='table' AND name={name}"
+			.format(name=self.getQuotedSafeValue(self.getSafeValue(name)))))
 		return len(res) > 0
 
 	def tableIsEmpty(self, name):
-		return len(list(self.__conn.execute("SELECT * FROM " + name))) == 0
+		return len(list(self.__conn.execute("SELECT * FROM " +
+			self.getQuotedSafeName(self.getSafeName(name))))) == 0
 
 	def deleteTable(self, name):
-		self.__conn.execute("DROP TABLE IF EXISTS '" + name + "'")
+		self.__conn.execute("DROP TABLE IF EXISTS " +
+			self.getQuotedSafeName(self.getSafeName(name)))
 
 	def getEmptyCondition(self):
 		"""Returns condition for compound SELECT which evaluates to empty table"""
@@ -64,7 +61,7 @@ class Sqlite3Engine(interface.Engine):
 		Be sure to keep the property: f^-1(f(a) + f(b)) = a + b
 		"""
 		return s
-		
+
 	def getSafeRegexp(self, s):
 		"""Transform given regexp so that it can be used as a part of a query"""
 		return "'" + s + "'"

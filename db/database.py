@@ -31,7 +31,9 @@ class InternalField:
 	safe_value = property(None, __set_safe_value)
 
 	def __get_name_str(self):
-		return self.__engine.getSafeTableName(['field'] + self.name)
+		return self.__engine.getNameString(self.name)
+
+	name_str = property(__get_name_str)
 
 	def __get_safe_table_name(self):
 		return self.__engine.getQuotedSafeName(
@@ -238,7 +240,7 @@ class StructureLayer:
 	def deleteField(self, id, field):
 
 		# check if table exists
-		if not self.engine.tableExists(field.safe_table_name):
+		if not self.engine.tableExists(field.name_str):
 			return
 
 		# if we deleted something from list, we should re-enumerate list elements
@@ -251,8 +253,8 @@ class StructureLayer:
 				.format(field_name=field.safe_table_name, id=id, delete_condition=field.columns_condition))
 
 			# check if the table is empty and if it is - delete it too
-			if self.engine.tableIsEmpty(field.safe_table_name):
-				self.engine.deleteTable(field.safe_table_name)
+			if self.engine.tableIsEmpty(field.name_str):
+				self.engine.deleteTable(field.name_str)
 
 	def __assureFieldTableExists(self, field):
 		values_str = "id TEXT, type TEXT, value TEXT" + field.creation_str
@@ -313,7 +315,7 @@ class StructureLayer:
 
 			safe_name = condition.operand1.safe_table_name
 
-			if not self.engine.tableExists(safe_name):
+			if not self.engine.tableExists(condition.operand1.name_str):
 				return self.engine.getEmptyCondition()
 
 			if condition.invert:
@@ -371,8 +373,8 @@ class StructureLayer:
 				self.engine.execute("DELETE FROM {field_name} WHERE id={id} AND {col_name}={col_val}"
 					.format(field_name=fld.safe_table_name, id=id, col_name=col_name, col_val=col_val))
 
-				if self.engine.tableIsEmpty(fld.safe_table_name):
-					self.engine.deleteTable(fld.safe_table_name)
+				if self.engine.tableIsEmpty(fld.name_str):
+					self.engine.deleteTable(fld.name_str)
 
 			self.engine.execute("UPDATE {field_name} SET {col_name}={col_name}+{shift} WHERE id={id} AND {col_name}>={col_val}"
 				.format(field_name=fld.safe_table_name, col_name=col_name, shift=shift, id=id, col_val=col_val))
