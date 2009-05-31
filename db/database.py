@@ -7,17 +7,21 @@ from . import engine
 
 class InternalField:
 
-	def __init__(self, field, engine):
-		if not isinstance(field, interface.Field):
-			raise Exception("field should be an instance of Field class")
+	def __init__(self, engine, name, value=None):
 		if not isinstance(engine, interface.Engine):
 			raise Exception("engine should be derived from Engine class")
 
 		self.__engine = engine
 
-		self.name = field.name
-		self.value = field.value
-		self.type = field.type
+		self.name = name[:]
+		self.value = value
+		self.type = 'text'
+
+	@classmethod
+	def fromNameStr(cls, engine, name_str, value=None):
+		res = cls(engine, [], value)
+		res.name_str = name_str
+		return res
 
 	def __get_safe_value(self):
 		return self.__engine.getSafeValue(self.value)
@@ -160,10 +164,7 @@ class StructureLayer:
 			.format(id_table=self.__id_table, id=id, regexp=regexp_val,
 			id_column=self.__ID_COLUMN, field_column=self.__FIELD_COLUMN))
 
-		# FIXME: hide this inside InternalField
-		field_names = [self.engine.getNameList(x[0])[1:] for x in l]
-
-		return [InternalField(interface.Field(x), self.engine) for x in field_names]
+		return [InternalField.fromNameStr(self.engine, x[0]) for x in l]
 
 	def objectExists(self, id):
 		l = self.engine.execute("SELECT {field_column} FROM {id_table} WHERE {id_column}={id}"
@@ -184,9 +185,7 @@ class StructureLayer:
 		res = []
 
 		for elem in l:
-			# FIXME: hide this inside InternalField
-			f = InternalField(interface.Field(field.name), self.engine)
-			f.value = elem[0]
+			f = InternalField(self.engine, field.name, elem[0])
 
 			counter = 1
 			for col in field.undefined_positions:
@@ -365,13 +364,14 @@ class SimpleDatabase(interface.Database):
 
 		def convertFields(fields, engine):
 			if fields != None:
-				return [InternalField(x, engine) for x in fields]
+				return [InternalField(engine, x.name, x.value) for x in fields]
 			else:
 				return None
 
 		def convertCondition(condition, engine):
 			if condition.leaf:
-				condition.operand1 = InternalField(condition.operand1, engine)
+				condition.operand1 = InternalField(engine,
+					condition.operand1.name, condition.operand1.value)
 			else:
 				convertCondition(condition.operand1, engine)
 				convertCondition(condition.operand2, engine)
@@ -399,7 +399,7 @@ class SimpleDatabase(interface.Database):
 		elif isinstance(request, interface.InsertRequest):
 			self.__processInsertRequest(
 				request.id,
-				InternalField(request.target_field, self.engine),
+				InternalField(self.engine, request.target_field.name, request.target_field.value),
 				convertFields(request.fields, self.engine),
 				request.one_position)
 		else:
