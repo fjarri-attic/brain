@@ -52,22 +52,34 @@ class Sqlite3Engine(interface.Engine):
 		return "SELECT 0 limit 0"
 
 	def getSafeValue(self, s):
-		"""Transform string to something which can be safely used as a part of a value"""
+		"""
+		Transform string to something which can be safely used as a part of a value
+		Be sure to keep the property: f^-1(f(a) + f(b)) = a + b
+		"""
 		return s
 
 	def getUnsafeValue(self, s):
-		"""Transform part of safe value to unsafe original"""
+		"""
+		Transform part of safe value to unsafe original
+		Be sure to keep the property: f^-1(f(a) + f(b)) = a + b
+		"""
 		return s
+		
+	def getSafeRegexp(self, s):
+		"""Transform given regexp so that it can be used as a part of a query"""
+		return "'" + s + "'"
 
 	def getQuotedSafeValue(self, s):
-		"""Quote safe value so that it can be used as a part in a query"""
+		"""Quote safe value so that it can be used as a part of a query"""
 		return "'" + s + "'"
 
 	def getNameString(self, l):
+		"""Get field name from list"""
 		temp_list = [(x if isinstance(x, str) else '') for x in l]
 		return self.__FIELD_SEP.join(temp_list)
 
 	def getNameList(self, s):
+		"""Get field name list from string"""
 		return [(x if x != '' else None) for x in s.split(self.__FIELD_SEP)]
 
 	def getSafeName(self, s):
@@ -75,6 +87,3 @@ class Sqlite3Engine(interface.Engine):
 
 	def getQuotedSafeName(self, s):
 		return '"' + s + '"'
-
-	def getSafeRegexp(self, s):
-		return s

@@ -329,7 +329,7 @@ class StructureLayer:
 			elif isinstance(condition.operator, interface.SearchRequest.Regexp):
 				result = "SELECT DISTINCT id FROM {field_name} WHERE{not_str}value REGEXP {val}{columns_condition}"\
 					.format(field_name=safe_name, not_str=not_str,
-					val=self.engine.getQuotedSafeValue(self.engine.getSafeRegexp(condition.operand2)),
+					val=self.engine.getSafeRegexp(condition.operand2),
 					columns_condition=condition.operand1.columns_condition)
 			else:
 				raise Exception("Comparison unsupported: " + str(condition.operator))
