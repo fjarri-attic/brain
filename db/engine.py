@@ -75,3 +75,6 @@ class Sqlite3Engine(interface.Engine):
 
 	def getQuotedSafeName(self, s):
 		return '"' + s + '"'
+
+	def getSafeRegexp(self, s):
+		return s
