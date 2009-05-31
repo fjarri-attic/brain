@@ -37,11 +37,7 @@ class InternalField:
 
 	def __get_safe_table_name(self):
 		return self.__engine.getQuotedSafeName(
-			self.__engine.getSafeName(
-				self.__engine.getNameString(
-					self.name
-				)
-			)
+			self.__engine.getSafeName(self.name_str)
 		)
 
 	safe_table_name = property(__get_safe_table_name)
