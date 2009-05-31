@@ -152,10 +152,9 @@ class StructureLayer:
 
 	def getFieldsList(self, id, field=None):
 
-		# FIXME: we should use ^{field_name} regexp
 		regexp_cond = ((" AND {field_column} REGEXP {regexp}") if field != None else "")
 
-		regexp_val = (self.engine.getSafeValue(field.name_str) if field != None else None)
+		regexp_val = (self.engine.getSafeValue("^" + field.name_str) if field != None else None)
 
 		l = self.engine.execute(("SELECT {field_column} FROM {id_table} WHERE {id_column}={id}" + regexp_cond)
 			.format(id_table=self.__id_table, id=id, regexp=regexp_val,
