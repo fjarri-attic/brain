@@ -31,19 +31,19 @@ class Engine:
 		raise Exception("Not implemented")
 
 	def getSafeValue(self, s):
-		"""Transform string to something which can be safely used in query as a value"""
+		"""Transform string value so that it could be safely used in queries"""
 		raise Exception("Not implemented")
 
-	def getUnsafeValue(self, val):
-		"""Transform value back to original string"""
+	def getNameString(self, l):
+		"""Get field name from list"""
 		raise Exception("Not implemented")
 
-	def getSafeTableName(self, l):
-		"""Transform list of strings to something which can be safely used as a part of table name"""
+	def getNameList(self, s):
+		"""Get field name list from string"""
 		raise Exception("Not implemented")
 
-	def getListFromSafeTableName(self, name):
-		"""Transform table name back to original list"""
+	def getSafeName(self, s):
+		"""Transform string value so that it could be safely used as table name"""
 		raise Exception("Not implemented")
 
 class Database:
