@@ -13,7 +13,6 @@ class InternalField:
 		if not isinstance(engine, interface.Engine):
 			raise Exception("engine should be derived from Engine class")
 
-		self.__field = field
 		self.__engine = engine
 
 		self.name = field.name
@@ -22,23 +21,23 @@ class InternalField:
 
 	def __get_quoted_safe_value(self):
 		return self.__engine.getQuotedSafeValue(
-			self.__engine.getSafeValue(self.__field.value))
+			self.__engine.getSafeValue(self.value))
 
 	quoted_safe_value = property(__get_quoted_safe_value)
 
 	def __set_safe_value(self, val):
-		self.__field.value = self.__engine.getUnsafeValue(val)
+		self.value = self.__engine.getUnsafeValue(val)
 
 	safe_value = property(None, __set_safe_value)
 
 	def __get_name_str(self):
-		return self.__engine.getSafeTableName(['field'] + self.__field.name)
+		return self.__engine.getSafeTableName(['field'] + self.name)
 
 	def __get_safe_table_name(self):
 		return self.__engine.getQuotedSafeName(
 			self.__engine.getSafeName(
 				self.__engine.getNameString(
-					self.__field.name
+					self.name
 				)
 			)
 		)
@@ -46,7 +45,7 @@ class InternalField:
 	safe_table_name = property(__get_safe_table_name)
 
 	def __set_name_as_safe_value(self, val):
-		self.__field.name = self.__engine.getNameList(
+		self.name = self.__engine.getNameList(
 			self.__engine.getUnsafeValue(val))
 
 	name_as_safe_value = property(None, __set_name_as_safe_value)
@@ -55,7 +54,7 @@ class InternalField:
 		return self.__engine.getQuotedSafeValue(
 			self.__engine.getSafeValue(
 				self.__engine.getNameString(
-					['field'] + self.__field.name
+					['field'] + self.name
 				)
 			)
 		)
@@ -210,7 +209,8 @@ class StructureLayer:
 		res = []
 
 		for elem in l:
-			f = InternalField(interface.Field(field.name, elem[0]), self.engine)
+			f = InternalField(interface.Field(field.name), self.engine)
+			f.safe_value = elem[0]
 
 			counter = 1
 			for col in field.undefined_positions:
@@ -322,13 +322,15 @@ class StructureLayer:
 				not_str = " "
 
 			if isinstance(condition.operator, interface.SearchRequest.Eq):
-				result = "SELECT DISTINCT id FROM {field_name} WHERE{not_str}value='{val}'{columns_condition}"\
+				result = "SELECT DISTINCT id FROM {field_name} WHERE{not_str}value={val}{columns_condition}"\
 					.format(field_name=safe_name, not_str=not_str,
-					val=condition.operand2, columns_condition=condition.operand1.columns_condition)
+					val=self.engine.getQuotedSafeValue(self.engine.getSafeValue(condition.operand2)),
+					columns_condition=condition.operand1.columns_condition)
 			elif isinstance(condition.operator, interface.SearchRequest.Regexp):
-				result = "SELECT DISTINCT id FROM {field_name} WHERE{not_str}value REGEXP '{val}'{columns_condition}"\
+				result = "SELECT DISTINCT id FROM {field_name} WHERE{not_str}value REGEXP {val}{columns_condition}"\
 					.format(field_name=safe_name, not_str=not_str,
-					val=condition.operand2, columns_condition=condition.operand1.columns_condition)
+					val=self.engine.getQuotedSafeValue(self.engine.getSafeRegexp(condition.operand2)),
+					columns_condition=condition.operand1.columns_condition)
 			else:
 				raise Exception("Comparison unsupported: " + str(condition.operator))
 
@@ -400,12 +402,12 @@ class SimpleDatabase(interface.Database):
 
 		if isinstance(request, interface.ModifyRequest):
 			self.__processModifyRequest(
-				self.engine.getSafeValue(request.id),
+				request.id,
 				convertFields(request.fields, self.engine))
 
 		elif isinstance(request, interface.DeleteRequest):
 			self.__processDeleteRequest(
-				self.engine.getSafeValue(request.id),
+				request.id,
 				convertFields(request.fields, self.engine))
 
 		elif isinstance(request, interface.SearchRequest):
@@ -415,12 +417,12 @@ class SimpleDatabase(interface.Database):
 
 		elif isinstance(request, interface.ReadRequest):
 			return self.__processReadRequest(
-				self.engine.getSafeValue(request.id),
+				request.id,
 				convertFields(request.fields, self.engine))
 
 		elif isinstance(request, interface.InsertRequest):
 			self.__processInsertRequest(
-				self.engine.getSafeValue(request.id),
+				request.id,
 				InternalField(request.target_field, self.engine),
 				convertFields(request.fields, self.engine),
 				request.one_position)
@@ -507,5 +509,4 @@ class SimpleDatabase(interface.Database):
 				propagateInversion(condition.operand2)
 
 		propagateInversion(condition)
-
 		return self.structure.searchForObjects(condition)
