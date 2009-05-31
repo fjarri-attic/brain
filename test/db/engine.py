@@ -22,21 +22,35 @@ class EngineTest(unittest.TestCase):
 	"""Test for DB engines using base interface"""
 
 	def testValueTransformation(self):
-		"""Check that safe<->unsafe value transformation is a bijection"""
-		vals = ['a', 'b b']
+		"""Check that unsafe->safe value transformation works"""
+		vals = ['a', 'b b', "a'b", "a''''b", "a'; DROP DATABASE;"]
 
 		for val in vals:
-			safe_val = self.db.getSafeValue(val)
-			unsafe_val = self.db.getUnsafeValue(safe_val)
-			self.failUnlessEqual(val, unsafe_val)
+			self.db.execute("CREATE TABLE test (col TEXT)")
+			self.db.execute("INSERT INTO test VALUES ({value})".
+				format(value=self.db.getSafeValue(val)))
+			res = list(self.db.execute("SELECT col FROM test"))
+			self.db.execute("DROP TABLE test")
+			self.failUnlessEqual(res, [(val,)])
 
-	def testTableNameTransformation(self):
-		"""Check that safe<->unsafe table name transformation is a bijection (almost)"""
+	def testNameTransformation(self):
+		"""Check that unsafe->safe table name transformation works"""
+		names = ['a', 'b b' , 'a "" b', 'a"; DROP DATABASE;']
+
+		for name in names:
+			self.db.execute("CREATE TABLE {table} (col TEXT)".format(table=self.db.getSafeName(name)))
+			self.db.execute("INSERT INTO {table} VALUES ('aaa')".format(table=self.db.getSafeName(name)))
+			res = list(self.db.execute("SELECT col FROM {table}".format(table=self.db.getSafeName(name))))
+			self.db.execute("DROP TABLE {table}".format(table=self.db.getSafeName(name)))
+			self.failUnlessEqual(res, [('aaa',)])
+
+	def testNameListToStr(self):
+		"""Check that name list<->str transformation is a bijection (almost)"""
 		names = [
-			(['a'], None),
-			(['a', 'b'], None),
-			(['b', None, None], None),
-			(['b', 1, 0], ['b', None, None])
+			(['a.\\.b'], None),
+			(['a\\.\\b', 'b\\\\..'], None),
+			(['b\\.\\.\\', None, None], None),
+			(['\\..\\\\.b', 1, 0], ['\\..\\\\.b', None, None])
 		]
 
 		for name, expected_res in names:

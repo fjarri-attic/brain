@@ -47,16 +47,22 @@ class Sqlite3Engine(interface.Engine):
 		return "SELECT 0 limit 0"
 
 	def getSafeValue(self, s):
+		"""Transform string value so that it could be safely used in queries"""
 		return "'" + s.replace("'", "''") + "'"
 
 	def getNameString(self, l):
 		"""Get field name from list"""
-		temp_list = [(x if isinstance(x, str) else '') for x in l]
-		return self.__FIELD_SEP.join(temp_list)
+		sep = self.__FIELD_SEP
+		temp_list = [(x.replace('\\', '\\\\').replace(sep, '\\' + sep)
+			if isinstance(x, str) else '') for x in l]
+		return (sep + sep).join(temp_list)
 
 	def getNameList(self, s):
 		"""Get field name list from string"""
-		return [(x if x != '' else None) for x in s.split(self.__FIELD_SEP)]
+		sep = self.__FIELD_SEP
+		l = s.split(sep + sep)
+		return [(x.replace('\\' + sep, sep).replace('\\\\', '\\') if x != '' else None) for x in l]
 
 	def getSafeName(self, s):
+		"""Transform string value so that it could be safely used as table name"""
 		return '"' + s.replace('"', '""') + '"'
