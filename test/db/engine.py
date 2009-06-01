@@ -62,19 +62,14 @@ class EngineTest(unittest.TestCase):
 			self.failUnlessEqual(expected_res, name_list)
 
 	def testExecuteWithoutParameters(self):
-		"""Test that execute() method works with missing parameters"""
+		"""Test execute() method on simple queries"""
 		self.db.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
 		self.db.execute("INSERT INTO ttt VALUES ('a', 'b')")
-
-	def testExecuteWithParameters(self):
-		"""Test that execute() method works with parameters list"""
-		self.db.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
-		self.db.execute("INSERT INTO ttt VALUES (?, ?)", ('a', 'b'))
 
 	def testExecuteReturnsList(self):
 		"""Test that execute() method returns list and not some specific class"""
 		self.db.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
-		self.db.execute("INSERT INTO ttt VALUES (?, ?)", ('a', 'b'))
+		self.db.execute("INSERT INTO ttt VALUES ('a', 'b')")
 		res = self.db.execute("SELECT * FROM ttt")
 		self.failUnless(isinstance(res, list))
 		self.failUnlessEqual(res, [('a', 'b')])

@@ -25,11 +25,8 @@ class Sqlite3Engine(interface.Engine):
 		r = re.compile(expr)
 		return r.search(item) is not None
 
-	def execute(self, sql_str, params=None):
-		if params:
-			return list(self.__conn.execute(sql_str, params))
-		else:
-			return list(self.__conn.execute(sql_str))
+	def execute(self, sql_str):
+		return list(self.__conn.execute(sql_str))
 
 	def tableExists(self, name):
 		res = list(self.__conn.execute("SELECT * FROM sqlite_master WHERE type='table' AND name={name}"
