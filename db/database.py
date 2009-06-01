@@ -115,6 +115,7 @@ class InternalField:
 		return str(self)
 
 class StructureLayer:
+	"""Class which is connected to DB engine and incapsulates all SQL queries"""
 
 	__ID_TABLE = 'id' # name of table with object specifications
 	__ID_COLUMN = 'id' # name of column with object id in all tables
@@ -122,9 +123,12 @@ class StructureLayer:
 
 	def __init__(self, engine):
 		self.engine = engine
+
+		# memorize string with specification table name
 		self.__id_table = self.engine.getSafeName(
-			self.engine.getNameString([self.__ID_TABLE])
-		)
+			self.engine.getNameString([self.__ID_TABLE]))
+
+		# create specification table
 		self.__createSpecificationTable()
 
 	#
@@ -132,34 +136,37 @@ class StructureLayer:
 	#
 
 	def __createSpecificationTable(self):
+		"""Create table (id, field) for storing information about objects' field names"""
 		self.engine.execute("CREATE table IF NOT EXISTS {id_table} ({id_column} TEXT, {field_column} TEXT)"
 			.format(id_table=self.__id_table, id_column=self.__ID_COLUMN,
 			field_column=self.__FIELD_COLUMN))
 
-	def __createSpecification(self, id, fields):
-		for field in fields:
-			self.__updateSpecification(id, field)
-
 	def __deleteSpecification(self, id):
+		"""Delete all information about object from specification table"""
 		self.engine.execute("DELETE FROM {id_table} WHERE {id_column}={id}"
 			.format(id_table=self.__id_table, id_column=self.__ID_COLUMN, id=id))
 
 	def __updateSpecification(self, id, field):
+		"""If information about given field does not exist in specification table, add it"""
 
+		# Check if field exists in specification
 		l = self.engine.execute("SELECT field FROM {id_table} WHERE {id_column}={id} AND {field_column}={field_name}"
 			.format(id_table=self.__id_table, id_column=self.__ID_COLUMN, id=id,
 			field_column=self.__FIELD_COLUMN, field_name=field.name_as_value))
 
 		if len(l) == 0:
+			# Add field to specification
 			self.engine.execute("INSERT INTO {id_table} VALUES ({id}, {field_name})"
 				.format(id_table=self.__id_table, id=id, field_name=field.name_as_value))
 
 	def getFieldsList(self, id, field=None):
+		"""Get list of fields for given object"""
 
+		# If field is given, return only fields, which contain its name in the beginning
 		regexp_cond = ((" AND {field_column} REGEXP {regexp}") if field != None else "")
-
 		regexp_val = (self.engine.getSafeValue("^" + field.name_str) if field != None else None)
 
+		# Get list of fields
 		l = self.engine.execute(("SELECT {field_column} FROM {id_table} WHERE {id_column}={id}" + regexp_cond)
 			.format(id_table=self.__id_table, id=id, regexp=regexp_val,
 			id_column=self.__ID_COLUMN, field_column=self.__FIELD_COLUMN))
@@ -167,6 +174,10 @@ class StructureLayer:
 		return [InternalField.fromNameStr(self.engine, x[0]) for x in l]
 
 	def objectExists(self, id):
+		"""Check if object exists in database"""
+
+		# We need just check if there is at least one row with its id
+		# in specification table
 		l = self.engine.execute("SELECT {field_column} FROM {id_table} WHERE {id_column}={id}"
 			.format(id_table=self.__id_table, id=id,
 			id_column=self.__ID_COLUMN, field_column=self.__FIELD_COLUMN))
@@ -177,16 +188,22 @@ class StructureLayer:
 	#
 
 	def getFieldValue(self, id, field):
+		"""Read value of given field(s)"""
 
+		# Get field values
+		# If field is a mask (i.e., contains Nones), there will be more than one result
 		l = self.engine.execute("SELECT value{columns_query} FROM {field_name} WHERE id={id}{columns_condition}"
 			.format(columns_query=field.columns_query, field_name=field.name_as_table,
 			id=id, columns_condition=field.columns_condition))
 
+		# Convert results to list of InternalFields
 		res = []
-
 		for elem in l:
 			f = InternalField(self.engine, field.name, elem[0])
 
+			# If field is a mask, there are list indexes in query result
+			# We should fill field's Nones with them
+			# FIXME: hide this in InternalField
 			counter = 1
 			for col in field.undefined_positions:
 				f.name[col] = elem[counter]
@@ -194,33 +211,44 @@ class StructureLayer:
 
 			res.append(f)
 
-		if len(res) > 1:
-			return res
-		elif len(l) == 1:
+		if len(res) > 0:
 			return res
 		else:
 			return None
 
 	def __setFieldValue(self, id, field):
+		"""Set value of given field"""
+
+		# Create field table if it does not exist yet
 		self.__assureFieldTableExists(field)
 
+		# FIXME: check if UPDATE works
+		# Delete old value
 		self.engine.execute("DELETE FROM {field_name} WHERE id={id} {delete_condition}"
 			.format(field_name=field.name_as_table, id=id, delete_condition=field.columns_condition))
+
+		# Insert new value
 		self.engine.execute("INSERT INTO {field_name} VALUES ({id}, '{type}', {value}{columns_values})"
 			.format(field_name=field.name_as_table, id=id, type=field.type,
 			value=field.safe_value, columns_values=field.columns_values))
 
 	def deleteField(self, id, field):
+		"""Delete given field(s)"""
 
 		# check if table exists
 		if not self.engine.tableExists(field.name_str):
 			return
 
-		# if we deleted something from list, we should re-enumerate list elements
+		# Check if we are:
+		# 1) deleting fields from list
+		# 2) not deleting the whole leaf list
+		# FIXME: hide this in InternalField
 		field_cols = list(filter(lambda x: not isinstance(x, str), field.name))
 		if len(field_cols) > 0 and field_cols[-1] != None:
+			# if we deleted something from list, we should re-enumerate list elements
 			self.reenumerate(id, field, -1)
 		else:
+			# FIXME: these actions are pretty identical to what is done in reenumerate()
 			# delete value
 			self.engine.execute("DELETE FROM {field_name} WHERE id={id}{delete_condition}"
 				.format(field_name=field.name_as_table, id=id, delete_condition=field.columns_condition))
@@ -230,15 +258,22 @@ class StructureLayer:
 				self.engine.deleteTable(field.name_str)
 
 	def __assureFieldTableExists(self, field):
+		"""Create table for storing values of this field if it does not exist yet"""
+
+		# Compose columns list
+		# FIXME: hide this in InternalField
 		values_str = "id TEXT, type TEXT, value TEXT" + field.creation_str
 
+		# Create table
 		self.engine.execute("CREATE TABLE IF NOT EXISTS {field_name} ({values_str})"
 			.format(field_name=field.name_as_table, values_str=values_str))
 
 	def createObject(self, id, fields):
+		"""Create new object with given fields"""
 
 		# create object header
-		self.__createSpecification(id, fields)
+		for field in fields:
+			self.__updateSpecification(id, field)
 
 		# update field tables
 		for field in fields:
@@ -246,6 +281,7 @@ class StructureLayer:
 			self.__setFieldValue(id, field)
 
 	def deleteObject(self, id):
+		"""Delete object with given ID"""
 
 		fields = self.getFieldsList(id)
 
@@ -256,56 +292,65 @@ class StructureLayer:
 		self.__deleteSpecification(id)
 
 	def objectHasField(self, id, field):
+		"""Check if object has some field"""
 		existing_fields = self.getFieldsList(id)
 		existing_names = [existing_field.name for existing_field in existing_fields]
 		return field.clean_name in existing_names
 
 	def modifyObject(self, id, fields):
+		"""Update object using given list of fields"""
 
-		# for each field, check if it already exists
+		# for each field, check if it already exists and update specification if necessary
 		for field in fields:
-			if self.objectHasField(id, field):
-				self.__setFieldValue(id, field)
-			else:
+			if not self.objectHasField(id, field):
 				self.__updateSpecification(id, field)
-				self.__setFieldValue(id, field)
+
+			self.__setFieldValue(id, field)
 
 	def searchForObjects(self, condition):
+		"""Search for all objects using given search condition"""
+
 		def buildSqlQuery(condition):
+			"""Recursive function to transform condition into SQL query"""
 
 			if not condition.leaf:
+				# child conditions
+				cond1 = buildSqlQuery(condition.operand1)
+				cond2 = buildSqlQuery(condition.operand2)
+
+				# 'And' corresponds to the intersection of sets
 				if isinstance(condition.operator, interface.SearchRequest.And):
-					return ("SELECT * FROM ({cond1}) INTERSECT SELECT * FROM ({cond2})")\
-						.format(cond1=buildSqlQuery(condition.operand1),\
-						cond2=buildSqlQuery(condition.operand2))
+					return ("SELECT * FROM ({cond1}) INTERSECT SELECT * FROM ({cond2})"
+						.format(cond1=cond1, cond2=cond2))
+				# 'Or' corresponds to the union of sets
 				elif isinstance(condition.operator, interface.SearchRequest.Or):
-					return ("SELECT * FROM ({cond1}) UNION SELECT * FROM ({cond2})")\
-						.format(cond1=buildSqlQuery(condition.operand1),\
-						cond2=buildSqlQuery(condition.operand2))
+					return ("SELECT * FROM ({cond1}) UNION SELECT * FROM ({cond2})"
+						.format(cond1=cond1, cond2=cond2))
 				else:
 					raise Exception("Operator unsupported: " + str(condition.operator))
 				return
 
+			# Leaf condition
+			op1 = condition.operand1 # it must be Field
+			op2 = condition.operand2 # it must be some value
+
 			safe_name = condition.operand1.name_as_table
 
-			if not self.engine.tableExists(condition.operand1.name_str):
+			# If table with given field does not exist, just return empty query
+			if not self.engine.tableExists(op1.name_str):
 				return self.engine.getEmptyCondition()
 
-			if condition.invert:
-				not_str = " NOT "
-			else:
-				not_str = " "
+			not_str = " NOT " if condition.invert else " "
+			op2_val = self.engine.getSafeValue(op2)
 
 			if isinstance(condition.operator, interface.SearchRequest.Eq):
 				result = "SELECT DISTINCT id FROM {field_name} WHERE{not_str}value={val}{columns_condition}"\
 					.format(field_name=safe_name, not_str=not_str,
-					val=self.engine.getSafeValue(condition.operand2),
-					columns_condition=condition.operand1.columns_condition)
+					val=op2_val, columns_condition=op1.columns_condition)
 			elif isinstance(condition.operator, interface.SearchRequest.Regexp):
 				result = "SELECT DISTINCT id FROM {field_name} WHERE{not_str}value REGEXP {val}{columns_condition}"\
 					.format(field_name=safe_name, not_str=not_str,
-					val=self.engine.getSafeValue(condition.operand2),
-					columns_condition=condition.operand1.columns_condition)
+					val=op2_val, columns_condition=op1.columns_condition)
 			else:
 				raise Exception("Comparison unsupported: " + str(condition.operator))
 
@@ -322,9 +367,13 @@ class StructureLayer:
 		return list_res
 
 	def getMaxNumber(self, id, field):
+		"""Get maximum value of list index for the undefined column of the field"""
 
 		# we assume here that all columns in field are defined except for the last one
+		
+		# FIXME: hide this into InternalField
 		query = field.columns_query[2:] # removing first ','
+		
 		l = self.engine.execute("SELECT MAX ({query}) FROM {field_name} WHERE id={id}{columns_condition}"
 			.format(query=query, field_name=field.name_as_table, id=id,
 			columns_condition=field.columns_condition))
@@ -333,11 +382,15 @@ class StructureLayer:
 		return res
 
 	def reenumerate(self, id, target_field, shift):
+		"""Reenumerate list elements before insertion or deletion"""
+
+		# Get the name and the value of last numerical column
 		field_cols = list(filter(lambda x: not isinstance(x, str), target_field.name))
 		col_num = len(field_cols) - 1
 		col_name = "c" + str(col_num)
 		col_val = field_cols[col_num]
 
+		# Get all child field names
 		fields_to_reenum = self.getFieldsList(id, target_field)
 		for fld in fields_to_reenum:
 
@@ -349,10 +402,12 @@ class StructureLayer:
 				if self.engine.tableIsEmpty(fld.name_str):
 					self.engine.deleteTable(fld.name_str)
 
+			# shift numbers of all elements in list 
 			self.engine.execute("UPDATE {field_name} SET {col_name}={col_name}+{shift} WHERE id={id} AND {col_name}>={col_val}"
 				.format(field_name=fld.name_as_table, col_name=col_name, shift=shift, id=id, col_val=col_val))
 
 class SimpleDatabase(interface.Database):
+	"""Class, representing OODB over SQL"""
 
 	def __init__(self, path, engine_class):
 		if not issubclass(engine_class, interface.Engine):
@@ -361,6 +416,7 @@ class SimpleDatabase(interface.Database):
 		self.structure = StructureLayer(self.engine)
 
 	def processRequest(self, request):
+		"""Process given request and return results"""
 
 		def convertFields(fields, engine):
 			if fields != None:
