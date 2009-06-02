@@ -19,8 +19,7 @@ class InternalField:
 
 	@classmethod
 	def fromNameStr(cls, engine, name_str, value=None):
-		res = cls(engine, [], value)
-		res.name_str = name_str
+		res = cls(engine, engine.getNameList(name_str)[1:], value)
 		return res
 
 	def __get_safe_value(self):
@@ -31,10 +30,7 @@ class InternalField:
 	def __get_name_str(self):
 		return self.__engine.getNameString(['field'] + self.name)
 
-	def __set_name_str(self, val):
-		self.name = self.__engine.getNameList(val)[1:]
-
-	name_str = property(__get_name_str, __set_name_str)
+	name_str = property(__get_name_str)
 
 	def __get_name_as_table(self):
 		return self.__engine.getSafeName(self.name_str)
