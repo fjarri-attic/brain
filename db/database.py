@@ -370,10 +370,10 @@ class StructureLayer:
 		"""Get maximum value of list index for the undefined column of the field"""
 
 		# we assume here that all columns in field are defined except for the last one
-		
+
 		# FIXME: hide this into InternalField
 		query = field.columns_query[2:] # removing first ','
-		
+
 		l = self.engine.execute("SELECT MAX ({query}) FROM {field_name} WHERE id={id}{columns_condition}"
 			.format(query=query, field_name=field.name_as_table, id=id,
 			columns_condition=field.columns_condition))
@@ -402,7 +402,7 @@ class StructureLayer:
 				if self.engine.tableIsEmpty(fld.name_str):
 					self.engine.deleteTable(fld.name_str)
 
-			# shift numbers of all elements in list 
+			# shift numbers of all elements in list
 			self.engine.execute("UPDATE {field_name} SET {col_name}={col_name}+{shift} WHERE id={id} AND {col_name}>={col_val}"
 				.format(field_name=fld.name_as_table, col_name=col_name, shift=shift, id=id, col_val=col_val))
 
@@ -419,12 +419,14 @@ class SimpleDatabase(interface.Database):
 		"""Process given request and return results"""
 
 		def convertFields(fields, engine):
+			"""Convert given fields list to InternalFields list"""
 			if fields != None:
 				return [InternalField(engine, x.name, x.value) for x in fields]
 			else:
 				return None
 
 		def convertCondition(condition, engine):
+			"""Convert fields in given condition to InternalFields"""
 			if condition.leaf:
 				condition.operand1 = InternalField(engine,
 					condition.operand1.name, condition.operand1.value)
@@ -432,26 +434,31 @@ class SimpleDatabase(interface.Database):
 				convertCondition(condition.operand1, engine)
 				convertCondition(condition.operand2, engine)
 
+		# ModifyRequest
 		if isinstance(request, interface.ModifyRequest):
 			self.__processModifyRequest(
 				request.id,
 				convertFields(request.fields, self.engine))
 
+		# DeleteRequest
 		elif isinstance(request, interface.DeleteRequest):
 			self.__processDeleteRequest(
 				request.id,
 				convertFields(request.fields, self.engine))
 
+		# SearchRequest
 		elif isinstance(request, interface.SearchRequest):
 			condition_copy = copy.deepcopy(request.condition)
 			convertCondition(condition_copy, self.engine)
 			return self.__processSearchRequest(condition_copy)
 
+		# ReadRequest
 		elif isinstance(request, interface.ReadRequest):
 			return self.__processReadRequest(
 				request.id,
 				convertFields(request.fields, self.engine))
 
+		# InsertRequest
 		elif isinstance(request, interface.InsertRequest):
 			self.__processInsertRequest(
 				request.id,
@@ -464,6 +471,7 @@ class SimpleDatabase(interface.Database):
 	def __processInsertRequest(self, id, target_field, fields, one_position):
 
 		def enumerate(fields_list, col_num, starting_num, one_position=False):
+			"""Enumerate given column in list of fields"""
 			counter = starting_num
 			for field in fields_list:
 				field.name[col_num] = counter
@@ -508,11 +516,16 @@ class SimpleDatabase(interface.Database):
 			self.structure.deleteObject(id)
 
 	def __processReadRequest(self, id, fields):
+
 		if fields:
+			# if list of fields is given, read those which are present in object
+			# FIXME: hide this in Structure layer
 			fields_to_read = filter(lambda x: self.structure.objectHasField(id, x), fields)
 		else:
+			# otherwise, read just all fields
 			fields_to_read = self.structure.getFieldsList(id)
 
+		# Fixme: maybe it is worth making a separate function in Structure layer
 		results = [self.structure.getFieldValue(id, field) for field in fields_to_read]
 
 		result_list = []
@@ -524,6 +537,8 @@ class SimpleDatabase(interface.Database):
 	def __processSearchRequest(self, condition):
 
 		def propagateInversion(condition):
+			"""Propagate inversion flags to the leafs of condition tree"""
+
 			if not condition.leaf:
 				if condition.invert:
 
