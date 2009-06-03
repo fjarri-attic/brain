@@ -149,6 +149,12 @@ class InsertRequest(_BaseRequest):
 		if target_field.name[-1] != None and not isinstance(target_field.name[-1], int):
 			raise FormatError("Last element of target field name should be None or integer")
 
+		# all fields to insert should be fully determined
+		for field in fields:
+			for elem in field.name:
+				if elem == None:
+					raise FormatError("Each of fields to insert should be determined")
+
 		# Initialize fields
 		_BaseRequest.__init__(self, id, fields)
 		self.target_field = copy.deepcopy(target_field)
