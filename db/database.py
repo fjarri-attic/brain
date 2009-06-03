@@ -132,6 +132,8 @@ class StructureLayer:
 			.format(id_table=self.__id_table, id_column=self.__ID_COLUMN,
 			field_column=self.__FIELD_COLUMN))
 
+		self.engine.execute("CREATE table IF NOT EXISTS listsizes (id TEXT, field TEXT, max INTEGER)")
+
 	def __deleteSpecification(self, id):
 		"""Delete all information about object from specification table"""
 		self.engine.execute("DELETE FROM {id_table} WHERE {id_column}={id}"
@@ -203,11 +205,31 @@ class StructureLayer:
 		else:
 			return None
 
+	def __updateListSize(self, id, field, val):
+		max = self.getMaxNumber(id, field)
+		if max != None:
+			if max > val:
+				return
+
+			self.engine.execute("DELETE FROM listsizes WHERE id={id} AND field={field_name}"
+				.format(id=id, field_name=field.name_as_value))
+
+		self.engine.execute("INSERT INTO listsizes VALUES ({id}, {field_name}, {val})"
+			.format(id=id, field_name=field.name_as_value, val=val))
+
 	def __setFieldValue(self, id, field):
 		"""Set value of given field"""
 
 		# Create field table if it does not exist yet
 		self.__assureFieldTableExists(field)
+
+		# Create auxiliary list tables
+		name_copy = field.name[:]
+		while len(name_copy) > 0:
+			if isinstance(name_copy[-1], int):
+				f = InternalField(self.engine, name_copy)
+				self.__updateListSize(id, f, name_copy[-1])
+			name_copy.pop()
 
 		# Delete old value
 		self.engine.execute("DELETE FROM {field_name} WHERE id={id} {delete_condition}"
@@ -358,14 +380,19 @@ class StructureLayer:
 		# we assume here that all columns in field are defined except for the last one
 
 		# FIXME: hide this into InternalField
-		query = field.columns_query[2:] # removing first ','
+		#query = field.columns_query[2:] # removing first ','
 
-		l = self.engine.execute("SELECT MAX ({query}) FROM {field_name} WHERE id={id}{columns_condition}"
-			.format(query=query, field_name=field.name_as_table, id=id,
-			columns_condition=field.columns_condition))
+		l = self.engine.execute("SELECT max FROM listsizes WHERE id={id} AND field={field_name}"
+			.format(id=id, field_name=field.name_as_value))
 
-		res = l[0][0]
-		return res
+		#l = self.engine.execute("SELECT MAX ({query}) FROM {field_name} WHERE id={id}{columns_condition}"
+		#	.format(query=query, field_name=field.name_as_table, id=id,
+		#	columns_condition=field.columns_condition))
+
+		if len(l) > 0:
+			return l[0][0]
+		else:
+			return None
 
 	def reenumerate(self, id, target_field, shift):
 		"""Reenumerate list elements before insertion or deletion"""
@@ -379,6 +406,9 @@ class StructureLayer:
 		# Get all child field names
 		fields_to_reenum = self.getFieldsList(id, target_field)
 		for fld in fields_to_reenum:
+
+			if not self.engine.tableExists(fld.name_str):
+				continue
 
 			# if shift is negative, we should delete elements first
 			if shift < 0:
@@ -446,6 +476,11 @@ class SimpleDatabase(interface.Database):
 
 		# InsertRequest
 		elif isinstance(request, interface.InsertRequest):
+
+			# fields to insert have relative names
+			for field in request.fields:
+				field.name = request.target_field.name + field.name
+
 			self.__processInsertRequest(
 				request.id,
 				InternalField(self.engine, request.target_field.name, request.target_field.value),
@@ -469,12 +504,16 @@ class SimpleDatabase(interface.Database):
 
 		target_col = len(target_field.name) - 1 # last column in name of target field
 
-		if not self.structure.objectHasField(id, target_field):
+		max = self.structure.getMaxNumber(id, target_field)
+		if max == None:
+		# list does not exist yet
 			enumerate(fields, target_col, 0, one_position)
 		elif target_field.name[target_col] == None:
-			starting_num = self.structure.getMaxNumber(id, target_field) + 1
+		# list exists and we are inserting elements to the end
+			starting_num = max + 1
 			enumerate(fields, target_col, starting_num, one_position)
 		else:
+		# list exists and we are inserting elements to the beginning or to the middle
 			self.structure.reenumerate(id, target_field,
 				(1 if one_position else len(fields)))
 			enumerate(fields, target_col, target_field.name[target_col], one_position)
