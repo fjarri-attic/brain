@@ -67,15 +67,11 @@ class InternalField:
 
 		return (' AND '.join([''] + l) if len(l) > 0 else '')
 
-	def __get_undefined_positions(self):
-		counter = 0
-		l = []
-		for elem in self.name:
-			if elem == None:
-				l.append(counter)
-			counter += 1
+	def fillUndefinedPositions(self, vals):
 
-		return l
+		vals_copy = list(vals)
+		func = lambda x: vals_copy.pop(0) if x == None else x
+		self.name = list(map(func, self.name))
 
 	def __get_creation_str(self):
 		counter = 0
@@ -98,7 +94,6 @@ class InternalField:
 	clean_name = property(__get_clean_name)
 	columns_query = property(__get_columns_query)
 	columns_condition = property(__get_columns_condition)
-	undefined_positions = property(__get_undefined_positions)
 	creation_str = property(__get_creation_str)
 	columns_values = property(__get_columns_values)
 
@@ -199,11 +194,7 @@ class StructureLayer:
 
 			# If field is a mask, there are list indexes in query result
 			# We should fill field's Nones with them
-			# FIXME: hide this in InternalField
-			counter = 1
-			for col in field.undefined_positions:
-				f.name[col] = elem[counter]
-				counter += 1
+			f.fillUndefinedPositions(elem[1:])
 
 			res.append(f)
 
@@ -218,7 +209,6 @@ class StructureLayer:
 		# Create field table if it does not exist yet
 		self.__assureFieldTableExists(field)
 
-		# FIXME: check if UPDATE works
 		# Delete old value
 		self.engine.execute("DELETE FROM {field_name} WHERE id={id} {delete_condition}"
 			.format(field_name=field.name_as_table, id=id, delete_condition=field.columns_condition))
