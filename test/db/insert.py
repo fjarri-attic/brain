@@ -20,8 +20,8 @@ class Insert(TestRequest):
 		res = self.db.processRequest(InsertRequest('1',
 			Field(['tracks', 1]),
 			[
-				Field(['tracks', None], 'Track 4'),
-				Field(['tracks', None], 'Track 5')
+				Field([], 'Track 4'),
+				Field([], 'Track 5')
 			]
 		))
 
@@ -41,8 +41,8 @@ class Insert(TestRequest):
 		res = self.db.processRequest(InsertRequest('1',
 			Field(['tracks', 0]),
 			[
-				Field(['tracks', None], 'Track 4'),
-				Field(['tracks', None], 'Track 5')
+				Field([], 'Track 4'),
+				Field([], 'Track 5')
 			]
 		))
 
@@ -62,8 +62,8 @@ class Insert(TestRequest):
 		res = self.db.processRequest(InsertRequest('1',
 			Field(['tracks', None]),
 			[
-				Field(['tracks', None], 'Track 4'),
-				Field(['tracks', None], 'Track 5')
+				Field([], 'Track 4'),
+				Field([], 'Track 5')
 			]
 		))
 
@@ -83,18 +83,18 @@ class Insert(TestRequest):
 		res = self.db.processRequest(InsertRequest('2',
 			Field(['tracks', 1]),
 			[
-				Field(['tracks', None], 'Track 4'),
-				Field(['tracks', None], 'Track 5')
+				Field(['Name'], 'Track 4 name'),
+				Field(['Name'], 'Track 5 name')
 			]
 		))
 
-		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None])]))
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Name'])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0], 'Track 11'),
-			Field(['tracks', 1], 'Track 4'),
-			Field(['tracks', 2], 'Track 5'),
-			Field(['tracks', 3], 'Track 2'),
-			Field(['tracks', 4], 'Track 3'),
+			Field(['tracks', 0, 'Name'], 'Track 1 name'),
+			Field(['tracks', 1, 'Name'], 'Track 4 name'),
+			Field(['tracks', 2, 'Name'], 'Track 5 name'),
+			Field(['tracks', 3, 'Name'], 'Track 2 name'),
+			Field(['tracks', 4, 'Name'], 'Track 3 name'),
 			])
 
 		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Authors', None])]))
@@ -112,18 +112,18 @@ class Insert(TestRequest):
 		res = self.db.processRequest(InsertRequest('2',
 			Field(['tracks', 0]),
 			[
-				Field(['tracks', None], 'Track 4'),
-				Field(['tracks', None], 'Track 5')
+				Field(['Name'], 'Track 4 name'),
+				Field(['Name'], 'Track 5 name')
 			]
 		))
 
-		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None])]))
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Name'])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0], 'Track 4'),
-			Field(['tracks', 1], 'Track 5'),
-			Field(['tracks', 2], 'Track 11'),
-			Field(['tracks', 3], 'Track 2'),
-			Field(['tracks', 4], 'Track 3'),
+			Field(['tracks', 0, 'Name'], 'Track 4 name'),
+			Field(['tracks', 1, 'Name'], 'Track 5 name'),
+			Field(['tracks', 2, 'Name'], 'Track 1 name'),
+			Field(['tracks', 3, 'Name'], 'Track 2 name'),
+			Field(['tracks', 4, 'Name'], 'Track 3 name'),
 			])
 
 		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Authors', None])]))
@@ -141,18 +141,18 @@ class Insert(TestRequest):
 		res = self.db.processRequest(InsertRequest('2',
 			Field(['tracks', None]),
 			[
-				Field(['tracks', None], 'Track 4'),
-				Field(['tracks', None], 'Track 5')
+				Field(['Name'], 'Track 4 name'),
+				Field(['Name'], 'Track 5 name')
 			]
 		))
 
-		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None])]))
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Name'])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0], 'Track 11'),
-			Field(['tracks', 1], 'Track 2'),
-			Field(['tracks', 2], 'Track 3'),
-			Field(['tracks', 3], 'Track 4'),
-			Field(['tracks', 4], 'Track 5'),
+			Field(['tracks', 0, 'Name'], 'Track 1 name'),
+			Field(['tracks', 1, 'Name'], 'Track 2 name'),
+			Field(['tracks', 2, 'Name'], 'Track 3 name'),
+			Field(['tracks', 3, 'Name'], 'Track 4 name'),
+			Field(['tracks', 4, 'Name'], 'Track 5 name'),
 			])
 
 		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Authors', None])]))
@@ -170,19 +170,17 @@ class Insert(TestRequest):
 		res = self.db.processRequest(InsertRequest('2',
 			Field(['tracks', 0]),
 			[
-				Field(['tracks', 0], 'Track 0'),
-				Field(['tracks', 0, 'Authors', 0], 'Earl'),
-				Field(['tracks', 0, 'Authors', 1], 'Fred')
+				Field(['Authors', 0], 'Earl'),
+				Field(['Authors', 1], 'Fred')
 			],
 			True
 		))
 
-		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None])]))
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Name'])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0], 'Track 0'),
-			Field(['tracks', 1], 'Track 11'),
-			Field(['tracks', 2], 'Track 2'),
-			Field(['tracks', 3], 'Track 3'),
+			Field(['tracks', 1], 'Track 1 name'),
+			Field(['tracks', 2], 'Track 2 name'),
+			Field(['tracks', 3], 'Track 3 name'),
 		])
 
 		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Authors', None])]))
@@ -202,19 +200,17 @@ class Insert(TestRequest):
 		res = self.db.processRequest(InsertRequest('2',
 			Field(['tracks', None]),
 			[
-				Field(['tracks', 0], 'Track 0'),
-				Field(['tracks', 0, 'Authors', 0], 'Earl'),
-				Field(['tracks', 0, 'Authors', 1], 'Fred')
+				Field(['Authors', 0], 'Earl'),
+				Field(['Authors', 1], 'Fred')
 			],
 			True
 		))
 
-		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None])]))
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Name'])]))
 		self.checkRequestResult(res, [
-			Field(['tracks', 0], 'Track 11'),
-			Field(['tracks', 1], 'Track 2'),
-			Field(['tracks', 2], 'Track 3'),
-			Field(['tracks', 3], 'Track 0'),
+			Field(['tracks', 0], 'Track 1 name'),
+			Field(['tracks', 1], 'Track 2 name'),
+			Field(['tracks', 2], 'Track 3 name')
 		])
 
 		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Authors', None])]))

@@ -66,29 +66,24 @@ class TestRequest(unittest.TestCase):
 	def prepareStandNestedList(self):
 		"""Prepare DB with several objects which contain nested lists"""
 		self.db.processRequest(ModifyRequest('1', [
-			Field(['tracks', 0], value='Track 1'),
 			Field(['tracks', 0, 'Name'], value='Track 1 name'),
 			Field(['tracks', 0, 'Length'], value='Track 1 length'),
 			Field(['tracks', 0, 'Authors', 0], value='Alex'),
 			Field(['tracks', 0, 'Authors', 1], value='Bob'),
 
-			Field(['tracks', 1], value='Track 2'),
 			Field(['tracks', 1, 'Name'], value='Track 2 name'),
 			Field(['tracks', 1, 'Authors', 0], value='Carl I')
 			]))
 
 		self.db.processRequest(ModifyRequest('2', [
-			Field(['tracks', 0], value='Track 11'),
 			Field(['tracks', 0, 'Name'], value='Track 1 name'),
 			Field(['tracks', 0, 'Length'], value='Track 1 length'),
 			Field(['tracks', 0, 'Authors', 0], value='Carl II'),
 			Field(['tracks', 0, 'Authors', 1], value='Dan'),
 
-			Field(['tracks', 1], value='Track 2'),
 			Field(['tracks', 1, 'Name'], value='Track 2 name'),
 			Field(['tracks', 1, 'Authors', 0], value='Alex'),
 
-			Field(['tracks', 2], value='Track 3'),
 			Field(['tracks', 2, 'Name'], value='Track 3 name'),
 			Field(['tracks', 2, 'Authors', 0], value='Rob'),
 			]))

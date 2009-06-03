@@ -133,18 +133,19 @@ class Delete(TestRequest):
 			Field(['tracks', 1])
 		]))
 
-		# Check that deletion really occurred
-		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None])]))
-		self.checkRequestResult(res, [
-			Field(['tracks', 0], 'Track 11'),
-			Field(['tracks', 1], 'Track 3')
-		])
-
-		# Check that reenumeration occurred
+		# Check that deletion and reenumeration occurred
 		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Name'])]))
 		self.checkRequestResult(res, [
 			Field(['tracks', 0, 'Name'], 'Track 1 name'),
 			Field(['tracks', 1, 'Name'], 'Track 3 name')
+		])
+
+		# Check that nested list is intact and reenumeration occurred in it too
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Authors', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0, 'Authors', 0], 'Carl II'),
+			Field(['tracks', 0, 'Authors', 1], 'Dan'),
+			Field(['tracks', 1, 'Authors', 0], 'Rob')
 		])
 
 	def testNestedListFromBeginning(self):
@@ -155,18 +156,18 @@ class Delete(TestRequest):
 			Field(['tracks', 0])
 		]))
 
-		# Check that deletion really occurred
-		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None])]))
-		self.checkRequestResult(res, [
-			Field(['tracks', 0], 'Track 2'),
-			Field(['tracks', 1], 'Track 3')
-		])
-
-		# Check that reenumeration occurred
+		# Check that deletion and reenumeration occurred
 		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Name'])]))
 		self.checkRequestResult(res, [
 			Field(['tracks', 0, 'Name'], 'Track 2 name'),
 			Field(['tracks', 1, 'Name'], 'Track 3 name')
+		])
+
+		# Check that nested list is intact and reenumeration occurred in it too
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Authors', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0, 'Authors', 0], 'Alex'),
+			Field(['tracks', 1, 'Authors', 0], 'Rob')
 		])
 
 	def testNestedListFromEnd(self):
@@ -177,18 +178,19 @@ class Delete(TestRequest):
 			Field(['tracks', 2])
 		]))
 
-		# Check that deletion really occurred
-		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None])]))
-		self.checkRequestResult(res, [
-			Field(['tracks', 0], 'Track 11'),
-			Field(['tracks', 1], 'Track 2')
-		])
-
-		# Check that reenumeration occurred
+		# Check that deletion occurred
 		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Name'])]))
 		self.checkRequestResult(res, [
 			Field(['tracks', 0, 'Name'], 'Track 1 name'),
 			Field(['tracks', 1, 'Name'], 'Track 2 name')
+		])
+
+		# Check that nested list is intact
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Authors', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0, 'Authors', 0], 'Carl II'),
+			Field(['tracks', 0, 'Authors', 1], 'Dan'),
+			Field(['tracks', 1, 'Authors', 0], 'Alex')
 		])
 
 	def testFromListByMaskLeaf(self):

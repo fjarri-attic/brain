@@ -121,6 +121,12 @@ class Format(unittest.TestCase):
 			'1', Field(['test', 1, 'aaa']),
 			[Field('test', 1)])
 
+	def testInsertRequestNotDeterminedField(self):
+		"""Test that InsertRequest requires determined fields to insert"""
+		self.failUnlessRaises(FormatError, InsertRequest,
+			'1', Field(['test', 1, 'aaa']),
+			[Field('test', None)])
+
 	# Checks for SearchRequest
 
 	def testSearchRequestProperlyFormed(self):
