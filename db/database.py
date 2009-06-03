@@ -244,8 +244,12 @@ class StructureLayer:
 		"""Delete given field(s)"""
 
 		# check if table exists
-		if not self.engine.tableExists(field.name_str):
-			return
+		if not isinstance(field.name[-1], str):
+			if self.getMaxNumber(id, field) == None:
+				return
+		else:
+			if not self.engine.tableExists(field.name_str):
+				return
 
 		# Check if we are:
 		# 1) deleting fields from list
@@ -403,24 +407,29 @@ class StructureLayer:
 		col_name = "c" + str(col_num)
 		col_val = field_cols[col_num]
 
+		full_cond = target_field.columns_condition
+		t = target_field.name[-1]
+		target_field.name[-1] = None
+		cond = target_field.columns_condition
+
 		# Get all child field names
 		fields_to_reenum = self.getFieldsList(id, target_field)
 		for fld in fields_to_reenum:
 
-			if not self.engine.tableExists(fld.name_str):
-				continue
-
 			# if shift is negative, we should delete elements first
 			if shift < 0:
-				self.engine.execute("DELETE FROM {field_name} WHERE id={id} AND {col_name}={col_val}"
-					.format(field_name=fld.name_as_table, id=id, col_name=col_name, col_val=col_val))
+				self.engine.execute("DELETE FROM {field_name} WHERE id={id}{cond}"
+					.format(field_name=fld.name_as_table, id=id, cond=full_cond))
 
 				if self.engine.tableIsEmpty(fld.name_str):
 					self.engine.deleteTable(fld.name_str)
 
 			# shift numbers of all elements in list
-			self.engine.execute("UPDATE {field_name} SET {col_name}={col_name}+{shift} WHERE id={id} AND {col_name}>={col_val}"
-				.format(field_name=fld.name_as_table, col_name=col_name, shift=shift, id=id, col_val=col_val))
+			self.engine.execute("UPDATE {field_name} SET {col_name}={col_name}+{shift} WHERE id={id}{cond} AND {col_name}>={col_val}"
+				.format(field_name=fld.name_as_table, col_name=col_name, shift=shift, id=id, col_val=col_val,
+				cond=cond))
+
+		target_field.name[-1] = t
 
 class SimpleDatabase(interface.Database):
 	"""Class, representing OODB over SQL"""
