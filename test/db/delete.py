@@ -218,5 +218,23 @@ class Delete(TestRequest):
 			Field(['tracks', 0, 'Authors', 0], 'Dan')
 		])
 
+	def testFromListKeepsNeighbors(self):
+		"""
+		Regression test for bug when deleting element from list deletes all neighbors
+		from its level of hierarchy
+		"""
+		self.prepareStandNestedList()
+
+		self.db.processRequest(DeleteRequest('2', [
+			Field(['tracks', 0, 'Authors', 0])
+		]))
+
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Authors', 0])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0, 'Authors', 0], 'Dan'),
+			Field(['tracks', 1, 'Authors', 0], 'Alex'),
+			Field(['tracks', 2, 'Authors', 0], 'Rob')
+		])
+
 def get_class():
 	return Delete
