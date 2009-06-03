@@ -186,7 +186,7 @@ class Search(TestRequest):
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 		SearchRequest.Condition(
-			Field(['tracks', None]), SearchRequest.Eq(), 'Track 11'
+			Field(['tracks', None, 'Authors', 1]), SearchRequest.Eq(), 'Bob'
 			),
 		SearchRequest.And(),
 		SearchRequest.Condition(
@@ -194,7 +194,7 @@ class Search(TestRequest):
 			)
 		)))
 
-		self.checkRequestResult(res, ['2'])
+		self.checkRequestResult(res, ['1'])
 
 def get_class():
 	return Search
