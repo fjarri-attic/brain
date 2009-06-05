@@ -106,6 +106,10 @@ class InternalField:
 		list_elems = self.getListElements()
 		return len(list_elems) > 0 and list_elems[-1] != None
 
+	def pointsToList(self):
+		"""Returns True if last name element corresponds to list"""
+		return not isinstance(self.name[-1], str)
+
 	def getLastListColumn(self):
 		"""Returns name and value of column corresponding to the last name element"""
 
@@ -273,32 +277,34 @@ class StructureLayer:
 			.format(field_name=field.name_as_table, id=id, type=field.type,
 			value=field.safe_value, columns_values=field.columns_values))
 
+	def deleteValues(self, id, field, condition=None):
+		"""Delete value of given field(s)"""
+		if condition == None:
+			condition = field.columns_condition
+
+		# delete value
+		self.engine.execute("DELETE FROM {field_name} WHERE id={id}{delete_condition}"
+			.format(field_name=field.name_as_table, id=id, delete_condition=condition))
+
+		# check if the table is empty and if it is - delete it too
+		if self.engine.tableIsEmpty(field.name_str):
+			self.engine.deleteTable(field.name_str)
+
 	def deleteField(self, id, field):
 		"""Delete given field(s)"""
 
 		# check if table exists
-		if not isinstance(field.name[-1], str):
-			if self.getMaxNumber(id, field) == None:
-				return
+		if field.pointsToList():
+			if self.getMaxNumber(id, field) == None: return
 		else:
-			if not self.engine.tableExists(field.name_str):
-				return
+			if not self.engine.tableExists(field.name_str):	return
 
-		# Check if we are:
-		# 1) deleting fields from list
-		# 2) not deleting the whole leaf list
 		if field.pointsToListElement():
-			# if we deleted something from list, we should re-enumerate list elements
+			# deletion of list element requires renumbering of other elements
 			self.renumber(id, field, -1)
 		else:
-			# FIXME: these actions are pretty identical to what is done in renumber()
-			# delete value
-			self.engine.execute("DELETE FROM {field_name} WHERE id={id}{delete_condition}"
-				.format(field_name=field.name_as_table, id=id, delete_condition=field.columns_condition))
-
-			# check if the table is empty and if it is - delete it too
-			if self.engine.tableIsEmpty(field.name_str):
-				self.engine.deleteTable(field.name_str)
+			# otherwise just delete values using given field mask
+			self.deleteValues(id, field)
 
 	def __assureFieldTableExists(self, field):
 		"""Create table for storing values of this field if it does not exist yet"""
@@ -442,12 +448,7 @@ class StructureLayer:
 
 			# if shift is negative, we should delete elements first
 			if shift < 0:
-				self.engine.execute("DELETE FROM {field_name} WHERE id={id}{cond}"
-					.format(field_name=fld.name_as_table, id=id,
-					cond=target_field.columns_condition))
-
-				if self.engine.tableIsEmpty(fld.name_str):
-					self.engine.deleteTable(fld.name_str)
+				self.deleteValues(id, fld, target_field.columns_condition)
 
 			# shift numbers of all elements in list
 			self.engine.execute("UPDATE {field_name} SET {col_name}={col_name}+{shift} WHERE id={id}{cond} AND {col_name}>={col_val}"
