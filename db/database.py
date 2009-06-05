@@ -107,10 +107,9 @@ class InternalField:
 		return len(list_elems) > 0 and list_elems[-1] != None
 
 	def getLastListColumn(self):
-		"""
-		Returns name and value of column corresponding to the last name element
-		This function makes sense only if self.pointsToListElement() is True
-		"""
+		"""Returns name and value of column corresponding to the last name element"""
+
+		# This function makes sense only if self.pointsToListElement() is True
 		if not self.pointsToListElement():
 			return None, None
 
@@ -119,6 +118,17 @@ class InternalField:
 		col_name = "c" + str(col_num)
 		col_val = list_elems[col_num]
 		return col_name, col_val
+
+	def getReenumerateCondition(self):
+		"""Returns condition for reenumeration after deletion of this element"""
+
+		# This function makes sense only if self.pointsToListElement() is True
+		if not self.pointsToListElement():
+			return None, None
+
+		self_copy = InternalField(self.__engine, self.name)
+		self_copy.name[-1] = None
+		return self_copy.columns_condition
 
 	def __str__(self):
 		return "IField ('" + str(self.name) + "'" + \
@@ -424,11 +434,7 @@ class StructureLayer:
 
 		# Get the name and the value of last numerical column
 		col_name, col_val = target_field.getLastListColumn()
-
-		full_cond = target_field.columns_condition
-		t = target_field.name[-1]
-		target_field.name[-1] = None
-		cond = target_field.columns_condition
+		cond = target_field.getReenumerateCondition()
 
 		# Get all child field names
 		fields_to_reenum = self.getFieldsList(id, target_field)
@@ -437,7 +443,8 @@ class StructureLayer:
 			# if shift is negative, we should delete elements first
 			if shift < 0:
 				self.engine.execute("DELETE FROM {field_name} WHERE id={id}{cond}"
-					.format(field_name=fld.name_as_table, id=id, cond=full_cond))
+					.format(field_name=fld.name_as_table, id=id,
+					cond=target_field.columns_condition))
 
 				if self.engine.tableIsEmpty(fld.name_str):
 					self.engine.deleteTable(fld.name_str)
@@ -446,8 +453,6 @@ class StructureLayer:
 			self.engine.execute("UPDATE {field_name} SET {col_name}={col_name}+{shift} WHERE id={id}{cond} AND {col_name}>={col_val}"
 				.format(field_name=fld.name_as_table, col_name=col_name, shift=shift, id=id, col_val=col_val,
 				cond=cond))
-
-		target_field.name[-1] = t
 
 class SimpleDatabase(interface.Database):
 	"""Class, representing OODB over SQL"""
