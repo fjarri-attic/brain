@@ -100,12 +100,26 @@ class InternalField:
 	def getListElements(self):
 		"""Returns list of non-string name elements (i.e. corresponding to lists)"""
 		return list(filter(lambda x: not isinstance(x, str), self.name))
-	
+
 	def pointsToListElement(self):
 		"""Returns True if field points to element of the list"""
 		list_elems = self.getListElements()
 		return len(list_elems) > 0 and list_elems[-1] != None
-	
+
+	def getLastListColumn(self):
+		"""
+		Returns name and value of column corresponding to the last name element
+		This function makes sense only if self.pointsToListElement() is True
+		"""
+		if not self.pointsToListElement():
+			return None, None
+
+		list_elems = self.getListElements()
+		col_num = len(list_elems) - 1 # index of last column
+		col_name = "c" + str(col_num)
+		col_val = list_elems[col_num]
+		return col_name, col_val
+
 	def __str__(self):
 		return "IField ('" + str(self.name) + "'" + \
 			(", type=" + str(self.type) if self.type else "") + \
@@ -409,10 +423,7 @@ class StructureLayer:
 		"""Reenumerate list elements before insertion or deletion"""
 
 		# Get the name and the value of last numerical column
-		field_cols = list(filter(lambda x: not isinstance(x, str), target_field.name))
-		col_num = len(field_cols) - 1
-		col_name = "c" + str(col_num)
-		col_val = field_cols[col_num]
+		col_name, col_val = target_field.getLastListColumn()
 
 		full_cond = target_field.columns_condition
 		t = target_field.name[-1]
