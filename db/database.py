@@ -19,8 +19,7 @@ class InternalField:
 
 	@classmethod
 	def fromNameStr(cls, engine, name_str, value=None):
-		res = cls(engine, engine.getNameList(name_str)[1:], value)
-		return res
+		return cls(engine, engine.getNameList(name_str)[1:], value)
 
 	@property
 	def safe_value(self):
@@ -92,13 +91,13 @@ class InternalField:
 
 		return res
 
-	def getListElements(self):
+	def __getListElements(self):
 		"""Returns list of non-string name elements (i.e. corresponding to lists)"""
 		return list(filter(lambda x: not isinstance(x, str), self.name))
 
 	def pointsToListElement(self):
 		"""Returns True if field points to element of the list"""
-		list_elems = self.getListElements()
+		list_elems = self.__getListElements()
 		return len(list_elems) > 0 and list_elems[-1] != None
 
 	def pointsToList(self):
@@ -112,13 +111,14 @@ class InternalField:
 		if not self.pointsToListElement():
 			return None, None
 
-		list_elems = self.getListElements()
+		list_elems = self.__getListElements()
 		col_num = len(list_elems) - 1 # index of last column
 		col_name = "c" + str(col_num)
 		col_val = list_elems[col_num]
 		return col_name, col_val
 
-	def getRenumberCondition(self):
+	@property
+	def renumber_condition(self):
 		"""Returns condition for renumbering after deletion of this element"""
 
 		# This function makes sense only if self.pointsToListElement() is True
@@ -129,7 +129,8 @@ class InternalField:
 		self_copy.name[-1] = None
 		return self_copy.columns_condition
 
-	def getListId(self):
+	@property
+	def full_name_str(self):
 		name_copy = [str(x) if x != None else None for x in self.name]
 		name_copy[-1] = None
 		return self.__engine.getSafeValue(self.__engine.getNameString(name_copy))
@@ -249,10 +250,10 @@ class StructureLayer:
 				return
 
 			self.engine.execute("DELETE FROM listsizes WHERE id={id} AND field={field_name}"
-				.format(id=id, field_name=field.getListId()))
+				.format(id=id, field_name=field.full_name_str))
 
 		self.engine.execute("INSERT INTO listsizes VALUES ({id}, {field_name}, {val})"
-			.format(id=id, field_name=field.getListId(), val=val))
+			.format(id=id, field_name=field.full_name_str, val=val))
 
 	def __setFieldValue(self, id, field):
 		"""Set value of given field"""
@@ -413,7 +414,7 @@ class StructureLayer:
 		"""Get maximum value of list index for the undefined column of the field"""
 
 		l = self.engine.execute("SELECT max FROM listsizes WHERE id={id} AND field={field_name}"
-			.format(id=id, field_name=field.getListId()))
+			.format(id=id, field_name=field.full_name_str))
 
 		if len(l) > 0:
 			return l[0][0]
@@ -425,7 +426,7 @@ class StructureLayer:
 
 		# Get the name and the value of last numerical column
 		col_name, col_val = target_field.getLastListColumn()
-		cond = target_field.getRenumberCondition()
+		cond = target_field.renumber_condition
 
 		# Get all child field names
 		fields_to_reenum = self.getFieldsList(id, target_field)
