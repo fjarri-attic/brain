@@ -97,6 +97,15 @@ class InternalField:
 	creation_str = property(__get_creation_str)
 	columns_values = property(__get_columns_values)
 
+	def getListElements(self):
+		"""Returns list of non-string name elements (i.e. corresponding to lists)"""
+		return list(filter(lambda x: not isinstance(x, str), self.name))
+	
+	def pointsToListElement(self):
+		"""Returns True if field points to element of the list"""
+		list_elems = self.getListElements()
+		return len(list_elems) > 0 and list_elems[-1] != None
+	
 	def __str__(self):
 		return "IField ('" + str(self.name) + "'" + \
 			(", type=" + str(self.type) if self.type else "") + \
@@ -254,9 +263,7 @@ class StructureLayer:
 		# Check if we are:
 		# 1) deleting fields from list
 		# 2) not deleting the whole leaf list
-		# FIXME: hide this in InternalField
-		field_cols = list(filter(lambda x: not isinstance(x, str), field.name))
-		if len(field_cols) > 0 and field_cols[-1] != None:
+		if field.pointsToListElement():
 			# if we deleted something from list, we should re-enumerate list elements
 			self.reenumerate(id, field, -1)
 		else:
