@@ -81,7 +81,7 @@ class InternalField:
 				res += ", c" + str(counter) + " INTEGER"
 				counter += 1
 
-		return res
+		return "id TEXT, type TEXT, value TEXT" + res
 
 	def __get_columns_values(self):
 		res = ""
@@ -309,13 +309,9 @@ class StructureLayer:
 	def __assureFieldTableExists(self, field):
 		"""Create table for storing values of this field if it does not exist yet"""
 
-		# Compose columns list
-		# FIXME: hide this in InternalField
-		values_str = "id TEXT, type TEXT, value TEXT" + field.creation_str
-
 		# Create table
 		self.engine.execute("CREATE TABLE IF NOT EXISTS {field_name} ({values_str})"
-			.format(field_name=field.name_as_table, values_str=values_str))
+			.format(field_name=field.name_as_table, values_str=field.creation_str))
 
 	def createObject(self, id, fields):
 		"""Create new object with given fields"""
