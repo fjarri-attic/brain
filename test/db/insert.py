@@ -223,5 +223,27 @@ class Insert(TestRequest):
 			Field(['tracks', 3, 'Authors', 1], 'Fred')
 		])
 
+	def testToTheEndSeveralLists(self):
+		"""Test insertion to the end of list when there are other lists on the same level"""
+		self.prepareStandNestedList()
+
+		res = self.db.processRequest(InsertRequest('2',
+			Field(['tracks', 1, 'Authors', None]),
+			[
+				Field([], 'Yngwie'),
+				Field([], 'Zack')
+			]
+		))
+
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Authors', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0, 'Authors', 0], 'Carl II'),
+			Field(['tracks', 0, 'Authors', 1], 'Dan'),
+			Field(['tracks', 1, 'Authors', 0], 'Alex'),
+			Field(['tracks', 1, 'Authors', 1], 'Yngwie'),
+			Field(['tracks', 1, 'Authors', 2], 'Zack'),
+			Field(['tracks', 2, 'Authors', 0], 'Rob')
+			])
+
 def get_class():
 	return Insert
