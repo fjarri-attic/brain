@@ -65,11 +65,11 @@ class InternalField:
 
 		return (' AND '.join([''] + l) if len(l) > 0 else '')
 
-	def fillUndefinedPositions(self, vals):
+	def getDeterminedName(self, vals):
 
 		vals_copy = list(vals)
 		func = lambda x: vals_copy.pop(0) if x == None else x
-		self.name = list(map(func, self.name))
+		return list(map(func, self.name))
 
 	@property
 	def creation_str(self):
@@ -230,13 +230,7 @@ class StructureLayer:
 		# Convert results to list of InternalFields
 		res = []
 		for elem in l:
-			f = InternalField(self.engine, field.name, elem[0])
-
-			# If field is a mask, there are list indexes in query result
-			# We should fill field's Nones with them
-			f.fillUndefinedPositions(elem[1:])
-
-			res.append(f)
+			res.append(InternalField(self.engine, field.getDeterminedName(elem[1:]), elem[0]))
 
 		if len(res) > 0:
 			return res
