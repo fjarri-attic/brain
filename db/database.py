@@ -15,7 +15,6 @@ class InternalField:
 
 		self.name = name[:]
 		self.value = value
-		self.type = 'text'
 
 	@classmethod
 	def fromNameStr(cls, engine, name_str, value=None):
@@ -80,7 +79,7 @@ class InternalField:
 				res += ", c" + str(counter) + " INTEGER"
 				counter += 1
 
-		return "id TEXT, type TEXT, value TEXT" + res
+		return "id TEXT, value TEXT" + res
 
 	@property
 	def columns_values(self):
@@ -137,7 +136,6 @@ class InternalField:
 
 	def __str__(self):
 		return "IField ('" + str(self.name) + "'" + \
-			(", type=" + str(self.type) if self.type else "") + \
 			(", value=" + str(self.value) if self.value else "") + ")"
 
 	def __repr__(self):
@@ -268,8 +266,8 @@ class StructureLayer:
 			.format(field_name=field.name_as_table, id=id, delete_condition=field.columns_condition))
 
 		# Insert new value
-		self.engine.execute("INSERT INTO {field_name} VALUES ({id}, '{type}', {value}{columns_values})"
-			.format(field_name=field.name_as_table, id=id, type=field.type,
+		self.engine.execute("INSERT INTO {field_name} VALUES ({id}, {value}{columns_values})"
+			.format(field_name=field.name_as_table, id=id,
 			value=field.safe_value, columns_values=field.columns_values))
 
 	def deleteValues(self, id, field, condition=None):

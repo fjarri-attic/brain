@@ -76,7 +76,6 @@ class Field:
 				raise FormatError("Field name list must contain only integers, strings or Nones")
 
 		# initialize fields
-		self.type = 'text' # hardcoded now
 		self.value = value
 		self.name = copy.deepcopy(name)
 
@@ -87,11 +86,10 @@ class Field:
 		if not isinstance(other, Field):
 			return False
 
-		return (self.name == other.name) and (self.type == other.type) and (self.value == other.value)
+		return (self.name == other.name) and (self.value == other.value)
 
 	def __str__(self):
 		return "Field ('" + str(self.name) + "'" + \
-			(", type=" + str(self.type) if self.type else "") + \
 			(", value=" + str(self.value) if self.value else "") + ")"
 
 	def __repr__(self):
