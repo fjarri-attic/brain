@@ -119,8 +119,8 @@ class InternalField:
 		col_val = list_elems[col_num]
 		return col_name, col_val
 
-	def getReenumerateCondition(self):
-		"""Returns condition for reenumeration after deletion of this element"""
+	def getRenumberCondition(self):
+		"""Returns condition for renumbering after deletion of this element"""
 
 		# This function makes sense only if self.pointsToListElement() is True
 		if not self.pointsToListElement():
@@ -289,9 +289,9 @@ class StructureLayer:
 		# 2) not deleting the whole leaf list
 		if field.pointsToListElement():
 			# if we deleted something from list, we should re-enumerate list elements
-			self.reenumerate(id, field, -1)
+			self.renumber(id, field, -1)
 		else:
-			# FIXME: these actions are pretty identical to what is done in reenumerate()
+			# FIXME: these actions are pretty identical to what is done in renumber()
 			# delete value
 			self.engine.execute("DELETE FROM {field_name} WHERE id={id}{delete_condition}"
 				.format(field_name=field.name_as_table, id=id, delete_condition=field.columns_condition))
@@ -429,12 +429,12 @@ class StructureLayer:
 		else:
 			return None
 
-	def reenumerate(self, id, target_field, shift):
-		"""Reenumerate list elements before insertion or deletion"""
+	def renumber(self, id, target_field, shift):
+		"""Renumber list elements before insertion or deletion"""
 
 		# Get the name and the value of last numerical column
 		col_name, col_val = target_field.getLastListColumn()
-		cond = target_field.getReenumerateCondition()
+		cond = target_field.getRenumberCondition()
 
 		# Get all child field names
 		fields_to_reenum = self.getFieldsList(id, target_field)
@@ -546,7 +546,7 @@ class SimpleDatabase(interface.Database):
 			enumerate(fields, target_col, starting_num, one_position)
 		else:
 		# list exists and we are inserting elements to the beginning or to the middle
-			self.structure.reenumerate(id, target_field,
+			self.structure.renumber(id, target_field,
 				(1 if one_position else len(fields)))
 			enumerate(fields, target_col, target_field.name[target_col], one_position)
 
