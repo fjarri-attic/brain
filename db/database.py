@@ -22,30 +22,28 @@ class InternalField:
 		res = cls(engine, engine.getNameList(name_str)[1:], value)
 		return res
 
-	def __get_safe_value(self):
+	@property
+	def safe_value(self):
 		return self.__engine.getSafeValue(self.value)
 
-	safe_value = property(__get_safe_value)
-
-	def __get_name_str(self):
+	@property
+	def name_str(self):
 		return self.__engine.getNameString(['field'] + self.name)
 
-	name_str = property(__get_name_str)
-
-	def __get_name_as_table(self):
+	@property
+	def name_as_table(self):
 		return self.__engine.getSafeName(self.name_str)
 
-	name_as_table = property(__get_name_as_table)
-
-	def __get_name_as_value(self):
+	@property
+	def name_as_value(self):
 		return self.__engine.getSafeValue(self.name_str)
 
-	name_as_value = property(__get_name_as_value)
-
-	def __get_clean_name(self):
+	@property
+	def clean_name(self):
 		return [(x if isinstance(x, str) else None) for x in self.name]
 
-	def __get_columns_query(self):
+	@property
+	def columns_query(self):
 		numeric_columns = filter(lambda x: not isinstance(x, str), self.name)
 		counter = 0
 		l = []
@@ -56,7 +54,8 @@ class InternalField:
 
 		return (', '.join([''] + l) if len(l) > 0 else '')
 
-	def __get_columns_condition(self):
+	@property
+	def columns_condition(self):
 		numeric_columns = filter(lambda x: not isinstance(x, str), self.name)
 		counter = 0
 		l = []
@@ -73,7 +72,8 @@ class InternalField:
 		func = lambda x: vals_copy.pop(0) if x == None else x
 		self.name = list(map(func, self.name))
 
-	def __get_creation_str(self):
+	@property
+	def creation_str(self):
 		counter = 0
 		res = ""
 		for elem in self.name:
@@ -83,19 +83,14 @@ class InternalField:
 
 		return "id TEXT, type TEXT, value TEXT" + res
 
-	def __get_columns_values(self):
+	@property
+	def columns_values(self):
 		res = ""
 		for elem in self.name:
 			if not isinstance(elem, str):
 				res += ", " + str(elem)
 
 		return res
-
-	clean_name = property(__get_clean_name)
-	columns_query = property(__get_columns_query)
-	columns_condition = property(__get_columns_condition)
-	creation_str = property(__get_creation_str)
-	columns_values = property(__get_columns_values)
 
 	def getListElements(self):
 		"""Returns list of non-string name elements (i.e. corresponding to lists)"""
