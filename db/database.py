@@ -134,6 +134,11 @@ class InternalField:
 		self_copy.name[-1] = None
 		return self_copy.columns_condition
 
+	def getListId(self):
+		name_copy = [str(x) if x != None else None for x in self.name]
+		name_copy[-1] = None
+		return self.__engine.getSafeValue(self.__engine.getNameString(name_copy))
+
 	def __str__(self):
 		return "IField ('" + str(self.name) + "'" + \
 			(", type=" + str(self.type) if self.type else "") + \
@@ -249,10 +254,10 @@ class StructureLayer:
 				return
 
 			self.engine.execute("DELETE FROM listsizes WHERE id={id} AND field={field_name}"
-				.format(id=id, field_name=field.name_as_value))
+				.format(id=id, field_name=field.getListId()))
 
 		self.engine.execute("INSERT INTO listsizes VALUES ({id}, {field_name}, {val})"
-			.format(id=id, field_name=field.name_as_value, val=val))
+			.format(id=id, field_name=field.getListId(), val=val))
 
 	def __setFieldValue(self, id, field):
 		"""Set value of given field"""
@@ -293,11 +298,9 @@ class StructureLayer:
 	def deleteField(self, id, field):
 		"""Delete given field(s)"""
 
-		# check if table exists
-		if field.pointsToList():
-			if self.getMaxNumber(id, field) == None: return
-		else:
-			if not self.engine.tableExists(field.name_str):	return
+		# we can avoid unnecessary work by checking if table exists
+		if not field.pointsToList() and not self.engine.tableExists(field.name_str):
+			return
 
 		if field.pointsToListElement():
 			# deletion of list element requires renumbering of other elements
@@ -414,17 +417,8 @@ class StructureLayer:
 	def getMaxNumber(self, id, field):
 		"""Get maximum value of list index for the undefined column of the field"""
 
-		# we assume here that all columns in field are defined except for the last one
-
-		# FIXME: hide this into InternalField
-		#query = field.columns_query[2:] # removing first ','
-
 		l = self.engine.execute("SELECT max FROM listsizes WHERE id={id} AND field={field_name}"
-			.format(id=id, field_name=field.name_as_value))
-
-		#l = self.engine.execute("SELECT MAX ({query}) FROM {field_name} WHERE id={id}{columns_condition}"
-		#	.format(query=query, field_name=field.name_as_table, id=id,
-		#	columns_condition=field.columns_condition))
+			.format(id=id, field_name=field.getListId()))
 
 		if len(l) > 0:
 			return l[0][0]
