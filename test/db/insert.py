@@ -245,5 +245,23 @@ class Insert(TestRequest):
 			Field(['tracks', 2, 'Authors', 0], 'Rob')
 			])
 
+	def testToEmptyList(self):
+		"""Check that insertion to non-existing list creates this list"""
+		self.prepareStandSimpleList()
+
+		res = self.db.processRequest(InsertRequest('2',
+			Field(['tracks', 2, 'Authors', None]),
+			[
+				Field([], 'Earl'),
+				Field([], 'Fred')
+			]
+		))
+
+		res = self.db.processRequest(ReadRequest('2', [Field(['tracks', None, 'Authors', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 2, 'Authors', 0], 'Earl'),
+			Field(['tracks', 2, 'Authors', 1], 'Fred')
+		])
+
 def get_class():
 	return Insert
