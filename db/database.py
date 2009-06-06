@@ -283,6 +283,9 @@ class StructureLayer:
 		# check if the table is empty and if it is - delete it too
 		if self.engine.tableIsEmpty(field.name_str):
 			self.engine.deleteTable(field.name_str)
+			return True
+		else:
+			return False
 
 	def deleteField(self, id, field):
 		"""Delete given field(s)"""
@@ -428,13 +431,15 @@ class StructureLayer:
 		for fld in fields_to_reenum:
 
 			# if shift is negative, we should delete elements first
+			table_was_deleted = False
 			if shift < 0:
-				self.deleteValues(id, fld, target_field.columns_condition)
+				table_was_deleted = self.deleteValues(id, fld, target_field.columns_condition)
 
 			# shift numbers of all elements in list
-			self.engine.execute("UPDATE {field_name} SET {col_name}={col_name}+{shift} WHERE id={id}{cond} AND {col_name}>={col_val}"
-				.format(field_name=fld.name_as_table, col_name=col_name, shift=shift, id=id, col_val=col_val,
-				cond=cond))
+			if not table_was_deleted:
+				self.engine.execute("UPDATE {field_name} SET {col_name}={col_name}+{shift} WHERE id={id}{cond} AND {col_name}>={col_val}"
+					.format(field_name=fld.name_as_table, col_name=col_name,
+					shift=shift, id=id, col_val=col_val, cond=cond))
 
 class SimpleDatabase(interface.Database):
 	"""Class, representing OODB over SQL"""
