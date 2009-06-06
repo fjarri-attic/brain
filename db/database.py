@@ -250,10 +250,7 @@ class StructureLayer:
 	def __setFieldValue(self, id, field):
 		"""Set value of given field"""
 
-		# Create field table if it does not exist yet
-		self.__assureFieldTableExists(field)
-
-		# Create auxiliary list tables
+		# Update maximum values cache
 		# FIXME: hide .name usage in InternalField
 		name_copy = field.name[:]
 		while len(name_copy) > 0:
@@ -261,6 +258,9 @@ class StructureLayer:
 				f = InternalField(self.engine, name_copy)
 				self.__updateListSize(id, f, name_copy[-1])
 			name_copy.pop()
+
+		# Create field table if it does not exist yet
+		self.__assureFieldTableExists(field)
 
 		# Delete old value
 		self.engine.execute("DELETE FROM {field_name} WHERE id={id} {delete_condition}"
