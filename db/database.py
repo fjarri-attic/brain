@@ -560,16 +560,12 @@ class SimpleDatabase(interface.Database):
 
 	def __processReadRequest(self, id, fields):
 
-		if fields:
-			# if list of fields is given, read those which are present in object
-			# FIXME: hide this in Structure layer
-			fields_to_read = filter(lambda x: self.structure.objectHasField(id, x), fields)
-		else:
-			# otherwise, read just all fields
-			fields_to_read = self.structure.getFieldsList(id)
+		# if list of fields was not given, read all object's fields
+		if fields == None:
+			fields = self.structure.getFieldsList(id)
 
 		# Fixme: maybe it is worth making a separate function in Structure layer
-		results = [self.structure.getFieldValue(id, field) for field in fields_to_read]
+		results = [self.structure.getFieldValue(id, field) for field in fields]
 
 		result_list = []
 		for result in results:
