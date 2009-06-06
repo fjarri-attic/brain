@@ -311,13 +311,9 @@ class StructureLayer:
 	def createObject(self, id, fields):
 		"""Create new object with given fields"""
 
-		# create object header
 		for field in fields:
-			self.__updateSpecification(id, field)
-
-		# update field tables
-		for field in fields:
-			self.__assureFieldTableExists(field)
+			self.__updateSpecification(id, field) # create object header
+			self.__assureFieldTableExists(field) # create field table
 			self.__setFieldValue(id, field)
 
 	def deleteObject(self, id):
