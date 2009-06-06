@@ -254,6 +254,7 @@ class StructureLayer:
 		self.__assureFieldTableExists(field)
 
 		# Create auxiliary list tables
+		# FIXME: hide .name usage in InternalField
 		name_copy = field.name[:]
 		while len(name_copy) > 0:
 			if isinstance(name_copy[-1], int):
@@ -330,6 +331,8 @@ class StructureLayer:
 	def objectHasField(self, id, field):
 		"""Check if object has some field"""
 		existing_fields = self.getFieldsList(id)
+
+		# FIXME: hide .name usage in InternalField
 		existing_names = [existing_field.name for existing_field in existing_fields]
 		return field.clean_name in existing_names
 
@@ -506,6 +509,7 @@ class SimpleDatabase(interface.Database):
 			"""Enumerate given column in list of fields"""
 			counter = starting_num
 			for field in fields_list:
+				# FIXME: Hide .name usage in InternalField
 				field.name[col_num] = counter
 				if not one_position:
 					counter += 1
@@ -513,12 +517,14 @@ class SimpleDatabase(interface.Database):
 		if not self.structure.objectExists(id):
 			raise Exception("Object " + id + " does not exist")
 
+		# FIXME: Hide .name usage in InternalField
 		target_col = len(target_field.name) - 1 # last column in name of target field
 
 		max = self.structure.getMaxNumber(id, target_field)
 		if max == None:
 		# list does not exist yet
 			enumerate(fields, target_col, 0, one_position)
+		# FIXME: Hide .name usage in InternalField
 		elif target_field.name[target_col] == None:
 		# list exists and we are inserting elements to the end
 			starting_num = max + 1
@@ -527,6 +533,7 @@ class SimpleDatabase(interface.Database):
 		# list exists and we are inserting elements to the beginning or to the middle
 			self.structure.renumber(id, target_field,
 				(1 if one_position else len(fields)))
+			# FIXME: Hide .name usage in InternalField
 			enumerate(fields, target_col, target_field.name[target_col], one_position)
 
 		self.__processModifyRequest(id, fields)
@@ -568,6 +575,7 @@ class SimpleDatabase(interface.Database):
 		for result in results:
 			if result != None:
 				result_list += result
+		# FIXME: Hide .name usage in InternalField
 		return [interface.Field(x.name, x.value) for x in result_list]
 
 	def __processSearchRequest(self, condition):
