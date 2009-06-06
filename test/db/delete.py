@@ -238,5 +238,60 @@ class Delete(TestRequest):
 			Field(['tracks', 2, 'Authors', 0], 'Rob')
 		])
 
+	def testAllValuesFromField(self):
+		"""Check that after we delete all values from some field of all objects, database is not spoiled"""
+		self.prepareStandNoList()
+
+		self.db.processRequest(DeleteRequest('3', [
+			Field(['age'])
+		]))
+
+		self.db.processRequest(DeleteRequest('4', [
+			Field(['age'])
+		]))
+
+		self.db.processRequest(DeleteRequest('5', [
+			Field(['age'])
+		]))
+
+		# check that searching in this table does not produce errors
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field(['age']), SearchRequest.Eq(), '22')))
+		self.checkRequestResult(res, [])
+
+		# check that we can create this table back
+		self.db.processRequest(ModifyRequest('3', [
+			Field(['age'], '22')
+		]))
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field(['age']), SearchRequest.Eq(), '22')))
+		self.checkRequestResult(res, ['3'])
+
+	def testEmptyTableAfterRenumbering(self):
+		"""
+		Check that the situation when all values are deleted from some field after renumbering
+		does not break the database
+		"""
+		self.prepareStandNestedList()
+
+		self.db.processRequest(DeleteRequest('1', [
+			Field(['tracks', 2])
+		]))
+
+		# check that value was deleted
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field(['tracks', None, 'Lyrics', None]), SearchRequest.Eq(), 'Lalala')))
+		self.checkRequestResult(res, [])
+
+		# add this value back
+		self.db.processRequest(ModifyRequest('1', [
+			Field(['tracks', 2, 'Lyrics', 0], 'Blablabla')
+		]))
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field(['tracks', None, 'Lyrics', None]), SearchRequest.Eq(), 'Blablabla')))
+		self.checkRequestResult(res, ['1'])
+
 def get_class():
 	return Delete

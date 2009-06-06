@@ -134,5 +134,13 @@ class Modify(TestRequest):
 			Field(['tracks', 4], 'Track 5'),
 		])
 
+	def testModificationAddsList(self):
+		"""Check that modification request creates necessary hierarchy"""
+		self.prepareStandNestedList()
+
+		self.db.processRequest(ModifyRequest('1', [
+			Field(['tracks', 2, 'Lyrics', 0], 'Blablabla')
+		]))
+
 def get_class():
 	return Modify

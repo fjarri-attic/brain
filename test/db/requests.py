@@ -72,7 +72,9 @@ class TestRequest(unittest.TestCase):
 			Field(['tracks', 0, 'Authors', 1], value='Bob'),
 
 			Field(['tracks', 1, 'Name'], value='Track 2 name'),
-			Field(['tracks', 1, 'Authors', 0], value='Carl I')
+			Field(['tracks', 1, 'Authors', 0], value='Carl I'),
+
+			Field(['tracks', 2, 'Lyrics', 0], value='Lalala')
 			]))
 
 		self.db.processRequest(ModifyRequest('2', [
