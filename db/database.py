@@ -156,7 +156,9 @@ class StructureLayer:
 			self.engine.getNameString([self.__ID_TABLE]))
 
 		# create specification table
+		self.engine.begin()
 		self.__createSpecificationTable()
+		self.engine.commit()
 
 	#
 	# Specification-oriented functions
@@ -447,6 +449,13 @@ class SimpleDatabase(interface.Database):
 		self.structure = StructureLayer(self.engine)
 
 	def processRequest(self, request):
+		"""Start/stop transaction, handle exceptions"""
+		self.engine.begin()
+		res = self.__processRequest(request)
+		self.engine.commit()
+		return res
+
+	def __processRequest(self, request):
 		"""Process given request and return results"""
 
 		def convertFields(fields, engine):
