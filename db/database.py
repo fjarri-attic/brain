@@ -67,7 +67,9 @@ class InternalField:
 	@property
 	def columns_condition(self):
 		"""Returns string with condition for operations on given field"""
-		# FIXME: investigate why not "isinstance(x, int)"
+
+		# do not skip Nones, because we need them for
+		# getting proper index of list column
 		numeric_columns = filter(lambda x: not isinstance(x, str), self.name)
 		counter = 0
 		l = []
