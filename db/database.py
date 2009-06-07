@@ -336,6 +336,7 @@ class StructureLayer:
 	def createObject(self, id, fields):
 		"""Create new object with given fields"""
 
+		# FIXME: we can use the fact that object does not exist to speed up the process
 		for field in fields:
 			self.__updateSpecification(id, field) # create object header
 			self.__assureFieldTableExists(field) # create field table
@@ -365,9 +366,7 @@ class StructureLayer:
 
 		# for each field, check if it already exists and update specification if necessary
 		for field in fields:
-			if not self.objectHasField(id, field):
-				self.__updateSpecification(id, field)
-
+			self.__updateSpecification(id, field)
 			self.__setFieldValue(id, field)
 
 	def searchForObjects(self, condition):
