@@ -293,5 +293,11 @@ class Delete(TestRequest):
 			Field(['tracks', None, 'Lyrics', None]), SearchRequest.EQ, 'Blablabla')))
 		self.checkRequestResult(res, ['1'])
 
+	def testNonExistingObject(self):
+		"""Check that deletion of non-existing object does not raise anything"""
+		self.prepareStandNoList()
+
+		self.db.processRequest(DeleteRequest('6'))
+
 def get_class():
 	return Delete
