@@ -5,7 +5,7 @@ import copy
 from . import interface
 from . import engine
 
-class StructureError(Exception):
+class DatabaseError(Exception):
 	"""Request tried to do something conflicting with DB structure"""
 	pass
 
@@ -466,7 +466,7 @@ class SimpleDatabase(interface.Database):
 
 	def __init__(self, path, engine_class):
 		if not issubclass(engine_class, interface.Engine):
-			raise Exception("Engine class must be derived from Engine interface")
+			raise DatabaseError("Engine class must be derived from Engine interface")
 		self.engine = engine_class(path)
 		self.structure = StructureLayer(self.engine)
 
@@ -525,7 +525,7 @@ class SimpleDatabase(interface.Database):
 			params = (converted_condition,)
 			handler = self.__processSearchRequest
 		else:
-			raise Exception("Unknown request type: " + request.__class__.__name__)
+			raise DatabaseError("Unknown request type: " + request.__class__.__name__)
 
 		# Handle request inside a transaction
 		self.engine.begin()
@@ -590,6 +590,10 @@ class SimpleDatabase(interface.Database):
 			self.structure.deleteObject(id)
 
 	def __processReadRequest(self, id, fields):
+
+		# check if object exists first
+		if not self.structure.objectExists(id):
+			raise DatabaseError("Object " + id + " does not exist")
 
 		# if list of fields was not given, read all object's fields
 		if fields == None:
