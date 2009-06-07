@@ -71,5 +71,11 @@ class Read(TestRequest):
 			Field(['tracks', 1, 'Name'], 'Track 2 name')
 			])
 
+	def testNonExistingObject(self):
+		"""Check that read request for non-existing object raises error"""
+		self.prepareStandNoList()
+
+		self.failUnlessRaises(DatabaseError, self.db.processRequest, ReadRequest('6'))
+
 def get_class():
 	return Read
