@@ -146,17 +146,17 @@ class Modify(TestRequest):
 		"""Check that list cannot be created if hash exists on the same level"""
 		self.prepareStandNestedList()
 
-		self.db.processRequest(ModifyRequest('1', [
-			Field(['tracks', 2, 0], 'Blablabla')
-		]))
+		self.failUnlessRaises(DatabaseError, self.db.processRequest,
+			ModifyRequest('1', [Field(['tracks', 2, 0], 'Blablabla')])
+		)
 
 	def testHashOnTopOfList(self):
 		"""Check that hash cannot be created if list exists on the same level"""
 		self.prepareStandNestedList()
 
-		self.db.processRequest(ModifyRequest('1', [
-			Field(['tracks', 'some_name'], 'Blablabla')
-		]))
+		self.failUnlessRaises(DatabaseError, self.db.processRequest,
+			ModifyRequest('1', [Field(['tracks', 'some_name'], 'Blablabla')])
+		)
 
 def get_class():
 	return Modify
