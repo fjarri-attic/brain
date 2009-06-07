@@ -5,6 +5,10 @@ import copy
 from . import interface
 from . import engine
 
+class StructureError(Exception):
+	"""Request tried to do something conflicting with DB structure"""
+	pass
+
 class InternalField:
 
 	def __init__(self, engine, name, value=None):
@@ -451,7 +455,11 @@ class SimpleDatabase(interface.Database):
 	def processRequest(self, request):
 		"""Start/stop transaction, handle exceptions"""
 		self.engine.begin()
-		res = self.__processRequest(request)
+		try:
+			res = self.__processRequest(request)
+		except:
+			self.engine.rollback()
+			raise
 		self.engine.commit()
 		return res
 
