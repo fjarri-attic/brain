@@ -65,8 +65,7 @@ class Database:
 	"""Database layer class interface"""
 
 	def processRequest(self, request):
-		raise Exception("Not implemented")
-
+		raise NotImplementedError
 #
 # Requests
 #
