@@ -164,38 +164,27 @@ class InsertRequest(_BaseRequest):
 class SearchRequest:
 	"""Request for searching in database"""
 
-	# Operator classes
-
-	class Operator: pass
-
-	class And(Operator):
-		def __str__(self): return "And"
-
-	class Or(Operator):
-		def __str__(self): return "Or"
-
-	# Comparison classes
-
-	class Comparison: pass
-
-	class Eq(Comparison):
-		def __str__(self): return "=="
-
-	class Regexp(Comparison):
-		def __str__(self): return "=~"
+	# constants for search operators
+	AND = "AND"
+	OR = "OR"
+	EQ = "=="
+	REGEXP = "=~"
 
 	class Condition:
 		"""Class for main element of search request"""
 
 		def __init__(self, operand1, operator, operand2, invert=False):
 
-			if isinstance(operator, SearchRequest.Comparison):
+			comparisons = [SearchRequest.EQ, SearchRequest.REGEXP]
+			operators = [SearchRequest.AND, SearchRequest.OR]
+
+			if operator in comparisons:
 				# if node operator is a Comparison, it is a leaf of condition tree
 				if not isinstance(operand1, Field):
 					raise FormatError("First operand should be Field, but it is " +
 						operand1.__class__.__name__)
 				self.leaf = True
-			elif isinstance(operator, SearchRequest.Operator):
+			elif operator in operators:
 				# if node operator is an Operator, both operands should be Conditions
 				if not isinstance(operand1, SearchRequest.Condition):
 					raise FormatError("Wrong condition type: " + operand1.__class__.__name__)
@@ -203,7 +192,7 @@ class SearchRequest:
 					raise FormatError("Wrong condition type: " + operand2.__class__.__name__)
 				self.leaf = False
 			else:
-				raise FormatError("Wrong operator type: " + operator.__class__.__name__)
+				raise FormatError("Wrong operator: " + str(operator))
 
 			# Initialize fields
 			# Using deepcopy for reliability, because we do not know which part

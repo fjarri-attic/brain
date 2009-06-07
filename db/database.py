@@ -381,41 +381,40 @@ class StructureLayer:
 				cond1 = buildSqlQuery(condition.operand1)
 				cond2 = buildSqlQuery(condition.operand2)
 
-				# 'And' corresponds to the intersection of sets
-				if isinstance(condition.operator, interface.SearchRequest.And):
-					return ("SELECT * FROM ({cond1}) INTERSECT SELECT * FROM ({cond2})"
-						.format(cond1=cond1, cond2=cond2))
-				# 'Or' corresponds to the union of sets
-				elif isinstance(condition.operator, interface.SearchRequest.Or):
-					return ("SELECT * FROM ({cond1}) UNION SELECT * FROM ({cond2})"
-						.format(cond1=cond1, cond2=cond2))
-				else:
-					raise Exception("Operator unsupported: " + str(condition.operator))
-				return
+				# mapping to SQL operations
+				operations = {
+					interface.SearchRequest.AND: 'INTERSECT',
+					interface.SearchRequest.OR: 'UNION'
+				}
+
+				return ("SELECT * FROM ({cond1}) {operation} SELECT * FROM ({cond2})"
+					.format(cond1=cond1, cond2=cond2,
+					operation=operations[condition.operator]))
 
 			# Leaf condition
 			op1 = condition.operand1 # it must be Field
 			op2 = condition.operand2 # it must be some value
 
-			safe_name = condition.operand1.name_as_table
-
 			# If table with given field does not exist, just return empty query
 			if not self.engine.tableExists(op1.name_str):
 				return self.engine.getEmptyCondition()
 
+			safe_name = condition.operand1.name_as_table
 			not_str = " NOT " if condition.invert else " "
 			op2_val = self.engine.getSafeValue(op2)
 
-			if isinstance(condition.operator, interface.SearchRequest.Eq):
-				result = "SELECT DISTINCT id FROM {field_name} WHERE{not_str}value={val}{columns_condition}"\
-					.format(field_name=safe_name, not_str=not_str,
-					val=op2_val, columns_condition=op1.columns_condition)
-			elif isinstance(condition.operator, interface.SearchRequest.Regexp):
-				result = "SELECT DISTINCT id FROM {field_name} WHERE{not_str}value REGEXP {val}{columns_condition}"\
-					.format(field_name=safe_name, not_str=not_str,
-					val=op2_val, columns_condition=op1.columns_condition)
-			else:
-				raise Exception("Comparison unsupported: " + str(condition.operator))
+			# mapping to SQL comparisons
+			comparisons = {
+				interface.SearchRequest.EQ: '=',
+				interface.SearchRequest.REGEXP: 'REGEXP'
+			}
+
+			# construct query
+			result = ("SELECT DISTINCT id FROM {field_name} " +
+				"WHERE{not_str}value {comparison} {val}{columns_condition}")\
+				.format(field_name=safe_name, not_str=not_str,
+				comparison=comparisons[condition.operator],
+				val=op2_val, columns_condition=op1.columns_condition)
 
 			if condition.invert:
 				result += " UNION SELECT * FROM (SELECT id FROM {id_table} EXCEPT SELECT id FROM {field_name})"\
@@ -624,10 +623,10 @@ class SimpleDatabase(interface.Database):
 					condition.operand1.invert = not condition.operand1.invert
 					condition.operand2.invert = not condition.operand2.invert
 
-					if isinstance(condition.operator, interface.SearchRequest.And):
-						condition.operator = interface.SearchRequest.Or()
-					elif isinstance(condition.operator, interface.SearchRequest.Or):
-						condition.operator = interface.SearchRequest.And()
+					if condition.operator == interface.SearchRequest.AND:
+						condition.operator = interface.SearchRequest.OR
+					elif condition.operator == interface.SearchRequest.OR:
+						condition.operator = interface.SearchRequest.AND
 
 				propagateInversion(condition.operand1)
 				propagateInversion(condition.operand2)
