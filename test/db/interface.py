@@ -133,16 +133,16 @@ class Format(unittest.TestCase):
 		"""Test that properly formed SearchRequest does not raise anything"""
 		SearchRequest(SearchRequest.Condition(
 			SearchRequest.Condition(
-				Field('phone'), SearchRequest.Eq(), '1111'
+				Field('phone'), SearchRequest.EQ, '1111'
 			),
-			SearchRequest.Or(),
+			SearchRequest.OR,
 			SearchRequest.Condition(
 				SearchRequest.Condition(
-					Field('phone'), SearchRequest.Eq(), '1111'
+					Field('phone'), SearchRequest.EQ, '1111'
 				),
-				SearchRequest.And(),
+				SearchRequest.AND,
 				SearchRequest.Condition(
-					Field('blablabla'), SearchRequest.Regexp(), '22', invert=True
+					Field('blablabla'), SearchRequest.REGEXP, '22', invert=True
 				)
 			)
 		))
@@ -150,16 +150,16 @@ class Format(unittest.TestCase):
 	def testSearchRequestLeafOperandIsNotField(self):
 		"""Test that condition raises error if first operand in leaf is not Field"""
 		self.failUnlessRaises(FormatError, SearchRequest.Condition,
-			'phone', SearchRequest.Eq(), '1111'
+			'phone', SearchRequest.EQ, '1111'
 		)
 
 	def testSearchRequestFirstOperandIsNotCondition(self):
 		"""Test that condition raises error if first operand in node is not Condition"""
 		self.failUnlessRaises(FormatError, SearchRequest.Condition,
 			Field('aaa', 1),
-			SearchRequest.And(),
+			SearchRequest.AND,
 			SearchRequest.Condition(
-				Field('blablabla'), SearchRequest.Regexp(), '22', invert=True
+				Field('blablabla'), SearchRequest.REGEXP, '22', invert=True
 			)
 		)
 
@@ -167,9 +167,9 @@ class Format(unittest.TestCase):
 		"""Test that condition raises error if second operand in node is not Condition"""
 		self.failUnlessRaises(FormatError, SearchRequest.Condition,
 			SearchRequest.Condition(
-				Field('blablabla'), SearchRequest.Regexp(), '22', invert=True
+				Field('blablabla'), SearchRequest.REGEXP, '22', invert=True
 			),
-			SearchRequest.And(),
+			SearchRequest.AND,
 			Field('aaa', 1)
 		)
 
@@ -177,11 +177,11 @@ class Format(unittest.TestCase):
 		"""Test that condition raises error if condition operator is unknown"""
 		self.failUnlessRaises(FormatError, SearchRequest.Condition,
 			SearchRequest.Condition(
-				Field('phone'), SearchRequest.Eq(), '1111'
+				Field('phone'), SearchRequest.EQ, '1111'
 			),
 			'something',
 			SearchRequest.Condition(
-				Field('blablabla'), SearchRequest.Eq(), '22', invert=True
+				Field('blablabla'), SearchRequest.EQ, '22', invert=True
 			)
 		)
 
@@ -195,11 +195,11 @@ class Format(unittest.TestCase):
 		"""Test that SearchRequest uses deepcopy for given condition"""
 		c = SearchRequest.Condition(
 			SearchRequest.Condition(
-				Field('phone'), SearchRequest.Eq(), '1111'
+				Field('phone'), SearchRequest.EQ, '1111'
 			),
-			SearchRequest.And(),
+			SearchRequest.AND,
 			SearchRequest.Condition(
-				Field('blablabla'), SearchRequest.Eq(), '22', invert=True
+				Field('blablabla'), SearchRequest.EQ, '22', invert=True
 			)
 		)
 		r = SearchRequest(c)
@@ -211,13 +211,13 @@ class Format(unittest.TestCase):
 	def testSearchRequestConditionCopiesSubconditions(self):
 		"""Test that SearchRequest.Condition uses deepcopy for subconditions"""
 		subc = SearchRequest.Condition(
-				Field('phone'), SearchRequest.Eq(), '1111'
+				Field('phone'), SearchRequest.EQ, '1111'
 			)
 		c = SearchRequest.Condition(
 			subc,
-			SearchRequest.And(),
+			SearchRequest.AND,
 			SearchRequest.Condition(
-				Field('blablabla'), SearchRequest.Eq(), '22', invert=True
+				Field('blablabla'), SearchRequest.EQ, '22', invert=True
 			)
 		)
 

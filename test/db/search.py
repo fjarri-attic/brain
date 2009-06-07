@@ -19,11 +19,11 @@ class Search(TestRequest):
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 		SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '1111'
+			Field('phone'), SearchRequest.EQ, '1111'
 			),
-		SearchRequest.And(),
+		SearchRequest.AND,
 		SearchRequest.Condition(
-			Field('age'), SearchRequest.Eq(), '22'
+			Field('age'), SearchRequest.EQ, '22'
 			)
 		)))
 
@@ -35,11 +35,11 @@ class Search(TestRequest):
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 		SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '2222'
+			Field('phone'), SearchRequest.EQ, '2222'
 			),
-		SearchRequest.Or(),
+		SearchRequest.OR,
 		SearchRequest.Condition(
-			Field('age'), SearchRequest.Eq(), '27'
+			Field('age'), SearchRequest.EQ, '27'
 			)
 		)))
 
@@ -51,11 +51,11 @@ class Search(TestRequest):
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 		SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '1111'
+			Field('phone'), SearchRequest.EQ, '1111'
 			),
-		SearchRequest.And(),
+		SearchRequest.AND,
 		SearchRequest.Condition(
-			Field('age'), SearchRequest.Eq(), '22', invert=True
+			Field('age'), SearchRequest.EQ, '22', invert=True
 			)
 		)))
 
@@ -67,11 +67,11 @@ class Search(TestRequest):
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 		SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '1111'
+			Field('phone'), SearchRequest.EQ, '1111'
 			),
-		SearchRequest.And(),
+		SearchRequest.AND,
 		SearchRequest.Condition(
-			Field('age'), SearchRequest.Eq(), '22', invert=True
+			Field('age'), SearchRequest.EQ, '22', invert=True
 			),
 		invert=True
 		)))
@@ -84,11 +84,11 @@ class Search(TestRequest):
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 		SearchRequest.Condition(
-			Field('phone'), SearchRequest.Regexp(), '\d+'
+			Field('phone'), SearchRequest.REGEXP, '\d+'
 			),
-		SearchRequest.And(),
+		SearchRequest.AND,
 		SearchRequest.Condition(
-			Field('age'), SearchRequest.Eq(), '22', invert=True
+			Field('age'), SearchRequest.EQ, '22', invert=True
 			)
 		)))
 
@@ -99,7 +99,7 @@ class Search(TestRequest):
 		self.prepareStandNoList()
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('name'), SearchRequest.Regexp(), 'ex'
+			Field('name'), SearchRequest.REGEXP, 'ex'
 			)))
 
 		self.checkRequestResult(res, ['1', '5'])
@@ -112,11 +112,11 @@ class Search(TestRequest):
 		# so the whole result should be empty too
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 		SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '1111'
+			Field('phone'), SearchRequest.EQ, '1111'
 			),
-		SearchRequest.And(),
+		SearchRequest.AND,
 		SearchRequest.Condition(
-			Field('blablabla'), SearchRequest.Eq(), '22', invert=True
+			Field('blablabla'), SearchRequest.EQ, '22', invert=True
 			)
 		)))
 
@@ -130,11 +130,11 @@ class Search(TestRequest):
 		# so the whole result should be equal to the result of the first part
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 		SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '1111'
+			Field('phone'), SearchRequest.EQ, '1111'
 			),
-		SearchRequest.Or(),
+		SearchRequest.OR,
 		SearchRequest.Condition(
-			Field('blablabla'), SearchRequest.Eq(), '22', invert=True
+			Field('blablabla'), SearchRequest.EQ, '22', invert=True
 			)
 		)))
 
@@ -145,7 +145,7 @@ class Search(TestRequest):
 		self.prepareStandSimpleList()
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field(['tracks', None]), SearchRequest.Eq(), 'Track 2'
+			Field(['tracks', None]), SearchRequest.EQ, 'Track 2'
 			)))
 
 		self.checkRequestResult(res, ['1', '2'])
@@ -155,7 +155,7 @@ class Search(TestRequest):
 		self.prepareStandSimpleList()
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field(['tracks', 1]), SearchRequest.Eq(), 'Track 2'
+			Field(['tracks', 1]), SearchRequest.EQ, 'Track 2'
 			)))
 
 		self.checkRequestResult(res, ['1'])
@@ -165,7 +165,7 @@ class Search(TestRequest):
 		self.prepareStandNestedList()
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field(['tracks', 0, 'Authors', None]), SearchRequest.Eq(), 'Alex'
+			Field(['tracks', 0, 'Authors', None]), SearchRequest.EQ, 'Alex'
 			)))
 
 		self.checkRequestResult(res, ['1'])
@@ -175,7 +175,7 @@ class Search(TestRequest):
 		self.prepareStandNestedList()
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field(['tracks', 1, 'Authors', None]), SearchRequest.Regexp(), 'Carl'
+			Field(['tracks', 1, 'Authors', None]), SearchRequest.REGEXP, 'Carl'
 			)))
 
 		self.checkRequestResult(res, ['1'])
@@ -186,11 +186,11 @@ class Search(TestRequest):
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 		SearchRequest.Condition(
-			Field(['tracks', None, 'Authors', 1]), SearchRequest.Eq(), 'Bob'
+			Field(['tracks', None, 'Authors', 1]), SearchRequest.EQ, 'Bob'
 			),
-		SearchRequest.And(),
+		SearchRequest.AND,
 		SearchRequest.Condition(
-			Field(['tracks', None, 'Name']), SearchRequest.Regexp(), 'name'
+			Field(['tracks', None, 'Name']), SearchRequest.REGEXP, 'name'
 			)
 		)))
 

@@ -26,7 +26,7 @@ class Modify(TestRequest):
 		self.prepareStandNoList()
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '1111')))
+			Field('phone'), SearchRequest.EQ, '1111')))
 
 		self.checkRequestResult(res, ['1', '5'])
 
@@ -62,7 +62,7 @@ class Modify(TestRequest):
 		]))
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('name'), SearchRequest.Eq(), 'Zack')))
+			Field('name'), SearchRequest.EQ, 'Zack')))
 
 		self.checkRequestResult(res, ['1'])
 
@@ -75,7 +75,7 @@ class Modify(TestRequest):
 		]))
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('age'), SearchRequest.Eq(), '66')))
+			Field('age'), SearchRequest.EQ, '66')))
 
 		self.checkRequestResult(res, ['1'])
 
@@ -97,7 +97,7 @@ class Modify(TestRequest):
 
 		# Check that field from old object is not there
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('age'), SearchRequest.Eq(), '66')))
+			Field('age'), SearchRequest.EQ, '66')))
 
 		self.checkRequestResult(res, [])
 
@@ -110,7 +110,7 @@ class Modify(TestRequest):
 		]))
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '2222')))
+			Field('phone'), SearchRequest.EQ, '2222')))
 
 		self.checkRequestResult(res, ['2'])
 
@@ -140,6 +140,22 @@ class Modify(TestRequest):
 
 		self.db.processRequest(ModifyRequest('1', [
 			Field(['tracks', 2, 'Lyrics', 0], 'Blablabla')
+		]))
+
+	def testListOnTopOfHash(self):
+		"""Check that list cannot be created if hash exists on the same level"""
+		self.prepareStandNestedList()
+
+		self.db.processRequest(ModifyRequest('1', [
+			Field(['tracks', 2, 0], 'Blablabla')
+		]))
+
+	def testHashOnTopOfList(self):
+		"""Check that hash cannot be created if list exists on the same level"""
+		self.prepareStandNestedList()
+
+		self.db.processRequest(ModifyRequest('1', [
+			Field(['tracks', 'some_name'], 'Blablabla')
 		]))
 
 def get_class():

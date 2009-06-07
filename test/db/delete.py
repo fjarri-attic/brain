@@ -21,12 +21,12 @@ class Delete(TestRequest):
 
 		# check that field of deleted object is gone
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '3333')))
+			Field('phone'), SearchRequest.EQ, '3333')))
 		self.checkRequestResult(res, [])
 
 		# Check that other objects are intact
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '1111')))
+			Field('phone'), SearchRequest.EQ, '1111')))
 		self.checkRequestResult(res, ['1', '5'])
 
 	def testExistentFields(self):
@@ -37,16 +37,16 @@ class Delete(TestRequest):
 
 		# Check that other fields are intact
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('name'), SearchRequest.Eq(), 'Carl')))
+			Field('name'), SearchRequest.EQ, 'Carl')))
 		self.checkRequestResult(res, ['3'])
 
 		# Check that fields were really deleted
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '3333')))
+			Field('phone'), SearchRequest.EQ, '3333')))
 		self.checkRequestResult(res, [])
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('age'), SearchRequest.Eq(), '27')))
+			Field('age'), SearchRequest.EQ, '27')))
 		self.checkRequestResult(res, [])
 
 	def testNonExistentFields(self):
@@ -57,12 +57,12 @@ class Delete(TestRequest):
 
 		# Check that existent field was deleted
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('name'), SearchRequest.Eq(), 'Bob')))
+			Field('name'), SearchRequest.EQ, 'Bob')))
 		self.checkRequestResult(res, [])
 
 		# Check that other fields are intact
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '2222')))
+			Field('phone'), SearchRequest.EQ, '2222')))
 		self.checkRequestResult(res, ['2'])
 
 	def testAllObjects(self):
@@ -79,7 +79,7 @@ class Delete(TestRequest):
 
 		# Check that addition was successful
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field('phone'), SearchRequest.Eq(), '2222')))
+			Field('phone'), SearchRequest.EQ, '2222')))
 
 		self.checkRequestResult(res, ['2'])
 
@@ -256,7 +256,7 @@ class Delete(TestRequest):
 
 		# check that searching in this table does not produce errors
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field(['age']), SearchRequest.Eq(), '22')))
+			Field(['age']), SearchRequest.EQ, '22')))
 		self.checkRequestResult(res, [])
 
 		# check that we can create this table back
@@ -265,7 +265,7 @@ class Delete(TestRequest):
 		]))
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field(['age']), SearchRequest.Eq(), '22')))
+			Field(['age']), SearchRequest.EQ, '22')))
 		self.checkRequestResult(res, ['3'])
 
 	def testEmptyTableAfterRenumbering(self):
@@ -281,7 +281,7 @@ class Delete(TestRequest):
 
 		# check that value was deleted
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field(['tracks', None, 'Lyrics', None]), SearchRequest.Eq(), 'Lalala')))
+			Field(['tracks', None, 'Lyrics', None]), SearchRequest.EQ, 'Lalala')))
 		self.checkRequestResult(res, [])
 
 		# add this value back
@@ -290,7 +290,7 @@ class Delete(TestRequest):
 		]))
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
-			Field(['tracks', None, 'Lyrics', None]), SearchRequest.Eq(), 'Blablabla')))
+			Field(['tracks', None, 'Lyrics', None]), SearchRequest.EQ, 'Blablabla')))
 		self.checkRequestResult(res, ['1'])
 
 def get_class():
