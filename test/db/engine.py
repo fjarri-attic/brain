@@ -12,7 +12,7 @@ def getParameterized(base_class, name_prefix, db_class, db_file_name):
 	"""Get named test suite with predefined setUp()"""
 	class Derived(base_class):
 		def setUp(self):
-			self.db = db_class(db_file_name)
+			self.engine = db_class(db_file_name)
 
 	Derived.__name__ = name_prefix
 
@@ -26,13 +26,13 @@ class EngineTest(unittest.TestCase):
 		vals = ['a', 'b b', "a'b", "a''''b", "a'; DROP DATABASE;"]
 
 		for val in vals:
-			self.db.begin()
-			self.db.execute("CREATE TABLE test (col TEXT)")
-			self.db.execute("INSERT INTO test VALUES ({value})".
-				format(value=self.db.getSafeValue(val)))
-			res = list(self.db.execute("SELECT col FROM test"))
-			self.db.execute("DROP TABLE test")
-			self.db.commit()
+			self.engine.begin()
+			self.engine.execute("CREATE TABLE test (col TEXT)")
+			self.engine.execute("INSERT INTO test VALUES ({value})".
+				format(value=self.engine.getSafeValue(val)))
+			res = list(self.engine.execute("SELECT col FROM test"))
+			self.engine.execute("DROP TABLE test")
+			self.engine.commit()
 
 			self.failUnlessEqual(res, [(val,)])
 
@@ -41,12 +41,12 @@ class EngineTest(unittest.TestCase):
 		names = ['a', 'b b' , 'a "" b', 'a"; DROP DATABASE;']
 
 		for name in names:
-			self.db.begin()
-			self.db.execute("CREATE TABLE {table} (col TEXT)".format(table=self.db.getSafeName(name)))
-			self.db.execute("INSERT INTO {table} VALUES ('aaa')".format(table=self.db.getSafeName(name)))
-			res = list(self.db.execute("SELECT col FROM {table}".format(table=self.db.getSafeName(name))))
-			self.db.execute("DROP TABLE {table}".format(table=self.db.getSafeName(name)))
-			self.db.commit()
+			self.engine.begin()
+			self.engine.execute("CREATE TABLE {table} (col TEXT)".format(table=self.engine.getSafeName(name)))
+			self.engine.execute("INSERT INTO {table} VALUES ('aaa')".format(table=self.engine.getSafeName(name)))
+			res = list(self.engine.execute("SELECT col FROM {table}".format(table=self.engine.getSafeName(name))))
+			self.engine.execute("DROP TABLE {table}".format(table=self.engine.getSafeName(name)))
+			self.engine.commit()
 
 			self.failUnlessEqual(res, [('aaa',)])
 
@@ -63,85 +63,85 @@ class EngineTest(unittest.TestCase):
 			if expected_res == None:
 				expected_res = name
 
-			name_str = self.db.getNameString(name)
-			name_list = self.db.getNameList(name_str)
+			name_str = self.engine.getNameString(name)
+			name_list = self.engine.getNameList(name_str)
 			self.failUnlessEqual(expected_res, name_list)
 
 	def testExecuteWithoutParameters(self):
 		"""Test execute() method on simple queries"""
-		self.db.begin()
-		self.db.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
-		self.db.execute("INSERT INTO ttt VALUES ('a', 'b')")
+		self.engine.begin()
+		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.execute("INSERT INTO ttt VALUES ('a', 'b')")
 
 	def testExecuteReturnsList(self):
 		"""Test that execute() method returns list and not some specific class"""
-		self.db.begin()
-		self.db.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
-		self.db.execute("INSERT INTO ttt VALUES ('a', 'b')")
-		res = self.db.execute("SELECT * FROM ttt")
+		self.engine.begin()
+		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.execute("INSERT INTO ttt VALUES ('a', 'b')")
+		res = self.engine.execute("SELECT * FROM ttt")
 		self.failUnless(isinstance(res, list))
 		self.failUnlessEqual(res, [('a', 'b')])
 
 	def testTableExists(self):
 		"""Test work of tableExists() method for existing table"""
-		self.db.begin()
-		self.db.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
-		self.failUnless(self.db.tableExists('ttt'))
+		self.engine.begin()
+		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.failUnless(self.engine.tableExists('ttt'))
 
 	def testTableExistsMissingTable(self):
 		"""Test work of tableExists() method for non-existing table"""
-		self.db.begin()
-		self.db.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
-		self.failIf(self.db.tableExists('bbb'))
+		self.engine.begin()
+		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.failIf(self.engine.tableExists('bbb'))
 
 	def testTableIsEmpty(self):
 		"""Test work of tableIsEmpty() method for empty table"""
-		self.db.begin()
-		self.db.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
-		self.failUnless(self.db.tableIsEmpty('ttt'))
+		self.engine.begin()
+		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.failUnless(self.engine.tableIsEmpty('ttt'))
 
 	def testTableIsEmptyFilledTable(self):
 		"""Test work of tableIsEmpty() method for non-empty table"""
-		self.db.begin()
-		self.db.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
-		self.db.execute("INSERT INTO ttt VALUES ('a', 'b')")
-		self.failIf(self.db.tableIsEmpty('ttt'))
+		self.engine.begin()
+		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.execute("INSERT INTO ttt VALUES ('a', 'b')")
+		self.failIf(self.engine.tableIsEmpty('ttt'))
 
 	def testDeleteTable(self):
 		"""Test work of deleteTable() method for existing table"""
-		self.db.begin()
-		self.db.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
-		self.db.deleteTable('ttt')
-		self.failIf(self.db.tableExists('ttt'))
+		self.engine.begin()
+		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.deleteTable('ttt')
+		self.failIf(self.engine.tableExists('ttt'))
 
 	def testDeleteTableMissingTable(self):
 		"""Test work of deleteTable() method for non-existing table"""
-		self.db.begin()
-		self.db.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
-		self.db.deleteTable('aaa')
+		self.engine.begin()
+		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.deleteTable('aaa')
 
 	def testEmptyCondition(self):
 		"""Test that empty condition really returns empty table"""
-		self.db.begin()
-		res = self.db.execute(self.db.getEmptyCondition())
+		self.engine.begin()
+		res = self.engine.execute(self.engine.getEmptyCondition())
 		self.failUnlessEqual(res, [])
 
 	def testEmptyConditionIntersect(self):
 		"""Test that empty condition can be used with INTERSECT"""
-		self.db.begin()
-		self.db.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
-		self.db.execute("INSERT INTO ttt VALUES ('a', 'b')")
-		res = self.db.execute("SELECT * FROM (SELECT col1 FROM ttt) INTERSECT " +
-			"SELECT * FROM (" + self.db.getEmptyCondition() + ")")
+		self.engine.begin()
+		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.execute("INSERT INTO ttt VALUES ('a', 'b')")
+		res = self.engine.execute("SELECT * FROM (SELECT col1 FROM ttt) INTERSECT " +
+			"SELECT * FROM (" + self.engine.getEmptyCondition() + ")")
 		self.failUnlessEqual(res, [])
 
 	def testEmptyConditionUnion(self):
 		"""Test that empty condition can be used with UNION"""
-		self.db.begin()
-		self.db.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
-		self.db.execute("INSERT INTO ttt VALUES ('a', 'b')")
-		res = self.db.execute("SELECT * FROM (SELECT col1 FROM ttt) UNION " +
-			"SELECT * FROM (" + self.db.getEmptyCondition() + ")")
+		self.engine.begin()
+		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.execute("INSERT INTO ttt VALUES ('a', 'b')")
+		res = self.engine.execute("SELECT * FROM (SELECT col1 FROM ttt) UNION " +
+			"SELECT * FROM (" + self.engine.getEmptyCondition() + ")")
 		self.failUnlessEqual(res, [('a',)])
 
 def suite():
