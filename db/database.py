@@ -200,6 +200,11 @@ class StructureLayer:
 		self.engine.execute("DELETE FROM {id_table} WHERE {id_column}={id}"
 			.format(id_table=self.__id_table, id_column=self.__ID_COLUMN, id=id))
 
+	def __addFieldToSpecification(self, id, field):
+		"""Check if field conforms to hierarchy and if yes, add it"""
+		self.engine.execute("INSERT INTO {id_table} VALUES ({id}, {field_name})"
+			.format(id_table=self.__id_table, id=id, field_name=field.name_as_value))
+
 	def __updateSpecification(self, id, field):
 		"""If information about given field does not exist in specification table, add it"""
 
@@ -209,9 +214,7 @@ class StructureLayer:
 			field_column=self.__FIELD_COLUMN, field_name=field.name_as_value))
 
 		if len(l) == 0:
-			# Add field to specification
-			self.engine.execute("INSERT INTO {id_table} VALUES ({id}, {field_name})"
-				.format(id_table=self.__id_table, id=id, field_name=field.name_as_value))
+			self.__addFieldToSpecification(id, field)
 
 	def getFieldsList(self, id, field=None):
 		"""Get list of fields for given object"""
