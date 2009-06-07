@@ -10,83 +10,96 @@ class StructureError(Exception):
 	pass
 
 class InternalField:
+	"""Class for more convenient handling of Field objects"""
 
 	def __init__(self, engine, name, value=None):
-		if not isinstance(engine, interface.Engine):
-			raise Exception("engine should be derived from Engine class")
-
 		self.__engine = engine
-
 		self.name = name[:]
 		self.value = value
 
+	def __getListColumnName(self, index):
+		"""Get name of additional list column corresponding to given index"""
+		return "c" + str(index)
+
 	@classmethod
 	def fromNameStr(cls, engine, name_str, value=None):
+		"""Create object using stringified name instead of list"""
 		return cls(engine, engine.getNameList(name_str)[1:], value)
 
 	@property
 	def safe_value(self):
+		"""Returns value in form that can be safely used as value in queries"""
 		return self.__engine.getSafeValue(self.value)
 
 	@property
 	def name_str(self):
+		"""Returns field name in string form"""
 		return self.__engine.getNameString(['field'] + self.name)
 
 	@property
 	def name_as_table(self):
+		"""Returns field name in form that can be safely used as a table name"""
 		return self.__engine.getSafeName(self.name_str)
 
 	@property
 	def name_as_value(self):
+		"""Returns field name in form that can be safely used as value in queries"""
 		return self.__engine.getSafeValue(self.name_str)
 
 	@property
 	def clean_name(self):
+		"""Returns name with only hash elements"""
 		return [(x if isinstance(x, str) else None) for x in self.name]
 
 	@property
 	def columns_query(self):
+		"""Returns string with additional values list necessary to query the value of this field"""
 		numeric_columns = filter(lambda x: not isinstance(x, str), self.name)
 		counter = 0
 		l = []
 		for column in numeric_columns:
 			if column == None:
-				l.append("c" + str(counter))
+				l.append(self.__getListColumnName(counter))
 			counter += 1
 
 		return (', '.join([''] + l) if len(l) > 0 else '')
 
 	@property
 	def columns_condition(self):
+		"""Returns string with condition for operations on given field"""
+		# FIXME: investigate why not "isinstance(x, int)"
 		numeric_columns = filter(lambda x: not isinstance(x, str), self.name)
 		counter = 0
 		l = []
 		for column in numeric_columns:
 			if column != None:
-				l.append("c" + str(counter) + "=" + str(column))
+				l.append(self.__getListColumnName(counter) +
+					"=" + str(column))
 			counter += 1
 
 		return (' AND '.join([''] + l) if len(l) > 0 else '')
 
 	def getDeterminedName(self, vals):
-
+		"""Returns name with Nones filled with supplied list of values"""
 		vals_copy = list(vals)
 		func = lambda x: vals_copy.pop(0) if x == None else x
 		return list(map(func, self.name))
 
 	@property
 	def creation_str(self):
+		"""Returns string containing list of columns necessary to create field table"""
 		counter = 0
 		res = ""
 		for elem in self.name:
 			if not isinstance(elem, str):
-				res += ", c" + str(counter) + " INTEGER"
+				res += ", " + self.__getListColumnName(counter) + " INTEGER"
 				counter += 1
 
 		return "id TEXT, value TEXT" + res
 
 	@property
 	def columns_values(self):
+		"""Returns string with values of list columns that can be used in insertion"""
 		res = ""
 		for elem in self.name:
 			if not isinstance(elem, str):
@@ -116,7 +129,7 @@ class InternalField:
 
 		list_elems = self.__getListElements()
 		col_num = len(list_elems) - 1 # index of last column
-		col_name = "c" + str(col_num)
+		col_name = self.__getListColumnName(col_num)
 		col_val = list_elems[col_num]
 		return col_name, col_val
 
@@ -133,7 +146,11 @@ class InternalField:
 		return self_copy.columns_condition
 
 	@property
-	def full_name_str(self):
+	def name_hashstr(self):
+		"""
+		Returns string that can serve as hash for field name along with its list elements
+		FIXME: currently there are possible collisions name = ['1'] and name = [1]
+		"""
 		name_copy = [str(x) if x != None else None for x in self.name]
 		name_copy[-1] = None
 		return self.__engine.getSafeValue(self.__engine.getNameString(name_copy))
@@ -248,10 +265,10 @@ class StructureLayer:
 				return
 
 			self.engine.execute("DELETE FROM listsizes WHERE id={id} AND field={field_name}"
-				.format(id=id, field_name=field.full_name_str))
+				.format(id=id, field_name=field.name_hashstr))
 
 		self.engine.execute("INSERT INTO listsizes VALUES ({id}, {field_name}, {val})"
-			.format(id=id, field_name=field.full_name_str, val=val))
+			.format(id=id, field_name=field.name_hashstr, val=val))
 
 	def __setFieldValue(self, id, field):
 		"""Set value of given field"""
@@ -414,7 +431,7 @@ class StructureLayer:
 		"""Get maximum value of list index for the undefined column of the field"""
 
 		l = self.engine.execute("SELECT max FROM listsizes WHERE id={id} AND field={field_name}"
-			.format(id=id, field_name=field.full_name_str))
+			.format(id=id, field_name=field.name_hashstr))
 
 		if len(l) > 0:
 			return l[0][0]
