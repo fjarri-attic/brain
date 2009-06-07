@@ -472,17 +472,6 @@ class SimpleDatabase(interface.Database):
 
 	def processRequest(self, request):
 		"""Start/stop transaction, handle exceptions"""
-		self.engine.begin()
-		try:
-			res = self.__processRequest(request)
-		except:
-			self.engine.rollback()
-			raise
-		self.engine.commit()
-		return res
-
-	def __processRequest(self, request):
-		"""Process given request and return results"""
 
 		def convertFields(fields, engine):
 			"""Convert given fields list to _InternalFields list"""
@@ -500,44 +489,53 @@ class SimpleDatabase(interface.Database):
 				convertCondition(condition.operand1, engine)
 				convertCondition(condition.operand2, engine)
 
-		# ModifyRequest
+		# Convert Fields
+		if hasattr(request, 'fields'):
+			converted_fields = convertFields(request.fields, self.engine)
+
+		if hasattr(request, 'condition'):
+			converted_condition = copy.deepcopy(request.condition)
+			convertCondition(converted_condition, self.engine)
+
+		if hasattr(request, 'target_field'):
+			converted_target = _InternalField(self.engine,
+				request.target_field.name, request.target_field.value)
+
+		# Prepare handler function and parameters list
+		# (so that we do not have to do it inside a transaction)
 		if isinstance(request, interface.ModifyRequest):
-			self.__processModifyRequest(
-				request.id,
-				convertFields(request.fields, self.engine))
-
-		# DeleteRequest
-		elif isinstance(request, interface.DeleteRequest):
-			self.__processDeleteRequest(
-				request.id,
-				convertFields(request.fields, self.engine))
-
-		# SearchRequest
-		elif isinstance(request, interface.SearchRequest):
-			condition_copy = copy.deepcopy(request.condition)
-			convertCondition(condition_copy, self.engine)
-			return self.__processSearchRequest(condition_copy)
-
-		# ReadRequest
+			params = (request.id, converted_fields)
+			handler = self.__processModifyRequest
 		elif isinstance(request, interface.ReadRequest):
-			return self.__processReadRequest(
-				request.id,
-				convertFields(request.fields, self.engine))
-
-		# InsertRequest
+			params = (request.id, converted_fields)
+			handler = self.__processReadRequest
 		elif isinstance(request, interface.InsertRequest):
 
 			# fields to insert have relative names
-			for field in request.fields:
+			for field in converted_fields:
 				field.name = request.target_field.name + field.name
 
-			self.__processInsertRequest(
-				request.id,
-				_InternalField(self.engine, request.target_field.name, request.target_field.value),
-				convertFields(request.fields, self.engine),
-				request.one_position)
+			params = (request.id, converted_target,
+				converted_fields, request.one_position)
+			handler = self.__processInsertRequest
+		elif isinstance(request, interface.DeleteRequest):
+			params = (request.id, converted_fields)
+			handler = self.__processDeleteRequest
+		elif isinstance(request, interface.SearchRequest):
+			params = (converted_condition,)
+			handler = self.__processSearchRequest
 		else:
 			raise Exception("Unknown request type: " + request.__class__.__name__)
+
+		# Handle request inside a transaction
+		self.engine.begin()
+		try:
+			res = handler(*params)
+		except:
+			self.engine.rollback()
+			raise
+		self.engine.commit()
+		return res
 
 	def __processInsertRequest(self, id, target_field, fields, one_position):
 
