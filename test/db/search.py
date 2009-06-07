@@ -61,8 +61,8 @@ class Search(TestRequest):
 
 		self.checkRequestResult(res, ['1'])
 
-	def testConditionInvertInRoot(self):
-		"""Check if inversion flag works in the root of condition"""
+	def testConditionInvertInRootAnd(self):
+		"""Check if inversion flag works in the root of condition with AND"""
 		self.prepareStandNoList()
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
@@ -77,6 +77,23 @@ class Search(TestRequest):
 		)))
 
 		self.checkRequestResult(res, ['2', '3', '4', '5'])
+
+	def testConditionInvertInRootOr(self):
+		"""Check if inversion flag works in the root of condition with OR"""
+		self.prepareStandNoList()
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+		SearchRequest.Condition(
+			Field('phone'), SearchRequest.EQ, '1111'
+			),
+		SearchRequest.OR,
+		SearchRequest.Condition(
+			Field('age'), SearchRequest.EQ, '27', invert=True
+			),
+		invert=True
+		)))
+
+		self.checkRequestResult(res, ['3'])
 
 	def testConditionRegexp(self):
 		"""Check operation of regexp-based condition"""
