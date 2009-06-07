@@ -29,10 +29,12 @@ class Sqlite3Engine(interface.Engine):
 		print("--------")
 
 	def __regexp(self, expr, item):
+		"""Callback for regexp condition support in DB"""
 		r = re.compile(expr)
 		return r.search(item) is not None
 
 	def execute(self, sql_str):
+		"""Execute given SQL query"""
 		return list(self.cur.execute(sql_str))
 
 	def tableExists(self, name):
@@ -74,7 +76,6 @@ class Sqlite3Engine(interface.Engine):
 	def begin(self):
 		"""Begin transaction"""
 		self.cur.execute("BEGIN TRANSACTION")
-		pass
 
 	def commit(self):
 		"""Commit current transaction"""
