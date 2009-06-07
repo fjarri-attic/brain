@@ -263,5 +263,23 @@ class Insert(TestRequest):
 			Field(['tracks', 2, 'Authors', 1], 'Fred')
 		])
 
+	def testToNonExistingObject(self):
+		"""Check that insertion to non-existing object creates object first"""
+		self.prepareStandSimpleList()
+
+		res = self.db.processRequest(InsertRequest('3',
+			Field(['tracks', 2, 'Authors', None]),
+			[
+				Field([], 'Earl'),
+				Field([], 'Fred')
+			]
+		))
+
+		res = self.db.processRequest(ReadRequest('3', [Field(['tracks', None, 'Authors', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 2, 'Authors', 0], 'Earl'),
+			Field(['tracks', 2, 'Authors', 1], 'Fred')
+		])
+
 def get_class():
 	return Insert

@@ -548,9 +548,6 @@ class SimpleDatabase(interface.Database):
 				if not one_position:
 					counter += 1
 
-		if not self.structure.objectExists(id):
-			raise Exception("Object " + id + " does not exist")
-
 		# FIXME: Hide .name usage in _InternalField
 		target_col = len(target_field.name) - 1 # last column in name of target field
 
