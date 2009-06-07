@@ -19,32 +19,47 @@ class Engine:
 
 	def dump(self):
 		"""Dump the whole database to string; used for debug purposes"""
-		raise Exception("Not implemented")
+		return NotImplementedError
 
-	def execute(self, sql_str, params=None): raise Exception("Not implemented")
-	def tableExists(self, name): raise Exception("Not implemented")
-	def tableIsEmpty(self, name): raise Exception("Not implemented")
-	def deleteTable(self, name): raise Exception("Not implemented")
+	def execute(self, sql_str):
+		"""Execute given SQL query"""
+		return NotImplementedError
+
+	def tableExists(self, name): return NotImplementedError
+	def tableIsEmpty(self, name): return NotImplementedError
+	def deleteTable(self, name): return NotImplementedError
 
 	def getEmptyCondition(self):
 		"""Returns condition for compound SELECT which evaluates to empty table"""
-		raise Exception("Not implemented")
+		return NotImplementedError
 
 	def getSafeValue(self, s):
 		"""Transform string value so that it could be safely used in queries"""
-		raise Exception("Not implemented")
+		return NotImplementedError
 
 	def getNameString(self, l):
 		"""Get field name from list"""
-		raise Exception("Not implemented")
+		return NotImplementedError
 
 	def getNameList(self, s):
 		"""Get field name list from string"""
-		raise Exception("Not implemented")
+		return NotImplementedError
 
 	def getSafeName(self, s):
 		"""Transform string value so that it could be safely used as table name"""
-		raise Exception("Not implemented")
+		return NotImplementedError
+
+	def begin(self):
+		"""Begin transaction"""
+		return NotImplementedError
+
+	def commit(self):
+		"""Commit current transaction"""
+		return NotImplementedError
+
+	def rollback(self):
+		"""Rollback current transaction"""
+		return NotImplementedError
 
 class Database:
 	"""Database layer class interface"""
