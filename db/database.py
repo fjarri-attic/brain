@@ -9,7 +9,7 @@ class StructureError(Exception):
 	"""Request tried to do something conflicting with DB structure"""
 	pass
 
-class InternalField:
+class _InternalField:
 	"""Class for more convenient handling of Field objects"""
 
 	def __init__(self, engine, name, value=None):
@@ -143,7 +143,7 @@ class InternalField:
 		if not self.pointsToListElement():
 			return None, None
 
-		self_copy = InternalField(self.__engine, self.name)
+		self_copy = _InternalField(self.__engine, self.name)
 		self_copy.name[-1] = None
 		return self_copy.columns_condition
 
@@ -225,7 +225,7 @@ class StructureLayer:
 			.format(id_table=self.__id_table, id=id, regexp=regexp_val,
 			id_column=self.__ID_COLUMN, field_column=self.__FIELD_COLUMN))
 
-		return [InternalField.fromNameStr(self.engine, x[0]) for x in l]
+		return [_InternalField.fromNameStr(self.engine, x[0]) for x in l]
 
 	def objectExists(self, id):
 		"""Check if object exists in database"""
@@ -250,10 +250,10 @@ class StructureLayer:
 			.format(columns_query=field.columns_query, field_name=field.name_as_table,
 			id=id, columns_condition=field.columns_condition))
 
-		# Convert results to list of InternalFields
+		# Convert results to list of _InternalFields
 		res = []
 		for elem in l:
-			res.append(InternalField(self.engine, field.getDeterminedName(elem[1:]), elem[0]))
+			res.append(_InternalField(self.engine, field.getDeterminedName(elem[1:]), elem[0]))
 
 		if len(res) > 0:
 			return res
@@ -276,11 +276,11 @@ class StructureLayer:
 		"""Set value of given field"""
 
 		# Update maximum values cache
-		# FIXME: hide .name usage in InternalField
+		# FIXME: hide .name usage in _InternalField
 		name_copy = field.name[:]
 		while len(name_copy) > 0:
 			if isinstance(name_copy[-1], int):
-				f = InternalField(self.engine, name_copy)
+				f = _InternalField(self.engine, name_copy)
 				self.__updateListSize(id, f, name_copy[-1])
 			name_copy.pop()
 
@@ -356,7 +356,7 @@ class StructureLayer:
 		"""Check if object has some field"""
 		existing_fields = self.getFieldsList(id)
 
-		# FIXME: hide .name usage in InternalField
+		# FIXME: hide .name usage in _InternalField
 		existing_names = [existing_field.name for existing_field in existing_fields]
 		return field.clean_name in existing_names
 
@@ -485,16 +485,16 @@ class SimpleDatabase(interface.Database):
 		"""Process given request and return results"""
 
 		def convertFields(fields, engine):
-			"""Convert given fields list to InternalFields list"""
+			"""Convert given fields list to _InternalFields list"""
 			if fields != None:
-				return [InternalField(engine, x.name, x.value) for x in fields]
+				return [_InternalField(engine, x.name, x.value) for x in fields]
 			else:
 				return None
 
 		def convertCondition(condition, engine):
-			"""Convert fields in given condition to InternalFields"""
+			"""Convert fields in given condition to _InternalFields"""
 			if condition.leaf:
-				condition.operand1 = InternalField(engine,
+				condition.operand1 = _InternalField(engine,
 					condition.operand1.name, condition.operand1.value)
 			else:
 				convertCondition(condition.operand1, engine)
@@ -533,7 +533,7 @@ class SimpleDatabase(interface.Database):
 
 			self.__processInsertRequest(
 				request.id,
-				InternalField(self.engine, request.target_field.name, request.target_field.value),
+				_InternalField(self.engine, request.target_field.name, request.target_field.value),
 				convertFields(request.fields, self.engine),
 				request.one_position)
 		else:
@@ -545,7 +545,7 @@ class SimpleDatabase(interface.Database):
 			"""Enumerate given column in list of fields"""
 			counter = starting_num
 			for field in fields_list:
-				# FIXME: Hide .name usage in InternalField
+				# FIXME: Hide .name usage in _InternalField
 				field.name[col_num] = counter
 				if not one_position:
 					counter += 1
@@ -553,14 +553,14 @@ class SimpleDatabase(interface.Database):
 		if not self.structure.objectExists(id):
 			raise Exception("Object " + id + " does not exist")
 
-		# FIXME: Hide .name usage in InternalField
+		# FIXME: Hide .name usage in _InternalField
 		target_col = len(target_field.name) - 1 # last column in name of target field
 
 		max = self.structure.getMaxNumber(id, target_field)
 		if max == None:
 		# list does not exist yet
 			enumerate(fields, target_col, 0, one_position)
-		# FIXME: Hide .name usage in InternalField
+		# FIXME: Hide .name usage in _InternalField
 		elif target_field.name[target_col] == None:
 		# list exists and we are inserting elements to the end
 			starting_num = max + 1
@@ -569,7 +569,7 @@ class SimpleDatabase(interface.Database):
 		# list exists and we are inserting elements to the beginning or to the middle
 			self.structure.renumber(id, target_field,
 				(1 if one_position else len(fields)))
-			# FIXME: Hide .name usage in InternalField
+			# FIXME: Hide .name usage in _InternalField
 			enumerate(fields, target_col, target_field.name[target_col], one_position)
 
 		self.__processModifyRequest(id, fields)
@@ -607,7 +607,7 @@ class SimpleDatabase(interface.Database):
 		for result in results:
 			if result != None:
 				result_list += result
-		# FIXME: Hide .name usage in InternalField
+		# FIXME: Hide .name usage in _InternalField
 		return [interface.Field(x.name, x.value) for x in result_list]
 
 	def __processSearchRequest(self, condition):
