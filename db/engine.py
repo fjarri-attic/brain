@@ -12,10 +12,9 @@ class Sqlite3Engine(interface.Engine):
 
 	def __init__(self, path):
 
-		# DEFERRED means that:
-		# - we have to begin and end transactions explicitly
-		# - write operations will wait for other write operations to end
-		self.__conn = sqlite3.connect(path, isolation_level="DEFERRED")
+		# isolation_level=None disables autocommit, giving us the
+		# possibility to manage transactions manually
+		self.__conn = sqlite3.connect(path, isolation_level=None)
 
 		# Add external regexp handling function
 		self.__conn.create_function("regexp", 2, self.__regexp)
@@ -74,6 +73,7 @@ class Sqlite3Engine(interface.Engine):
 
 	def begin(self):
 		"""Begin transaction"""
+		self.cur.execute("BEGIN TRANSACTION")
 		pass
 
 	def commit(self):
