@@ -20,6 +20,8 @@ class Sqlite3Engine(interface.Engine):
 		# Add external regexp handling function
 		self.__conn.create_function("regexp", 2, self.__regexp)
 
+		self.cur = self.__conn.cursor()
+
 	def dump(self):
 		"""Dump the whole database to string; used for debug purposes"""
 		print("Dump:")
@@ -71,11 +73,13 @@ class Sqlite3Engine(interface.Engine):
 		return '"' + s.replace('"', '""') + '"'
 
 	def begin(self):
-		"""Create cursor and begin transaction"""
-		self.cur = self.__conn.cursor()
+		"""Begin transaction"""
+		pass
 
 	def commit(self):
+		"""Commit current transaction"""
 		self.__conn.commit()
 
 	def rollback(self):
+		"""Rollback current transaction"""
 		self.__conn.rollback()
