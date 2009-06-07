@@ -11,7 +11,13 @@ class Sqlite3Engine(interface.Engine):
 	__FIELD_SEP = '.' # separator for field elements in table name
 
 	def __init__(self, path):
-		self.__conn = sqlite3.connect(path)
+
+		# DEFERRED means that:
+		# - we have to begin and end transactions explicitly
+		# - write operations will wait for other write operations to end
+		self.__conn = sqlite3.connect(path, isolation_level="DEFERRED")
+
+		# Add external regexp handling function
 		self.__conn.create_function("regexp", 2, self.__regexp)
 
 	def dump(self):
@@ -26,18 +32,18 @@ class Sqlite3Engine(interface.Engine):
 		return r.search(item) is not None
 
 	def execute(self, sql_str):
-		return list(self.__conn.execute(sql_str))
+		return list(self.cur.execute(sql_str))
 
 	def tableExists(self, name):
-		res = list(self.__conn.execute("SELECT * FROM sqlite_master WHERE type='table' AND name={name}"
+		res = list(self.cur.execute("SELECT * FROM sqlite_master WHERE type='table' AND name={name}"
 			.format(name=self.getSafeValue(name))))
 		return len(res) > 0
 
 	def tableIsEmpty(self, name):
-		return len(list(self.__conn.execute("SELECT * FROM " + self.getSafeName(name)))) == 0
+		return len(list(self.cur.execute("SELECT * FROM " + self.getSafeName(name)))) == 0
 
 	def deleteTable(self, name):
-		self.__conn.execute("DROP TABLE IF EXISTS " + self.getSafeName(name))
+		self.cur.execute("DROP TABLE IF EXISTS " + self.getSafeName(name))
 
 	def getEmptyCondition(self):
 		"""Returns condition for compound SELECT which evaluates to empty table"""
@@ -63,3 +69,13 @@ class Sqlite3Engine(interface.Engine):
 	def getSafeName(self, s):
 		"""Transform string value so that it could be safely used as table name"""
 		return '"' + s.replace('"', '""') + '"'
+
+	def begin(self):
+		"""Create cursor and begin transaction"""
+		self.cur = self.__conn.cursor()
+
+	def commit(self):
+		self.__conn.commit()
+
+	def rollback(self):
+		self.__conn.rollback()

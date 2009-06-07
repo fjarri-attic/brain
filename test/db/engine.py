@@ -26,11 +26,14 @@ class EngineTest(unittest.TestCase):
 		vals = ['a', 'b b', "a'b", "a''''b", "a'; DROP DATABASE;"]
 
 		for val in vals:
+			self.db.begin()
 			self.db.execute("CREATE TABLE test (col TEXT)")
 			self.db.execute("INSERT INTO test VALUES ({value})".
 				format(value=self.db.getSafeValue(val)))
 			res = list(self.db.execute("SELECT col FROM test"))
 			self.db.execute("DROP TABLE test")
+			self.db.commit()
+
 			self.failUnlessEqual(res, [(val,)])
 
 	def testNameTransformation(self):
@@ -38,10 +41,13 @@ class EngineTest(unittest.TestCase):
 		names = ['a', 'b b' , 'a "" b', 'a"; DROP DATABASE;']
 
 		for name in names:
+			self.db.begin()
 			self.db.execute("CREATE TABLE {table} (col TEXT)".format(table=self.db.getSafeName(name)))
 			self.db.execute("INSERT INTO {table} VALUES ('aaa')".format(table=self.db.getSafeName(name)))
 			res = list(self.db.execute("SELECT col FROM {table}".format(table=self.db.getSafeName(name))))
 			self.db.execute("DROP TABLE {table}".format(table=self.db.getSafeName(name)))
+			self.db.commit()
+
 			self.failUnlessEqual(res, [('aaa',)])
 
 	def testNameListToStr(self):
@@ -63,11 +69,13 @@ class EngineTest(unittest.TestCase):
 
 	def testExecuteWithoutParameters(self):
 		"""Test execute() method on simple queries"""
+		self.db.begin()
 		self.db.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
 		self.db.execute("INSERT INTO ttt VALUES ('a', 'b')")
 
 	def testExecuteReturnsList(self):
 		"""Test that execute() method returns list and not some specific class"""
+		self.db.begin()
 		self.db.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
 		self.db.execute("INSERT INTO ttt VALUES ('a', 'b')")
 		res = self.db.execute("SELECT * FROM ttt")
@@ -76,43 +84,51 @@ class EngineTest(unittest.TestCase):
 
 	def testTableExists(self):
 		"""Test work of tableExists() method for existing table"""
+		self.db.begin()
 		self.db.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
 		self.failUnless(self.db.tableExists('ttt'))
 
 	def testTableExistsMissingTable(self):
 		"""Test work of tableExists() method for non-existing table"""
+		self.db.begin()
 		self.db.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
 		self.failIf(self.db.tableExists('bbb'))
 
 	def testTableIsEmpty(self):
 		"""Test work of tableIsEmpty() method for empty table"""
+		self.db.begin()
 		self.db.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
 		self.failUnless(self.db.tableIsEmpty('ttt'))
 
 	def testTableIsEmptyFilledTable(self):
 		"""Test work of tableIsEmpty() method for non-empty table"""
+		self.db.begin()
 		self.db.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
 		self.db.execute("INSERT INTO ttt VALUES ('a', 'b')")
 		self.failIf(self.db.tableIsEmpty('ttt'))
 
 	def testDeleteTable(self):
 		"""Test work of deleteTable() method for existing table"""
+		self.db.begin()
 		self.db.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
 		self.db.deleteTable('ttt')
 		self.failIf(self.db.tableExists('ttt'))
 
 	def testDeleteTableMissingTable(self):
 		"""Test work of deleteTable() method for non-existing table"""
+		self.db.begin()
 		self.db.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
 		self.db.deleteTable('aaa')
 
 	def testEmptyCondition(self):
 		"""Test that empty condition really returns empty table"""
+		self.db.begin()
 		res = self.db.execute(self.db.getEmptyCondition())
 		self.failUnlessEqual(res, [])
 
 	def testEmptyConditionIntersect(self):
 		"""Test that empty condition can be used with INTERSECT"""
+		self.db.begin()
 		self.db.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
 		self.db.execute("INSERT INTO ttt VALUES ('a', 'b')")
 		res = self.db.execute("SELECT * FROM (SELECT col1 FROM ttt) INTERSECT " +
@@ -121,6 +137,7 @@ class EngineTest(unittest.TestCase):
 
 	def testEmptyConditionUnion(self):
 		"""Test that empty condition can be used with UNION"""
+		self.db.begin()
 		self.db.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
 		self.db.execute("INSERT INTO ttt VALUES ('a', 'b')")
 		res = self.db.execute("SELECT * FROM (SELECT col1 FROM ttt) UNION " +
