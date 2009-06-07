@@ -144,6 +144,44 @@ class EngineTest(unittest.TestCase):
 			"SELECT * FROM (" + self.engine.getEmptyCondition() + ")")
 		self.failUnlessEqual(res, [('a',)])
 
+	def testRollbackTableModifications(self):
+		"""Test that rollback rolls back table modifying actions"""
+		self.engine.begin()
+		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.execute("INSERT INTO ttt VALUES ('a', 'b')")
+		self.engine.commit()
+
+		self.engine.begin()
+		self.engine.execute("INSERT INTO ttt VALUES ('c', 'd')")
+		self.engine.execute("UPDATE ttt SET col1='e' WHERE col1='a'")
+		self.engine.execute("DELETE FROM ttt WHERE col1='e'")
+		self.engine.rollback()
+
+		self.engine.begin()
+		res = self.engine.execute("SELECT * FROM (SELECT col1 FROM ttt) UNION " +
+			"SELECT * FROM (" + self.engine.getEmptyCondition() + ")")
+		self.failUnlessEqual(res, [('a',)])
+
+	def testRollbackTableCreation(self):
+		"""Test that table creation can be rolled back"""
+		self.engine.begin()
+		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.rollback()
+
+		self.failIf(self.engine.tableExists('ttt'))
+
+	def testRollbackTableDeletion(self):
+		"""Test that table deletion can be rolled back"""
+		self.engine.begin()
+		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.commit()
+
+		self.engine.begin()
+		self.engine.execute("DROP TABLE ttt")
+		self.engine.rollback()
+
+		self.failUnless(self.engine.tableExists('ttt'))
+
 def suite():
 	"""Generate test suite for this module"""
 	res = helpers.NamedTestSuite()
