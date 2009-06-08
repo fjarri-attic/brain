@@ -1,3 +1,5 @@
+"""Module with classes, describing OO wrapper over SQL"""
+
 import sqlite3
 import re
 import copy
