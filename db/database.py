@@ -365,15 +365,6 @@ class StructureLayer:
 		self.engine.execute("CREATE TABLE IF NOT EXISTS {field_name} ({values_str})"
 			.format(field_name=field.name_as_table, values_str=field.creation_str))
 
-	def createObject(self, id, fields):
-		"""Create new object with given fields"""
-
-		# FIXME: we can use the fact that object does not exist to speed up the process
-		for field in fields:
-			self.updateSpecification(id, field) # create object header
-			self.assureFieldTableExists(field) # create field table
-			self.setFieldValue(id, field)
-
 	def deleteObject(self, id):
 		"""Delete object with given ID"""
 
@@ -392,14 +383,6 @@ class StructureLayer:
 		# FIXME: hide .name usage in _InternalField
 		existing_names = [existing_field.name for existing_field in existing_fields]
 		return field.clean_name in existing_names
-
-	def modifyObject(self, id, fields):
-		"""Update object using given list of fields"""
-
-		# for each field, check if it already exists and update specification if necessary
-		for field in fields:
-			self.updateSpecification(id, field)
-			self.setFieldValue(id, field)
 
 	def searchForObjects(self, condition):
 		"""Search for all objects using given search condition"""
@@ -622,12 +605,9 @@ class SimpleDatabase(interface.Database):
 
 	def __processModifyRequest(self, id, fields):
 
-		# check if the entry with specified id already exists
-		# if no, just add it to the database
-		if not self.structure.objectExists(id):
-			self.structure.createObject(id, fields)
-		else:
-			self.structure.modifyObject(id, fields)
+		for field in fields:
+			self.structure.updateSpecification(id, field) # create object header
+			self.structure.setFieldValue(id, field)
 
 	def __processDeleteRequest(self, id, fields):
 
