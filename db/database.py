@@ -202,6 +202,27 @@ class StructureLayer:
 
 	def __addFieldToSpecification(self, id, field):
 		"""Check if field conforms to hierarchy and if yes, add it"""
+
+		# FIXME: hide .name usage in _InternalField
+		name_copy = field.name[:]
+
+		while len(name_copy) > 0:
+			last = name_copy.pop()
+
+			# Get all fields with names, starting from name_copy, excluding
+			# the one whose name equals name_copy
+			fields = self.getFieldsList(id, _InternalField(self.engine, name_copy), True)
+
+			# we have to check only first field in list
+			# if there are no conflicts, other fields do not conflict too
+			if len(fields) > 0:
+				elem = fields[0].name[len(name_copy)]
+
+				if isinstance(last, str) and not isinstance(elem, str):
+					raise DatabaseError("Cannot modify hash, when list already exists on this level")
+				if not isinstance(last, str) and isinstance(elem, str):
+					raise DatabaseError("Cannot modify list, when hash already exists on this level")
+
 		self.engine.execute("INSERT INTO {id_table} VALUES ({id}, {field_name})"
 			.format(id_table=self.__id_table, id=id, field_name=field.name_as_value))
 
@@ -216,12 +237,17 @@ class StructureLayer:
 		if len(l) == 0:
 			self.__addFieldToSpecification(id, field)
 
-	def getFieldsList(self, id, field=None):
-		"""Get list of fields for given object"""
+	def getFieldsList(self, id, field=None, exclude_self=False):
+		"""
+		Get list of fields for given object.
+		If field is given, return only those whose names start from its name
+		If exclude_self is true, exclude 'field' itself from results
+		"""
 
 		# If field is given, return only fields, which contain its name in the beginning
 		regexp_cond = ((" AND {field_column} REGEXP {regexp}") if field != None else "")
-		regexp_val = (self.engine.getSafeValue("^" + field.name_str) if field != None else None)
+		regexp_val = (self.engine.getSafeValue("^" + field.name_str +
+			("." if exclude_self else "")) if field != None else None)
 
 		# Get list of fields
 		l = self.engine.execute(("SELECT {field_column} FROM {id_table} WHERE {id_column}={id}" + regexp_cond)
