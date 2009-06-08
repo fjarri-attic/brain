@@ -263,10 +263,10 @@ class StructureLayer:
 
 		# We need just check if there is at least one row with its id
 		# in specification table
-		l = self.engine.execute("SELECT {field_column} FROM {id_table} WHERE {id_column}={id}"
+		l = self.engine.execute("SELECT COUNT({field_column}) FROM {id_table} WHERE {id_column}={id}"
 			.format(id_table=self.__id_table, id=id,
 			id_column=self.__ID_COLUMN, field_column=self.__FIELD_COLUMN))
-		return len(l) > 0
+		return l[0][0] > 0
 
 	#
 	# Other functions
