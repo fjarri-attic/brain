@@ -384,59 +384,59 @@ class StructureLayer:
 		existing_names = [existing_field.name for existing_field in existing_fields]
 		return field.clean_name in existing_names
 
+	def buildSqlQuery(self, condition):
+		"""Recursive function to transform condition into SQL query"""
+
+		if not condition.leaf:
+			# child conditions
+			cond1 = self.buildSqlQuery(condition.operand1)
+			cond2 = self.buildSqlQuery(condition.operand2)
+
+			# mapping to SQL operations
+			operations = {
+				interface.SearchRequest.AND: 'INTERSECT',
+				interface.SearchRequest.OR: 'UNION'
+			}
+
+			return ("SELECT * FROM ({cond1}) {operation} SELECT * FROM ({cond2})"
+				.format(cond1=cond1, cond2=cond2,
+				operation=operations[condition.operator]))
+
+		# Leaf condition
+		op1 = condition.operand1 # it must be Field
+		op2 = condition.operand2 # it must be some value
+
+		# If table with given field does not exist, just return empty query
+		if not self.engine.tableExists(op1.name_str):
+			return self.engine.getEmptyCondition()
+
+		safe_name = condition.operand1.name_as_table
+		not_str = " NOT " if condition.invert else " "
+		op2_val = self.engine.getSafeValue(op2)
+
+		# mapping to SQL comparisons
+		comparisons = {
+			interface.SearchRequest.EQ: '=',
+			interface.SearchRequest.REGEXP: 'REGEXP'
+		}
+
+		# construct query
+		result = ("SELECT DISTINCT id FROM {field_name} " +
+			"WHERE{not_str}value {comparison} {val}{columns_condition}")\
+			.format(field_name=safe_name, not_str=not_str,
+			comparison=comparisons[condition.operator],
+			val=op2_val, columns_condition=op1.columns_condition)
+
+		if condition.invert:
+			result += " UNION SELECT * FROM (SELECT id FROM {id_table} EXCEPT SELECT id FROM {field_name})"\
+				.format(id_table=self.__id_table, field_name=safe_name)
+
+		return result
+
 	def searchForObjects(self, condition):
 		"""Search for all objects using given search condition"""
 
-		def buildSqlQuery(condition):
-			"""Recursive function to transform condition into SQL query"""
-
-			if not condition.leaf:
-				# child conditions
-				cond1 = buildSqlQuery(condition.operand1)
-				cond2 = buildSqlQuery(condition.operand2)
-
-				# mapping to SQL operations
-				operations = {
-					interface.SearchRequest.AND: 'INTERSECT',
-					interface.SearchRequest.OR: 'UNION'
-				}
-
-				return ("SELECT * FROM ({cond1}) {operation} SELECT * FROM ({cond2})"
-					.format(cond1=cond1, cond2=cond2,
-					operation=operations[condition.operator]))
-
-			# Leaf condition
-			op1 = condition.operand1 # it must be Field
-			op2 = condition.operand2 # it must be some value
-
-			# If table with given field does not exist, just return empty query
-			if not self.engine.tableExists(op1.name_str):
-				return self.engine.getEmptyCondition()
-
-			safe_name = condition.operand1.name_as_table
-			not_str = " NOT " if condition.invert else " "
-			op2_val = self.engine.getSafeValue(op2)
-
-			# mapping to SQL comparisons
-			comparisons = {
-				interface.SearchRequest.EQ: '=',
-				interface.SearchRequest.REGEXP: 'REGEXP'
-			}
-
-			# construct query
-			result = ("SELECT DISTINCT id FROM {field_name} " +
-				"WHERE{not_str}value {comparison} {val}{columns_condition}")\
-				.format(field_name=safe_name, not_str=not_str,
-				comparison=comparisons[condition.operator],
-				val=op2_val, columns_condition=op1.columns_condition)
-
-			if condition.invert:
-				result += " UNION SELECT * FROM (SELECT id FROM {id_table} EXCEPT SELECT id FROM {field_name})"\
-					.format(id_table=self.__id_table, field_name=safe_name)
-
-			return result
-
-		request = buildSqlQuery(condition)
+		request = self.buildSqlQuery(condition)
 		result = self.engine.execute(request)
 		list_res = [x[0] for x in result]
 
