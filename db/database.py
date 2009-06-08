@@ -519,6 +519,25 @@ class SimpleDatabase(interface.Database):
 				convertCondition(condition.operand1, engine)
 				convertCondition(condition.operand2, engine)
 
+		def propagateInversion(condition):
+			"""Propagate inversion flags to the leafs of condition tree"""
+
+			if not condition.leaf:
+				if condition.invert:
+
+					condition.invert = False
+
+					condition.operand1.invert = not condition.operand1.invert
+					condition.operand2.invert = not condition.operand2.invert
+
+					if condition.operator == interface.SearchRequest.AND:
+						condition.operator = interface.SearchRequest.OR
+					elif condition.operator == interface.SearchRequest.OR:
+						condition.operator = interface.SearchRequest.AND
+
+				propagateInversion(condition.operand1)
+				propagateInversion(condition.operand2)
+
 		# Convert Fields
 		if hasattr(request, 'fields'):
 			converted_fields = convertFields(request.fields, self.engine)
@@ -552,6 +571,7 @@ class SimpleDatabase(interface.Database):
 			params = (request.id, converted_fields)
 			handler = self.__processDeleteRequest
 		elif isinstance(request, interface.SearchRequest):
+			propagateInversion(converted_condition)
 			params = (converted_condition,)
 			handler = self.__processSearchRequest
 		else:
@@ -640,25 +660,4 @@ class SimpleDatabase(interface.Database):
 		return [interface.Field(x.name, x.value) for x in result_list]
 
 	def __processSearchRequest(self, condition):
-
-		def propagateInversion(condition):
-			"""Propagate inversion flags to the leafs of condition tree"""
-
-			if not condition.leaf:
-				if condition.invert:
-
-					condition.invert = False
-
-					condition.operand1.invert = not condition.operand1.invert
-					condition.operand2.invert = not condition.operand2.invert
-
-					if condition.operator == interface.SearchRequest.AND:
-						condition.operator = interface.SearchRequest.OR
-					elif condition.operator == interface.SearchRequest.OR:
-						condition.operator = interface.SearchRequest.AND
-
-				propagateInversion(condition.operand1)
-				propagateInversion(condition.operand2)
-
-		propagateInversion(condition)
 		return self.structure.searchForObjects(condition)
