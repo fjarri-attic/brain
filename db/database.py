@@ -197,12 +197,12 @@ class StructureLayer:
 
 		self.engine.execute("CREATE table IF NOT EXISTS listsizes (id TEXT, field TEXT, max INTEGER)")
 
-	def __deleteSpecification(self, id):
+	def deleteSpecification(self, id):
 		"""Delete all information about object from specification table"""
 		self.engine.execute("DELETE FROM {id_table} WHERE {id_column}={id}"
 			.format(id_table=self.__id_table, id_column=self.__ID_COLUMN, id=id))
 
-	def __addFieldToSpecification(self, id, field):
+	def addFieldToSpecification(self, id, field):
 		"""Check if field conforms to hierarchy and if yes, add it"""
 
 		# FIXME: hide .name usage in _InternalField
@@ -228,7 +228,7 @@ class StructureLayer:
 		self.engine.execute("INSERT INTO {id_table} VALUES ({id}, {field_name})"
 			.format(id_table=self.__id_table, id=id, field_name=field.name_as_value))
 
-	def __updateSpecification(self, id, field):
+	def updateSpecification(self, id, field):
 		"""If information about given field does not exist in specification table, add it"""
 
 		# Check if field exists in specification
@@ -237,7 +237,7 @@ class StructureLayer:
 			field_column=self.__FIELD_COLUMN, field_name=field.name_as_value))
 
 		if len(l) == 0:
-			self.__addFieldToSpecification(id, field)
+			self.addFieldToSpecification(id, field)
 
 	def getFieldsList(self, id, field=None, exclude_self=False):
 		"""
@@ -291,7 +291,8 @@ class StructureLayer:
 		else:
 			return None
 
-	def __updateListSize(self, id, field, val):
+	def updateListSize(self, id, field, val):
+		"""Update information about the size of given list"""
 		max = self.getMaxNumber(id, field)
 		if max != None:
 			if max > val:
@@ -303,7 +304,7 @@ class StructureLayer:
 		self.engine.execute("INSERT INTO listsizes VALUES ({id}, {field_name}, {val})"
 			.format(id=id, field_name=field.name_hashstr, val=val))
 
-	def __setFieldValue(self, id, field):
+	def setFieldValue(self, id, field):
 		"""Set value of given field"""
 
 		# Update maximum values cache
@@ -312,11 +313,11 @@ class StructureLayer:
 		while len(name_copy) > 0:
 			if isinstance(name_copy[-1], int):
 				f = _InternalField(self.engine, name_copy)
-				self.__updateListSize(id, f, name_copy[-1])
+				self.updateListSize(id, f, name_copy[-1])
 			name_copy.pop()
 
 		# Create field table if it does not exist yet
-		self.__assureFieldTableExists(field)
+		self.assureFieldTableExists(field)
 
 		# Delete old value
 		self.engine.execute("DELETE FROM {field_name} WHERE id={id} {delete_condition}"
@@ -357,7 +358,7 @@ class StructureLayer:
 			# otherwise just delete values using given field mask
 			self.deleteValues(id, field)
 
-	def __assureFieldTableExists(self, field):
+	def assureFieldTableExists(self, field):
 		"""Create table for storing values of this field if it does not exist yet"""
 
 		# Create table
@@ -369,9 +370,9 @@ class StructureLayer:
 
 		# FIXME: we can use the fact that object does not exist to speed up the process
 		for field in fields:
-			self.__updateSpecification(id, field) # create object header
-			self.__assureFieldTableExists(field) # create field table
-			self.__setFieldValue(id, field)
+			self.updateSpecification(id, field) # create object header
+			self.assureFieldTableExists(field) # create field table
+			self.setFieldValue(id, field)
 
 	def deleteObject(self, id):
 		"""Delete object with given ID"""
@@ -382,7 +383,7 @@ class StructureLayer:
 		for field in fields:
 			self.deleteField(id, field)
 
-		self.__deleteSpecification(id)
+		self.deleteSpecification(id)
 
 	def objectHasField(self, id, field):
 		"""Check if object has some field"""
@@ -397,8 +398,8 @@ class StructureLayer:
 
 		# for each field, check if it already exists and update specification if necessary
 		for field in fields:
-			self.__updateSpecification(id, field)
-			self.__setFieldValue(id, field)
+			self.updateSpecification(id, field)
+			self.setFieldValue(id, field)
 
 	def searchForObjects(self, condition):
 		"""Search for all objects using given search condition"""
