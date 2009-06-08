@@ -158,5 +158,18 @@ class Modify(TestRequest):
 			ModifyRequest('1', [Field(['tracks', 'some_name'], 'Blablabla')])
 		)
 
+	def testModificationAddsNewField(self):
+		"""Check that modification can add totally new field to object"""
+		self.prepareStandNoList()
+
+		self.db.processRequest(ModifyRequest('1', [
+			Field('title', 'Mr')
+		]))
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field('title'), SearchRequest.EQ, 'Mr')))
+
+		self.checkRequestResult(res, ['1'])
+
 def get_class():
 	return Modify
