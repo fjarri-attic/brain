@@ -67,7 +67,7 @@ class EngineTest(unittest.TestCase):
 			name_list = self.engine.getNameList(name_str)
 			self.failUnlessEqual(expected_res, name_list)
 
-	def testExecuteWithoutParameters(self):
+	def testExecute(self):
 		"""Test execute() method on simple queries"""
 		self.engine.begin()
 		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
@@ -181,6 +181,16 @@ class EngineTest(unittest.TestCase):
 		self.engine.rollback()
 
 		self.failUnless(self.engine.tableExists('ttt'))
+
+	def testRegexpSupport(self):
+		"""Check that engine supports regexp search"""
+		self.engine.begin()
+		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.execute("INSERT INTO ttt VALUES ('abc', 'e')")
+		self.engine.execute("INSERT INTO ttt VALUES ('bac', 'f')")
+		self.engine.execute("INSERT INTO ttt VALUES ('cba', 'g')")
+		res = self.engine.execute("SELECT col1 FROM ttt WHERE col1 REGEXP 'a\w+'")
+		self.failUnlessEqual(res, [('abc',), ('bac',)])
 
 def suite():
 	"""Generate test suite for this module"""
