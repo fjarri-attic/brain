@@ -201,7 +201,14 @@ class EngineTest(unittest.TestCase):
 		self.engine.execute("INSERT INTO ttt VALUES ('abc', '{val}')"
 			.format(val=AUSTRIA))
 
+		# check that unicode string can be queried
 		res = self.engine.execute("SELECT col2 FROM ttt")
+		self.failUnlessEqual(res, [(AUSTRIA,)])
+
+		# check that regexp works for unicode
+		self.engine.execute("INSERT INTO ttt VALUES ('aaa', 'bbb')")
+		res = self.engine.execute("SELECT col2 FROM ttt WHERE col2 REGEXP '{val}'"
+			.format(val=AUSTRIA[:3]))
 		self.failUnlessEqual(res, [(AUSTRIA,)])
 
 def suite():
