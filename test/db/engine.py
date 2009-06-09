@@ -192,6 +192,18 @@ class EngineTest(unittest.TestCase):
 		res = self.engine.execute("SELECT col1 FROM ttt WHERE col1 REGEXP 'a\w+'")
 		self.failUnlessEqual(res, [('abc',), ('bac',)])
 
+	def testUnicodeSupport(self):
+		"""Check that DB can store and return unicode values"""
+		AUSTRIA = "\xd6sterreich"
+
+		self.engine.begin()
+		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.execute("INSERT INTO ttt VALUES ('abc', '{val}')"
+			.format(val=AUSTRIA))
+
+		res = self.engine.execute("SELECT col2 FROM ttt")
+		self.failUnlessEqual(res, [(AUSTRIA,)])
+
 def suite():
 	"""Generate test suite for this module"""
 	res = helpers.NamedTestSuite()
