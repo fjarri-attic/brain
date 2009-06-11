@@ -171,5 +171,20 @@ class Modify(TestRequest):
 
 		self.checkRequestResult(res, ['1'])
 
+	def testAdditionDifferentTypes(self):
+		"""Test that values of different types can be added"""
+		values = ['text value', 123, 45.56, b'\x00\x01']
+		reference_fields = []
+
+		# create fields with values of different types
+		for value in values:
+			fld = Field('fld' + str(values.index(value)), value)
+			reference_fields.append(fld)
+
+		# check that all of them can be added and read
+		self.db.processRequest(ModifyRequest('1', reference_fields))
+		res = self.db.processRequest(ReadRequest('1'))
+		self.checkRequestResult(res, reference_fields)
+
 def get_class():
 	return Modify
