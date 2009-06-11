@@ -52,9 +52,23 @@ class Sqlite3Engine(interface.Engine):
 		"""Returns condition for compound SELECT which evaluates to empty table"""
 		return "SELECT 0 limit 0"
 
-	def getSafeValue(self, s):
-		"""Transform string value so that it could be safely used in queries"""
-		return "'" + s.replace("'", "''") + "'"
+	def getSafeValue(self, val):
+		"""Transform value so that it could be safely used in queries"""
+		transformations = {
+			str: lambda x: "'" + x.replace("'", "''") + "'",
+			int: lambda x: str(x),
+			float: lambda x: str(x),
+			# FIXME: seems that now .decode() is broken, so we have to do this ugly thing
+			bytes: lambda x: "X'" + ''.join(["{0:02X}".format(x) for x in val]) + "'"
+		}
+		return transformations[val.__class__](val)
+
+	def getColumnType(self, val):
+		"""Return SQL type for storing given value"""
+		types = {
+			str: "TEXT", int: "INTEGER", float: "FLOAT", bytes: "TEXT"
+		}
+		return types[val.__class__]
 
 	def getNameString(self, l):
 		"""Get field name from list"""

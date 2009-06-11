@@ -23,13 +23,19 @@ class EngineTest(unittest.TestCase):
 
 	def testValueTransformation(self):
 		"""Check that unsafe->safe value transformation works"""
-		vals = ['a', 'b b', "a'b", "a''''b", "a'; DROP DATABASE;"]
+		vals = [
+			'a', 'b b', "a'b", "a''''b", "a'; DROP DATABASE;", # strings
+			0, 1, -1, 1234567890, # ints
+			0.002, -0.0004, 5249512.3123, # floats
+			b'\x00\x02\x03\x04', b'!@#$%^&*()' # binary buffers
+		]
 
 		for val in vals:
 			self.engine.begin()
-			self.engine.execute("CREATE TABLE test (col TEXT)")
-			self.engine.execute("INSERT INTO test VALUES ({value})".
-				format(value=self.engine.getSafeValue(val)))
+			self.engine.execute("CREATE TABLE test (col {type})"
+				.format(type=self.engine.getColumnType(val)))
+			self.engine.execute("INSERT INTO test VALUES ({value})"
+				.format(value=self.engine.getSafeValue(val)))
 			res = list(self.engine.execute("SELECT col FROM test"))
 			self.engine.execute("DROP TABLE test")
 			self.engine.commit()
