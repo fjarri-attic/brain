@@ -186,5 +186,39 @@ class Modify(TestRequest):
 		res = self.db.processRequest(ReadRequest('1'))
 		self.checkRequestResult(res, reference_fields)
 
+	def testModificationChangesFieldType(self):
+		"""Test that you can change type of field value"""
+		values = ['text value', 123, 45.56, b'\x00\x01']
+		reference_fields = []
+
+		# create fields with values of different types
+		for value in values:
+			fld = Field('fld', value)
+			self.db.processRequest(ModifyRequest('1', [fld]))
+			res = self.db.processRequest(ReadRequest('1'))
+			self.checkRequestResult(res, [fld])
+
+	def testSeveralTypesInOneField(self):
+		"""
+		Check that different objects can store values
+		of different types in the same field
+		"""
+		objects = {
+			'1': [Field('fld', 1)],
+			'2': [Field('fld', 'text')],
+			'3': [Field('fld', 1.234)]
+		}
+
+		# create objects
+		for id in objects:
+			self.db.processRequest(ModifyRequest(id, objects[id]))
+
+		self.db.engine.dump()
+
+		# check that objects can be read
+		for id in objects:
+			res = self.db.processRequest(ReadRequest(id))
+			self.checkRequestResult(res, objects[id])
+
 def get_class():
 	return Modify
