@@ -107,8 +107,8 @@ class Field:
 		return (self.name == other.name) and (self.value == other.value)
 
 	def __str__(self):
-		return "Field ('" + str(self.name) + "'" + \
-			(", value=" + str(self.value) if self.value else "") + ")"
+		return "Field (" + str(self.name) + \
+			(", value=" + repr(self.value) if self.value else "") + ")"
 
 	def __repr__(self):
 		return str(self)
