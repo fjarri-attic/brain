@@ -29,6 +29,11 @@ class _InternalField:
 		return cls(engine, engine.getNameList(name_str)[1:], value)
 
 	@property
+	def type_str(self):
+		"""Returns string with SQL type for stored value"""
+		return self.__engine.getColumnType(self.value) if self.value != None else None
+
+	@property
 	def safe_value(self):
 		"""Returns value in form that can be safely used as value in queries"""
 		return self.__engine.getSafeValue(self.value)
@@ -100,7 +105,7 @@ class _InternalField:
 
 		return ("{id_column} {id_type}, {value_column} {value_type}" + res)\
 			.format(id_column=id_column, value_column=value_column,
-			id_type=id_type, value_type=self.__engine.getColumnType(self.value))
+			id_type=id_type, value_type=self.type_str)
 
 	@property
 	def columns_values(self):
