@@ -89,17 +89,18 @@ class _InternalField:
 		func = lambda x: vals_copy.pop(0) if x == None else x
 		return list(map(func, self.name))
 
-	@property
-	def creation_str(self):
+	def getCreationStr(self, id_column, value_column, id_type, list_index_type):
 		"""Returns string containing list of columns necessary to create field table"""
 		counter = 0
 		res = ""
 		for elem in self.name:
 			if not isinstance(elem, str):
-				res += ", " + self.__getListColumnName(counter) + " INTEGER"
+				res += ", " + self.__getListColumnName(counter) + " " + list_index_type
 				counter += 1
 
-		return "id TEXT, value TEXT" + res
+		return ("{id_column} {id_type}, {value_column} {value_type}" + res)\
+			.format(id_column=id_column, value_column=value_column,
+			id_type=id_type, value_type=self.__engine.getColumnType(self.value))
 
 	@property
 	def columns_values(self):
@@ -169,38 +170,56 @@ class _InternalField:
 class StructureLayer:
 	"""Class which is connected to DB engine and incapsulates all SQL queries"""
 
-	__ID_TABLE = 'id' # name of table with object specifications
 	__ID_COLUMN = 'id' # name of column with object id in all tables
 	__FIELD_COLUMN = 'field' # name of column with field names in specification table
+	__MAX_COLUMN = 'max' # name of column with maximum list index values
+	__VALUE_COLUMN = 'value' # name of column with field values
+
+	# types for support tables
+	__ID_TYPE = 'TEXT'
+	__TEXT_TYPE = 'TEXT'
+	__LIST_INDEX_TYPE = 'INTEGER'
 
 	def __init__(self, engine):
 		self.engine = engine
 
-		# memorize string with specification table name
-		self.__id_table = self.engine.getSafeName(
-			self.engine.getNameString([self.__ID_TABLE]))
+		# memorize strings with support table names
+		self.__ID_TABLE = self.engine.getSafeName(
+			self.engine.getNameString(["id"]))
 
-		# create specification table
+		self.__LISTSIZES_TABLE = self.engine.getSafeName(
+			self.engine.getNameString(["listsizes"]))
+
+		# create support tables
 		self.engine.begin()
-		self.__createSpecificationTable()
+		self.__createSupportTables()
 		self.engine.commit()
 
 	#
 	# Specification-oriented functions
 	#
 
-	def __createSpecificationTable(self):
+	def __createSupportTables(self):
 		"""Create table (id, field) for storing information about objects' field names"""
-		self.engine.execute("CREATE table IF NOT EXISTS {id_table} ({id_column} TEXT, {field_column} TEXT)"
-			.format(id_table=self.__id_table, id_column=self.__ID_COLUMN,
-			field_column=self.__FIELD_COLUMN))
+		self.engine.execute(("CREATE table IF NOT EXISTS {id_table} " +
+			"({id_column} {id_type}, {field_column} {text_type})")
+			.format(id_table=self.__ID_TABLE, id_column=self.__ID_COLUMN,
+			field_column=self.__FIELD_COLUMN,
+			id_type=self.__ID_TYPE, text_type=self.__TEXT_TYPE))
 
-		self.engine.execute("CREATE table IF NOT EXISTS listsizes (id TEXT, field TEXT, max INTEGER)")
+		self.engine.execute(("CREATE table IF NOT EXISTS {listsizes_table} " +
+			"({id_column} {id_type}, {field_column} {text_type}, {max_column} {list_index_type})")
+			.format(id_column=self.__ID_COLUMN,
+			field_column=self.__FIELD_COLUMN,
+			listsizes_table=self.__LISTSIZES_TABLE,
+			id_type=self.__ID_TYPE, text_type=self.__TEXT_TYPE,
+			list_index_type=self.__LIST_INDEX_TYPE,
+			max_column=self.__MAX_COLUMN))
 
 	def deleteSpecification(self, id):
 		"""Delete all information about object from specification table"""
 		self.engine.execute("DELETE FROM {id_table} WHERE {id_column}={id}"
-			.format(id_table=self.__id_table, id_column=self.__ID_COLUMN, id=id))
+			.format(id_table=self.__ID_TABLE, id_column=self.__ID_COLUMN, id=id))
 
 	def addFieldToSpecification(self, id, field):
 		"""Check if field conforms to hierarchy and if yes, add it"""
@@ -226,14 +245,15 @@ class StructureLayer:
 					raise DatabaseError("Cannot modify list, when hash already exists on this level")
 
 		self.engine.execute("INSERT INTO {id_table} VALUES ({id}, {field_name})"
-			.format(id_table=self.__id_table, id=id, field_name=field.name_as_value))
+			.format(id_table=self.__ID_TABLE, id=id, field_name=field.name_as_value))
 
 	def updateSpecification(self, id, field):
 		"""If information about given field does not exist in specification table, add it"""
 
 		# Check if field exists in specification
-		l = self.engine.execute("SELECT field FROM {id_table} WHERE {id_column}={id} AND {field_column}={field_name}"
-			.format(id_table=self.__id_table, id_column=self.__ID_COLUMN, id=id,
+		l = self.engine.execute(("SELECT {field_column} FROM {id_table} " +
+			"WHERE {id_column}={id} AND {field_column}={field_name}")
+			.format(id_table=self.__ID_TABLE, id_column=self.__ID_COLUMN, id=id,
 			field_column=self.__FIELD_COLUMN, field_name=field.name_as_value))
 
 		if len(l) == 0:
@@ -253,7 +273,7 @@ class StructureLayer:
 
 		# Get list of fields
 		l = self.engine.execute(("SELECT {field_column} FROM {id_table} WHERE {id_column}={id}" + regexp_cond)
-			.format(id_table=self.__id_table, id=id, regexp=regexp_val,
+			.format(id_table=self.__ID_TABLE, id=id, regexp=regexp_val,
 			id_column=self.__ID_COLUMN, field_column=self.__FIELD_COLUMN))
 
 		return [_InternalField.fromNameStr(self.engine, x[0]) for x in l]
@@ -264,7 +284,7 @@ class StructureLayer:
 		# We need just check if there is at least one row with its id
 		# in specification table
 		l = self.engine.execute("SELECT COUNT({field_column}) FROM {id_table} WHERE {id_column}={id}"
-			.format(id_table=self.__id_table, id=id,
+			.format(id_table=self.__ID_TABLE, id=id,
 			id_column=self.__ID_COLUMN, field_column=self.__FIELD_COLUMN))
 		return l[0][0] > 0
 
@@ -277,9 +297,12 @@ class StructureLayer:
 
 		# Get field values
 		# If field is a mask (i.e., contains Nones), there will be more than one result
-		l = self.engine.execute("SELECT value{columns_query} FROM {field_name} WHERE id={id}{columns_condition}"
+		l = self.engine.execute(("SELECT {value_column}{columns_query} FROM {field_name} " +
+			"WHERE {id_column}={id}{columns_condition}")
 			.format(columns_query=field.columns_query, field_name=field.name_as_table,
-			id=id, columns_condition=field.columns_condition))
+			id=id, columns_condition=field.columns_condition,
+			value_column=self.__VALUE_COLUMN,
+			id_column=self.__ID_COLUMN))
 
 		# Convert results to list of _InternalFields
 		res = []
@@ -298,11 +321,16 @@ class StructureLayer:
 			if max > val:
 				return
 
-			self.engine.execute("DELETE FROM listsizes WHERE id={id} AND field={field_name}"
-				.format(id=id, field_name=field.name_hashstr))
+			self.engine.execute(("DELETE FROM {listsizes_table} " +
+				"WHERE {id_column}={id} AND {field_column}={field_name}")
+				.format(id=id, field_name=field.name_hashstr,
+				listsizes_table=self.__LISTSIZES_TABLE,
+				id_column=self.__ID_COLUMN,
+				field_column=self.__FIELD_COLUMN))
 
-		self.engine.execute("INSERT INTO listsizes VALUES ({id}, {field_name}, {val})"
-			.format(id=id, field_name=field.name_hashstr, val=val))
+		self.engine.execute("INSERT INTO {listsizes_table} VALUES ({id}, {field_name}, {val})"
+			.format(id=id, field_name=field.name_hashstr, val=val,
+			listsizes_table=self.__LISTSIZES_TABLE))
 
 	def setFieldValue(self, id, field):
 		"""Set value of given field"""
@@ -320,8 +348,9 @@ class StructureLayer:
 		self.assureFieldTableExists(field)
 
 		# Delete old value
-		self.engine.execute("DELETE FROM {field_name} WHERE id={id} {delete_condition}"
-			.format(field_name=field.name_as_table, id=id, delete_condition=field.columns_condition))
+		self.engine.execute("DELETE FROM {field_name} WHERE {id_column}={id} {delete_condition}"
+			.format(field_name=field.name_as_table, id=id, delete_condition=field.columns_condition,
+			id_column=self.__ID_COLUMN))
 
 		# Insert new value
 		self.engine.execute("INSERT INTO {field_name} VALUES ({id}, {value}{columns_values})"
@@ -334,8 +363,9 @@ class StructureLayer:
 			condition = field.columns_condition
 
 		# delete value
-		self.engine.execute("DELETE FROM {field_name} WHERE id={id}{delete_condition}"
-			.format(field_name=field.name_as_table, id=id, delete_condition=condition))
+		self.engine.execute("DELETE FROM {field_name} WHERE {id_column}={id}{delete_condition}"
+			.format(field_name=field.name_as_table, id=id, delete_condition=condition,
+			id_column=self.__ID_COLUMN))
 
 		# check if the table is empty and if it is - delete it too
 		if self.engine.tableIsEmpty(field.name_str):
@@ -363,7 +393,9 @@ class StructureLayer:
 
 		# Create table
 		self.engine.execute("CREATE TABLE IF NOT EXISTS {field_name} ({values_str})"
-			.format(field_name=field.name_as_table, values_str=field.creation_str))
+			.format(field_name=field.name_as_table,
+			values_str=field.getCreationStr(self.__ID_COLUMN,
+				self.__VALUE_COLUMN, self.__ID_TYPE, self.__LIST_INDEX_TYPE)))
 
 	def deleteObject(self, id):
 		"""Delete object with given ID"""
@@ -421,15 +453,19 @@ class StructureLayer:
 		}
 
 		# construct query
-		result = ("SELECT DISTINCT id FROM {field_name} " +
-			"WHERE{not_str}value {comparison} {val}{columns_condition}")\
+		result = ("SELECT DISTINCT {id_column} FROM {field_name} " +
+			"WHERE{not_str}{value_column} {comparison} {val}{columns_condition}")\
 			.format(field_name=safe_name, not_str=not_str,
 			comparison=comparisons[condition.operator],
-			val=op2_val, columns_condition=op1.columns_condition)
+			val=op2_val, columns_condition=op1.columns_condition,
+			id_column=self.__ID_COLUMN,
+			value_column=self.__VALUE_COLUMN)
 
 		if condition.invert:
-			result += " UNION SELECT * FROM (SELECT id FROM {id_table} EXCEPT SELECT id FROM {field_name})"\
-				.format(id_table=self.__id_table, field_name=safe_name)
+			result += (" UNION SELECT * FROM (SELECT {id_column} FROM {id_table} " +
+				"EXCEPT SELECT {id_column} FROM {field_name})")\
+				.format(id_table=self.__ID_TABLE, field_name=safe_name,
+				id_column=self.__ID_COLUMN)
 
 		return result
 
@@ -445,8 +481,13 @@ class StructureLayer:
 	def getMaxNumber(self, id, field):
 		"""Get maximum value of list index for the undefined column of the field"""
 
-		l = self.engine.execute("SELECT max FROM listsizes WHERE id={id} AND field={field_name}"
-			.format(id=id, field_name=field.name_hashstr))
+		l = self.engine.execute(("SELECT {max_column} FROM {listsizes_table} " +
+			"WHERE {id_column}={id} AND {field_column}={field_name}")
+			.format(id=id, field_name=field.name_hashstr,
+			max_column=self.__MAX_COLUMN,
+			id_column=self.__ID_COLUMN,
+			field_column=self.__FIELD_COLUMN,
+			listsizes_table=self.__LISTSIZES_TABLE))
 
 		if len(l) > 0:
 			return l[0][0]
@@ -471,9 +512,11 @@ class StructureLayer:
 
 			# shift numbers of all elements in list
 			if not table_was_deleted:
-				self.engine.execute("UPDATE {field_name} SET {col_name}={col_name}+{shift} WHERE id={id}{cond} AND {col_name}>={col_val}"
+				self.engine.execute(("UPDATE {field_name} SET {col_name}={col_name}+{shift} " +
+					"WHERE {id_column}={id}{cond} AND {col_name}>={col_val}")
 					.format(field_name=fld.name_as_table, col_name=col_name,
-					shift=shift, id=id, col_val=col_val, cond=cond))
+					shift=shift, id=id, col_val=col_val, cond=cond,
+					id_column=self.__ID_COLUMN))
 
 class SimpleDatabase(interface.Database):
 	"""Class, representing OODB over SQL"""
