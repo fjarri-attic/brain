@@ -89,6 +89,10 @@ class Field:
 					not elem == None:
 				raise FormatError("Field name list must contain only integers, strings or Nones")
 
+		# check value type
+		if not value == None and not value.__class__ in [int, float, str, bytes]:
+			raise FormatError("Wrong value class: " + str(value.__class__))
+
 		# initialize fields
 		self.value = value
 		self.name = copy.deepcopy(name)
