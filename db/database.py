@@ -26,12 +26,22 @@ class _InternalField:
 	@classmethod
 	def fromNameStr(cls, engine, name_str, value=None):
 		"""Create object using stringified name instead of list"""
-		return cls(engine, engine.getNameList(name_str)[1:], value)
+		return cls(engine, engine.getNameList(name_str)[2:], value)
 
 	@property
 	def type_str(self):
 		"""Returns string with SQL type for stored value"""
 		return self.__engine.getColumnType(self.value) if self.value != None else None
+
+	@property
+	def type_str_as_value(self):
+		"""Returns string with SQL type for stored value"""
+		return self.__engine.getSafeValue(self.type_str)\
+			if self.value != None else None
+
+	@property
+	def name_str_no_type(self):
+		return self.__engine.getNameString(['field'] + self.name)
 
 	@property
 	def safe_value(self):
@@ -41,7 +51,7 @@ class _InternalField:
 	@property
 	def name_str(self):
 		"""Returns field name in string form"""
-		return self.__engine.getNameString(['field'] + self.name)
+		return self.__engine.getNameString(['field', self.type_str] + self.name)
 
 	@property
 	def name_as_table(self):
@@ -179,6 +189,7 @@ class StructureLayer:
 	__FIELD_COLUMN = 'field' # name of column with field names in specification table
 	__MAX_COLUMN = 'max' # name of column with maximum list index values
 	__VALUE_COLUMN = 'value' # name of column with field values
+	__TYPE_COLUMN = 'type'
 
 	# types for support tables
 	__ID_TYPE = 'TEXT'
@@ -207,10 +218,11 @@ class StructureLayer:
 	def __createSupportTables(self):
 		"""Create table (id, field) for storing information about objects' field names"""
 		self.engine.execute(("CREATE table IF NOT EXISTS {id_table} " +
-			"({id_column} {id_type}, {field_column} {text_type})")
+			"({id_column} {id_type}, {field_column} {text_type}, {type_column} {text_type})")
 			.format(id_table=self.__ID_TABLE, id_column=self.__ID_COLUMN,
 			field_column=self.__FIELD_COLUMN,
-			id_type=self.__ID_TYPE, text_type=self.__TEXT_TYPE))
+			id_type=self.__ID_TYPE, text_type=self.__TEXT_TYPE,
+			type_column=self.__TYPE_COLUMN))
 
 		self.engine.execute(("CREATE table IF NOT EXISTS {listsizes_table} " +
 			"({id_column} {id_type}, {field_column} {text_type}, {max_column} {list_index_type})")
@@ -237,7 +249,8 @@ class StructureLayer:
 
 			# Get all fields with names, starting from name_copy, excluding
 			# the one whose name equals name_copy
-			fields = self.getFieldsList(id, _InternalField(self.engine, name_copy), True)
+			fields = self.getFieldsList(id, _InternalField(self.engine, name_copy),
+				exclude_self=True, all_types=True)
 
 			# we have to check only first field in list
 			# if there are no conflicts, other fields do not conflict too
@@ -249,37 +262,45 @@ class StructureLayer:
 				if not isinstance(last, str) and isinstance(elem, str):
 					raise DatabaseError("Cannot modify list, when hash already exists on this level")
 
-		self.engine.execute("INSERT INTO {id_table} VALUES ({id}, {field_name})"
-			.format(id_table=self.__ID_TABLE, id=id, field_name=field.name_as_value))
+		self.engine.execute("INSERT INTO {id_table} VALUES ({id}, {field_name}, {type})"
+			.format(id_table=self.__ID_TABLE, id=id, field_name=field.name_as_value,
+			type=field.type_str_as_value))
 
 	def updateSpecification(self, id, field):
 		"""If information about given field does not exist in specification table, add it"""
 
 		# Check if field exists in specification
 		l = self.engine.execute(("SELECT {field_column} FROM {id_table} " +
-			"WHERE {id_column}={id} AND {field_column}={field_name}")
+			"WHERE {id_column}={id} AND {field_column}={field_name} " +
+			"AND {type_column}={type}")
 			.format(id_table=self.__ID_TABLE, id_column=self.__ID_COLUMN, id=id,
-			field_column=self.__FIELD_COLUMN, field_name=field.name_as_value))
+			field_column=self.__FIELD_COLUMN, field_name=field.name_as_value,
+			type_column=self.__TYPE_COLUMN, type=field.type_str_as_value))
 
 		if len(l) == 0:
 			self.addFieldToSpecification(id, field)
 
-	def getFieldsList(self, id, field=None, exclude_self=False):
+	def getFieldsList(self, id, field=None, exclude_self=False, all_types=True):
 		"""
 		Get list of fields for given object.
 		If field is given, return only those whose names start from its name
 		If exclude_self is true, exclude 'field' itself from results
+		If all_types is true, get fields of all types
 		"""
 
 		# If field is given, return only fields, which contain its name in the beginning
 		regexp_cond = ((" AND {field_column} REGEXP {regexp}") if field != None else "")
-		regexp_val = (self.engine.getSafeValue("^" + field.name_str +
+		regexp_val = (self.engine.getSafeValue("^" + field.name_str_no_type +
 			("." if exclude_self else "")) if field != None else None)
+		type = field.type_str_as_value if field != None else None
 
 		# Get list of fields
-		l = self.engine.execute(("SELECT {field_column} FROM {id_table} WHERE {id_column}={id}" + regexp_cond)
+		l = self.engine.execute(("SELECT {field_column} FROM {id_table} " +
+			"WHERE {id_column}={id}" + regexp_cond +
+			(" AND {type_column}={type}" if not all_types and field != None else ""))
 			.format(id_table=self.__ID_TABLE, id=id, regexp=regexp_val,
-			id_column=self.__ID_COLUMN, field_column=self.__FIELD_COLUMN))
+			id_column=self.__ID_COLUMN, field_column=self.__FIELD_COLUMN,
+			type_column=self.__TYPE_COLUMN, type=type))
 
 		return [_InternalField.fromNameStr(self.engine, x[0]) for x in l]
 
@@ -299,6 +320,9 @@ class StructureLayer:
 
 	def getFieldValue(self, id, field):
 		"""Read value of given field(s)"""
+
+		if not self.engine.tableExists(field.name_str):
+			return None
 
 		# Get field values
 		# If field is a mask (i.e., contains Nones), there will be more than one result
@@ -352,10 +376,16 @@ class StructureLayer:
 		# Create field table if it does not exist yet
 		self.assureFieldTableExists(field)
 
-		# Delete old value
-		self.engine.execute("DELETE FROM {field_name} WHERE {id_column}={id} {delete_condition}"
-			.format(field_name=field.name_as_table, id=id, delete_condition=field.columns_condition,
-			id_column=self.__ID_COLUMN))
+		# Delete old value (checking all tables because type could be different
+		field_copy = _InternalField(self.engine, field.name[:])
+		for cls in [str, int, float, bytes]:
+			field_copy.val = cls()
+			if self.engine.tableExists(field_copy.name_str):
+				self.engine.execute("DELETE FROM {field_name} WHERE {id_column}={id} {delete_condition}"
+					.format(field_name=field_copy.name_as_table, id=id,
+					delete_condition=field_copy.columns_condition,
+					id_column=self.__ID_COLUMN))
+				break
 
 		# Insert new value
 		self.engine.execute("INSERT INTO {field_name} VALUES ({id}, {value}{columns_values})"
@@ -678,13 +708,16 @@ class SimpleDatabase(interface.Database):
 		if fields == None:
 			fields = self.structure.getFieldsList(id)
 
-		# Fixme: maybe it is worth making a separate function in Structure layer
-		results = [self.structure.getFieldValue(id, field) for field in fields]
-
+		# FIXME: maybe it is worth making a separate function in Structure layer
 		result_list = []
-		for result in results:
-			if result != None:
-				result_list += result
+		for field in fields:
+			for cls in [str, int, float, bytes]:
+				field.value = cls()
+				res = self.structure.getFieldValue(id, field)
+				if res != None:
+					result_list += res
+					break
+
 		# FIXME: Hide .name usage in _InternalField
 		return [interface.Field(x.name, x.value) for x in result_list]
 
