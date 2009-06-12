@@ -213,8 +213,6 @@ class Modify(TestRequest):
 		for id in objects:
 			self.db.processRequest(ModifyRequest(id, objects[id]))
 
-		self.db.engine.dump()
-
 		# check that objects can be read
 		for id in objects:
 			res = self.db.processRequest(ReadRequest(id))
