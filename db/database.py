@@ -31,13 +31,13 @@ class _InternalField:
 	def __get_type_str(self):
 		"""Returns string with SQL type for stored value"""
 		return self.__engine.getColumnType(self.value) if self.value != None else None
-	
+
 	def __set_type_str(self, type_str):
 		if self.value == None:
 			self.value = self.__engine.getValueClass(type_str)()
 		else:
 			self.value = self.__engine.getValueClass(type_str)(self.value)
-	
+
 	type_str = property(__get_type_str, __set_type_str)
 
 	@property
@@ -280,9 +280,9 @@ class StructureLayer:
 
 	def updateSpecification(self, id, field):
 		"""If information about given field does not exist in specification table, add it"""
-		
+
 		types = self.getValueTypes(id, field)
-		
+
 		if len(types) == 0:
 			self.addFieldToSpecification(id, field, new_field=True)
 		elif not field.type_str in types:
@@ -413,7 +413,7 @@ class StructureLayer:
 		"""Delete value of given field(s)"""
 		if condition == None:
 			condition = field.columns_condition
-		
+
 		types = self.getValueTypes(id, field)
 
 		res = False
@@ -428,7 +428,7 @@ class StructureLayer:
 			if self.engine.tableIsEmpty(field.name_str):
 				self.engine.deleteTable(field.name_str)
 				res = True
-		
+
 		return res
 
 	def deleteField(self, id, field):
@@ -498,6 +498,8 @@ class StructureLayer:
 		# Leaf condition
 		op1 = condition.operand1 # it must be Field
 		op2 = condition.operand2 # it must be some value
+
+		op1.value = op2.__class__()
 
 		# If table with given field does not exist, just return empty query
 		if not self.engine.tableExists(op1.name_str):
