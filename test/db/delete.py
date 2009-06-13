@@ -73,6 +73,8 @@ class Delete(TestRequest):
 		self.db.processRequest(DeleteRequest('1'))
 		self.db.processRequest(DeleteRequest('2'))
 		self.db.processRequest(DeleteRequest('3'))
+		self.db.processRequest(DeleteRequest('4'))
+		self.db.processRequest(DeleteRequest('5'))
 
 		# Add object again
 		self.addObject('2', {'name': 'Alex', 'phone': '2222'})
