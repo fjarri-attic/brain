@@ -66,9 +66,16 @@ class Sqlite3Engine(interface.Engine):
 	def getColumnType(self, val):
 		"""Return SQL type for storing given value"""
 		types = {
-			str: "TEXT", int: "INTEGER", float: "FLOAT", bytes: "TEXT"
+			str: "TEXT", int: "INTEGER", float: "FLOAT", bytes: "BLOB"
 		}
 		return types[val.__class__]
+	
+	def getValueClass(self, type_str):
+		classes = {
+			"TEXT": str, "INTEGER": int, "FLOAT": float, "BLOB": bytes
+		}
+		
+		return classes[type_str]
 
 	def getNameString(self, l):
 		"""Get field name from list"""
