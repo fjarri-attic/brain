@@ -565,7 +565,7 @@ class StructureLayer:
 		cond = target_field.renumber_condition
 
 		# Get all child field names
-		fields_to_reenum = self.getFieldsList(id, target_field)
+		fields_to_reenum = self.getFieldsList(id, target_field, all_types=True)
 		for fld in fields_to_reenum:
 
 			# if shift is negative, we should delete elements first
@@ -575,11 +575,16 @@ class StructureLayer:
 
 			# shift numbers of all elements in list
 			if not table_was_deleted:
-				self.engine.execute(("UPDATE {field_name} SET {col_name}={col_name}+{shift} " +
-					"WHERE {id_column}={id}{cond} AND {col_name}>={col_val}")
-					.format(field_name=fld.name_as_table, col_name=col_name,
-					shift=shift, id=id, col_val=col_val, cond=cond,
-					id_column=self.__ID_COLUMN))
+
+				types = self.getValueTypes(id, fld)
+
+				for type in types:
+					fld.type_str = type
+					self.engine.execute(("UPDATE {field_name} SET {col_name}={col_name}+{shift} " +
+						"WHERE {id_column}={id}{cond} AND {col_name}>={col_val}")
+						.format(field_name=fld.name_as_table, col_name=col_name,
+						shift=shift, id=id, col_val=col_val, cond=cond,
+						id_column=self.__ID_COLUMN))
 
 class SimpleDatabase(interface.Database):
 	"""Class, representing OODB over SQL"""
