@@ -26,12 +26,19 @@ class _InternalField:
 	@classmethod
 	def fromNameStr(cls, engine, name_str, value=None):
 		"""Create object using stringified name instead of list"""
-		return cls(engine, engine.getNameList(name_str)[2:], value)
+		return cls(engine, engine.getNameList(name_str)[1:], value)
 
-	@property
-	def type_str(self):
+	def __get_type_str(self):
 		"""Returns string with SQL type for stored value"""
 		return self.__engine.getColumnType(self.value) if self.value != None else None
+	
+	def __set_type_str(self, type_str):
+		if self.value == None:
+			self.value = self.__engine.getValueClass(type_str)()
+		else:
+			self.value = self.__engine.getValueClass(type_str)(self.value)
+	
+	type_str = property(__get_type_str, __set_type_str)
 
 	@property
 	def type_str_as_value(self):
@@ -62,6 +69,10 @@ class _InternalField:
 	def name_as_value(self):
 		"""Returns field name in form that can be safely used as value in queries"""
 		return self.__engine.getSafeValue(self.name_str)
+
+	@property
+	def name_as_value_no_type(self):
+		return self.__engine.getSafeValue(self.name_str_no_type)
 
 	@property
 	def clean_name(self):
@@ -238,47 +249,53 @@ class StructureLayer:
 		self.engine.execute("DELETE FROM {id_table} WHERE {id_column}={id}"
 			.format(id_table=self.__ID_TABLE, id_column=self.__ID_COLUMN, id=id))
 
-	def addFieldToSpecification(self, id, field):
+	def addFieldToSpecification(self, id, field, new_field=True):
 		"""Check if field conforms to hierarchy and if yes, add it"""
 
-		# FIXME: hide .name usage in _InternalField
-		name_copy = field.name[:]
+		if new_field:
+			# FIXME: hide .name usage in _InternalField
+			name_copy = field.name[:]
 
-		while len(name_copy) > 0:
-			last = name_copy.pop()
+			while len(name_copy) > 0:
+				last = name_copy.pop()
 
-			# Get all fields with names, starting from name_copy, excluding
-			# the one whose name equals name_copy
-			fields = self.getFieldsList(id, _InternalField(self.engine, name_copy),
-				exclude_self=True, all_types=True)
+				# Get all fields with names, starting from name_copy, excluding
+				# the one whose name equals name_copy
+				fields = self.getFieldsList(id, _InternalField(self.engine, name_copy),
+					exclude_self=True, all_types=True)
 
-			# we have to check only first field in list
-			# if there are no conflicts, other fields do not conflict too
-			if len(fields) > 0:
-				elem = fields[0].name[len(name_copy)]
+				# we have to check only first field in list
+				# if there are no conflicts, other fields do not conflict too
+				if len(fields) > 0:
+					elem = fields[0].name[len(name_copy)]
 
-				if isinstance(last, str) and not isinstance(elem, str):
-					raise DatabaseError("Cannot modify hash, when list already exists on this level")
-				if not isinstance(last, str) and isinstance(elem, str):
-					raise DatabaseError("Cannot modify list, when hash already exists on this level")
+					if isinstance(last, str) and not isinstance(elem, str):
+						raise DatabaseError("Cannot modify hash, when list already exists on this level")
+					if not isinstance(last, str) and isinstance(elem, str):
+						raise DatabaseError("Cannot modify list, when hash already exists on this level")
 
 		self.engine.execute("INSERT INTO {id_table} VALUES ({id}, {field_name}, {type})"
-			.format(id_table=self.__ID_TABLE, id=id, field_name=field.name_as_value,
+			.format(id_table=self.__ID_TABLE, id=id, field_name=field.name_as_value_no_type,
 			type=field.type_str_as_value))
 
 	def updateSpecification(self, id, field):
 		"""If information about given field does not exist in specification table, add it"""
+		
+		types = self.getValueTypes(id, field)
+		
+		if len(types) == 0:
+			self.addFieldToSpecification(id, field, new_field=True)
+		elif not field.type_str in types:
+			self.addFieldToSpecification(id, field, new_field=False)
 
-		# Check if field exists in specification
-		l = self.engine.execute(("SELECT {field_column} FROM {id_table} " +
-			"WHERE {id_column}={id} AND {field_column}={field_name} " +
-			"AND {type_column}={type}")
+	def getValueTypes(self, id, field):
+		l = self.engine.execute(("SELECT {type_column} FROM {id_table} " +
+			"WHERE {id_column}={id} AND {field_column}={field_name}")
 			.format(id_table=self.__ID_TABLE, id_column=self.__ID_COLUMN, id=id,
-			field_column=self.__FIELD_COLUMN, field_name=field.name_as_value,
-			type_column=self.__TYPE_COLUMN, type=field.type_str_as_value))
+			field_column=self.__FIELD_COLUMN, field_name=field.name_as_value_no_type,
+			type_column=self.__TYPE_COLUMN))
 
-		if len(l) == 0:
-			self.addFieldToSpecification(id, field)
+		return [x[0] for x in l]
 
 	def getFieldsList(self, id, field=None, exclude_self=False, all_types=True):
 		"""
@@ -295,7 +312,7 @@ class StructureLayer:
 		type = field.type_str_as_value if field != None else None
 
 		# Get list of fields
-		l = self.engine.execute(("SELECT {field_column} FROM {id_table} " +
+		l = self.engine.execute(("SELECT DISTINCT {field_column} FROM {id_table} " +
 			"WHERE {id_column}={id}" + regexp_cond +
 			(" AND {type_column}={type}" if not all_types and field != None else ""))
 			.format(id_table=self.__ID_TABLE, id=id, regexp=regexp_val,
@@ -396,26 +413,35 @@ class StructureLayer:
 		"""Delete value of given field(s)"""
 		if condition == None:
 			condition = field.columns_condition
+		
+		types = self.getValueTypes(id, field)
 
-		# delete value
-		self.engine.execute("DELETE FROM {field_name} WHERE {id_column}={id}{delete_condition}"
-			.format(field_name=field.name_as_table, id=id, delete_condition=condition,
-			id_column=self.__ID_COLUMN))
+		res = False
+		for type in types:
+			# delete value(s)
+			field.type_str = type
+			self.engine.execute("DELETE FROM {field_name} WHERE {id_column}={id}{delete_condition}"
+				.format(field_name=field.name_as_table, id=id, delete_condition=condition,
+				id_column=self.__ID_COLUMN))
 
-		# check if the table is empty and if it is - delete it too
-		if self.engine.tableIsEmpty(field.name_str):
-			self.engine.deleteTable(field.name_str)
-			return True
-		else:
-			return False
+			# check if the table is empty and if it is - delete it too
+			if self.engine.tableIsEmpty(field.name_str):
+				self.engine.deleteTable(field.name_str)
+				res = True
+		
+		return res
 
 	def deleteField(self, id, field):
 		"""Delete given field(s)"""
 
-		# we can avoid unnecessary work by checking if table exists
-		if not field.pointsToList() and not self.engine.tableExists(field.name_str):
-			return
+		#print(field.pointsToList())
+		#print(field.name_str)
+		#print(self.engine.tableExists(field.name_str))
 
+		# we can avoid unnecessary work by checking if table exists
+		#if not field.pointsToList():
+		#	return
+		#print(field)
 		if field.pointsToListElement():
 			# deletion of list element requires renumbering of other elements
 			self.renumber(id, field, -1)
@@ -435,7 +461,7 @@ class StructureLayer:
 	def deleteObject(self, id):
 		"""Delete object with given ID"""
 
-		fields = self.getFieldsList(id)
+		fields = self.getFieldsList(id, all_types=True)
 
 		# for each field, remove it from tables
 		for field in fields:
