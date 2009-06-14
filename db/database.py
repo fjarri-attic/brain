@@ -394,9 +394,10 @@ class StructureLayer:
 		self.assureFieldTableExists(field)
 
 		# Delete old value (checking all tables because type could be different
+		types = self.getValueTypes(id, field)
 		field_copy = _InternalField(self.engine, field.name[:])
-		for cls in [str, int, float, bytes]:
-			field_copy.val = cls()
+		for type in types:
+			field_copy.type_str = type
 			if self.engine.tableExists(field_copy.name_str):
 				self.engine.execute("DELETE FROM {field_name} WHERE {id_column}={id} {delete_condition}"
 					.format(field_name=field_copy.name_as_table, id=id,
