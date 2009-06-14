@@ -206,7 +206,8 @@ class Modify(TestRequest):
 		objects = {
 			'1': [Field('fld', 1)],
 			'2': [Field('fld', 'text')],
-			'3': [Field('fld', 1.234)]
+			'3': [Field('fld', 1.234)],
+			'4': [Field('fld', b'\x00\x01')]
 		}
 
 		# create objects
