@@ -13,6 +13,7 @@ def getParameterized(base_class, name_prefix, db_class, db_file_name):
 	class Derived(base_class):
 		def setUp(self):
 			self.engine = db_class(db_file_name)
+			self.str_type = self.engine.getColumnType(str())
 
 	Derived.__name__ = name_prefix
 
@@ -47,11 +48,14 @@ class EngineTest(unittest.TestCase):
 		names = ['a', 'b b' , 'a "" b', 'a"; DROP DATABASE;']
 
 		for name in names:
+			safe_name = self.engine.getSafeName(name)
+
 			self.engine.begin()
-			self.engine.execute("CREATE TABLE {table} (col TEXT)".format(table=self.engine.getSafeName(name)))
-			self.engine.execute("INSERT INTO {table} VALUES ('aaa')".format(table=self.engine.getSafeName(name)))
-			res = list(self.engine.execute("SELECT col FROM {table}".format(table=self.engine.getSafeName(name))))
-			self.engine.execute("DROP TABLE {table}".format(table=self.engine.getSafeName(name)))
+			self.engine.execute("CREATE TABLE {table} (col {type})".format(table=safe_name,
+				type=self.str_type))
+			self.engine.execute("INSERT INTO {table} VALUES ('aaa')".format(table=safe_name))
+			res = list(self.engine.execute("SELECT col FROM {table}".format(table=safe_name)))
+			self.engine.execute("DROP TABLE {table}".format(table=safe_name))
 			self.engine.commit()
 
 			self.failUnlessEqual(res, [('aaa',)])
@@ -76,13 +80,15 @@ class EngineTest(unittest.TestCase):
 	def testExecute(self):
 		"""Test execute() method on simple queries"""
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.execute("CREATE TABLE ttt (col1 {type}, col2 {type})"
+			.format(type=self.str_type))
 		self.engine.execute("INSERT INTO ttt VALUES ('a', 'b')")
 
 	def testExecuteReturnsList(self):
 		"""Test that execute() method returns list and not some specific class"""
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.execute("CREATE TABLE ttt (col1 {type}, col2 {type})"
+			.format(type=self.str_type))
 		self.engine.execute("INSERT INTO ttt VALUES ('a', 'b')")
 		res = self.engine.execute("SELECT * FROM ttt")
 		self.failUnless(isinstance(res, list))
@@ -91,39 +97,45 @@ class EngineTest(unittest.TestCase):
 	def testTableExists(self):
 		"""Test work of tableExists() method for existing table"""
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.execute("CREATE TABLE ttt (col1 {type}, col2 {type})"
+			.format(type=self.str_type))
 		self.failUnless(self.engine.tableExists('ttt'))
 
 	def testTableExistsMissingTable(self):
 		"""Test work of tableExists() method for non-existing table"""
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.execute("CREATE TABLE ttt (col1 {type}, col2 {type})"
+			.format(type=self.str_type))
 		self.failIf(self.engine.tableExists('bbb'))
 
 	def testTableIsEmpty(self):
 		"""Test work of tableIsEmpty() method for empty table"""
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.execute("CREATE TABLE ttt (col1 {type}, col2 {type})"
+			.format(type=self.str_type))
 		self.failUnless(self.engine.tableIsEmpty('ttt'))
 
 	def testTableIsEmptyFilledTable(self):
 		"""Test work of tableIsEmpty() method for non-empty table"""
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.execute("CREATE TABLE ttt (col1 {type}, col2 {type})"
+			.format(type=self.str_type))
 		self.engine.execute("INSERT INTO ttt VALUES ('a', 'b')")
 		self.failIf(self.engine.tableIsEmpty('ttt'))
 
 	def testDeleteTable(self):
 		"""Test work of deleteTable() method for existing table"""
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.execute("CREATE TABLE ttt (col1 {type}, col2 {type})"
+			.format(type=self.str_type))
 		self.engine.deleteTable('ttt')
 		self.failIf(self.engine.tableExists('ttt'))
 
 	def testDeleteTableMissingTable(self):
 		"""Test work of deleteTable() method for non-existing table"""
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.execute("CREATE TABLE ttt (col1 {type}, col2 {type})"
+			.format(type=self.str_type))
 		self.engine.deleteTable('aaa')
 
 	def testEmptyCondition(self):
@@ -135,7 +147,8 @@ class EngineTest(unittest.TestCase):
 	def testEmptyConditionIntersect(self):
 		"""Test that empty condition can be used with INTERSECT"""
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.execute("CREATE TABLE ttt (col1 {type}, col2 {type})"
+			.format(type=self.str_type))
 		self.engine.execute("INSERT INTO ttt VALUES ('a', 'b')")
 		res = self.engine.execute("SELECT * FROM (SELECT col1 FROM ttt) INTERSECT " +
 			"SELECT * FROM (" + self.engine.getEmptyCondition() + ")")
@@ -144,7 +157,8 @@ class EngineTest(unittest.TestCase):
 	def testEmptyConditionUnion(self):
 		"""Test that empty condition can be used with UNION"""
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.execute("CREATE TABLE ttt (col1 {type}, col2 {type})"
+			.format(type=self.str_type))
 		self.engine.execute("INSERT INTO ttt VALUES ('a', 'b')")
 		res = self.engine.execute("SELECT * FROM (SELECT col1 FROM ttt) UNION " +
 			"SELECT * FROM (" + self.engine.getEmptyCondition() + ")")
@@ -153,7 +167,8 @@ class EngineTest(unittest.TestCase):
 	def testRollbackTableModifications(self):
 		"""Test that rollback rolls back table modifying actions"""
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.execute("CREATE TABLE ttt (col1 {type}, col2 {type})"
+			.format(type=self.str_type))
 		self.engine.execute("INSERT INTO ttt VALUES ('a', 'b')")
 		self.engine.commit()
 
@@ -171,7 +186,8 @@ class EngineTest(unittest.TestCase):
 	def testRollbackTableCreation(self):
 		"""Test that table creation can be rolled back"""
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.execute("CREATE TABLE ttt (col1 {type}, col2 {type})"
+			.format(type=self.str_type))
 		self.engine.rollback()
 
 		self.failIf(self.engine.tableExists('ttt'))
@@ -179,7 +195,8 @@ class EngineTest(unittest.TestCase):
 	def testRollbackTableDeletion(self):
 		"""Test that table deletion can be rolled back"""
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.execute("CREATE TABLE ttt (col1 {type}, col2 {type})"
+			.format(type=self.str_type))
 		self.engine.commit()
 
 		self.engine.begin()
@@ -191,7 +208,8 @@ class EngineTest(unittest.TestCase):
 	def testRegexpSupport(self):
 		"""Check that engine supports regexp search"""
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.execute("CREATE TABLE ttt (col1 {type}, col2 {type})"
+			.format(type=self.str_type))
 		self.engine.execute("INSERT INTO ttt VALUES ('abc', 'e')")
 		self.engine.execute("INSERT INTO ttt VALUES ('bac', 'f')")
 		self.engine.execute("INSERT INTO ttt VALUES ('cba', 'g')")
@@ -203,7 +221,8 @@ class EngineTest(unittest.TestCase):
 		AUSTRIA = "\xd6sterreich"
 
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE ttt (col1 TEXT, col2 TEXT)")
+		self.engine.execute("CREATE TABLE ttt (col1 {type}, col2 {type})"
+			.format(type=self.str_type))
 		self.engine.execute("INSERT INTO ttt VALUES ('abc', '{val}')"
 			.format(val=AUSTRIA))
 
