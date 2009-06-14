@@ -225,6 +225,27 @@ class Format(unittest.TestCase):
 
 		self.failUnlessEqual(c.operand1.operand1.name, ['phone'])
 
+	def testSearchRequestConditionEqSupportedTypes(self):
+		"""Test that all necessary types are supported for equality check"""
+		classes = [str, int, float, bytes]
+
+		for cls in classes:
+			c = SearchRequest.Condition(Field('fld'), SearchRequest.EQ, cls())
+
+	def testSearchRequestConditionRegexpSupportedTypes(self):
+		"""Test that only strings and bytearrays are supported for regexps"""
+
+		def construct_condition(cls):
+			return SearchRequest.Condition(Field('fld'), SearchRequest.REGEXP, cls())
+
+		classes = [str, int, float, bytes]
+		supported_classes = [str, bytes]
+
+		for cls in classes:
+			if cls in supported_classes:
+				construct_condition(cls)
+			else:
+				self.failUnlessRaises(FormatError, construct_condition, cls)
 
 def suite():
 	"""Generate test suite for this module"""

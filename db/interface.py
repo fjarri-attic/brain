@@ -209,6 +209,19 @@ class SearchRequest:
 				if not isinstance(operand1, Field):
 					raise FormatError("First operand should be Field, but it is " +
 						operand1.__class__.__name__)
+
+				val_class = operand2.__class__
+
+				# check if value type is supported
+				if not val_class in [str, int, float, bytes]:
+					raise FormatError("Operand type is not supported: " +
+						val_class.__name__)
+
+				# regexp is valid only for strings and blobs
+				if operator == SearchRequest.REGEXP and val_class != str and val_class != bytes:
+					raise FormatError("Values of type " + val_class.__name__ +
+						" do not support regexp condition")
+
 				self.leaf = True
 			elif operator in operators:
 				# if node operator is an Operator, both operands should be Conditions
