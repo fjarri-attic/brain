@@ -69,12 +69,12 @@ class Sqlite3Engine(interface.Engine):
 			str: "TEXT", int: "INTEGER", float: "FLOAT", bytes: "BLOB"
 		}
 		return types[val.__class__]
-	
+
 	def getValueClass(self, type_str):
+		"""Return Python class for the given SQL type"""
 		classes = {
 			"TEXT": str, "INTEGER": int, "FLOAT": float, "BLOB": bytes
 		}
-		
 		return classes[type_str]
 
 	def getNameString(self, l):

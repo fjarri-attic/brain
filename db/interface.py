@@ -37,6 +37,14 @@ class Engine:
 		"""Transform string value so that it could be safely used in queries"""
 		return NotImplementedError
 
+	def getColumnType(self, val):
+		"""Return SQL type for storing given value"""
+		return NotImplementedError
+
+	def getValueClass(self, type_str):
+		"""Return Python class for the given SQL type"""
+		return NotImplementedError
+
 	def getNameString(self, l):
 		"""Get field name from list"""
 		return NotImplementedError
