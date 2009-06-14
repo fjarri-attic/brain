@@ -217,6 +217,13 @@ class EngineTest(unittest.TestCase):
 			.format(val=AUSTRIA[:3]))
 		self.failUnlessEqual(res, [(AUSTRIA,)])
 
+	def testTypeMapping(self):
+		"""Check that necessary Python types can be mapped to SQL types and back"""
+		for cls in [str, int, float, bytes]:
+			sql_type = self.engine.getColumnType(cls())
+			py_cls = self.engine.getValueClass(sql_type)
+			self.failUnlessEqual(py_cls, cls)
+
 def suite():
 	"""Generate test suite for this module"""
 	res = helpers.NamedTestSuite()
