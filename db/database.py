@@ -202,11 +202,6 @@ class StructureLayer:
 	__VALUE_COLUMN = 'value' # name of column with field values
 	__TYPE_COLUMN = 'type'
 
-	# types for support tables
-	__ID_TYPE = 'TEXT'
-	__TEXT_TYPE = 'TEXT'
-	__LIST_INDEX_TYPE = 'INTEGER'
-
 	def __init__(self, engine):
 		self.engine = engine
 
@@ -216,6 +211,11 @@ class StructureLayer:
 
 		self.__LISTSIZES_TABLE = self.engine.getSafeName(
 			self.engine.getNameString(["listsizes"]))
+
+		# types for support tables
+		self.__ID_TYPE = self.engine.getColumnType(str())
+		self.__TEXT_TYPE = self.engine.getColumnType(str())
+		self.__LIST_INDEX_TYPE = self.engine.getColumnType(int())
 
 		# create support tables
 		self.engine.begin()
