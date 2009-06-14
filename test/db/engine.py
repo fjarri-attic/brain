@@ -216,6 +216,18 @@ class EngineTest(unittest.TestCase):
 		res = self.engine.execute("SELECT col1 FROM ttt WHERE col1 REGEXP 'a\w+'")
 		self.failUnlessEqual(res, [('abc',), ('bac',)])
 
+	def testRegexpSupportInBlob(self):
+		"""Check that engine supports regexp search in BLOB values"""
+		self.engine.begin()
+		self.engine.execute("CREATE TABLE ttt (col1 {type})"
+			.format(type=self.engine.getColumnType(bytes())))
+		for val in [b'\x00\x01\x02', b'\x01\x00\x02', b'\x01\x02\x00']:
+			self.engine.execute("INSERT INTO ttt VALUES ({val})"
+				.format(val=self.engine.getSafeValue(val)))
+		res = self.engine.execute("SELECT col1 FROM ttt WHERE col1 REGEXP {val}"
+			.format(val=self.engine.getSafeValue(b'\x00.+')))
+		self.failUnlessEqual(res, [(b'\x00\x01\x02',), (b'\x01\x00\x02',)])
+
 	def testUnicodeSupport(self):
 		"""Check that DB can store and return unicode values"""
 		AUSTRIA = "\xd6sterreich"
