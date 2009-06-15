@@ -33,10 +33,7 @@ class _InternalField:
 		return self.__engine.getColumnType(self.value) if self.value != None else None
 
 	def __set_type_str(self, type_str):
-		if self.value == None:
-			self.value = self.__engine.getValueClass(type_str)()
-		else:
-			self.value = self.__engine.getValueClass(type_str)(self.value)
+		self.value = self.__engine.getValueClass(type_str)()
 
 	type_str = property(__get_type_str, __set_type_str)
 
@@ -187,8 +184,8 @@ class _InternalField:
 		return self.__engine.getSafeValue(self.__engine.getNameString(name_copy))
 
 	def __str__(self):
-		return "IField ('" + str(self.name) + "'" + \
-			(", value=" + str(self.value) if self.value else "") + ")"
+		return "IField (" + repr(self.name) + \
+			(", value=" + repr(self.value) if self.value else "") + ")"
 
 	def __repr__(self):
 		return str(self)
@@ -201,6 +198,7 @@ class StructureLayer:
 	__MAX_COLUMN = 'max' # name of column with maximum list index values
 	__VALUE_COLUMN = 'value' # name of column with field values
 	__TYPE_COLUMN = 'type'
+	__REFCOUNT_COLUMN = 'refcount'
 
 	def __init__(self, engine):
 		self.engine = engine
@@ -215,7 +213,7 @@ class StructureLayer:
 		# types for support tables
 		self.__ID_TYPE = self.engine.getColumnType(str())
 		self.__TEXT_TYPE = self.engine.getColumnType(str())
-		self.__LIST_INDEX_TYPE = self.engine.getColumnType(int())
+		self.__INT_TYPE = self.engine.getColumnType(int())
 
 		# create support tables
 		self.engine.begin()
@@ -229,11 +227,14 @@ class StructureLayer:
 	def __createSupportTables(self):
 		"""Create table (id, field) for storing information about objects' field names"""
 		self.engine.execute(("CREATE table IF NOT EXISTS {id_table} " +
-			"({id_column} {id_type}, {field_column} {text_type}, {type_column} {text_type})")
+			"({id_column} {id_type}, {field_column} {text_type}, {type_column} {text_type}, " +
+			"{refcount_column} {refcount_type})")
 			.format(id_table=self.__ID_TABLE, id_column=self.__ID_COLUMN,
 			field_column=self.__FIELD_COLUMN,
 			id_type=self.__ID_TYPE, text_type=self.__TEXT_TYPE,
-			type_column=self.__TYPE_COLUMN))
+			type_column=self.__TYPE_COLUMN,
+			refcount_column=self.__REFCOUNT_COLUMN,
+			refcount_type=self.__INT_TYPE))
 
 		self.engine.execute(("CREATE table IF NOT EXISTS {listsizes_table} " +
 			"({id_column} {id_type}, {field_column} {text_type}, {max_column} {list_index_type})")
@@ -241,7 +242,7 @@ class StructureLayer:
 			field_column=self.__FIELD_COLUMN,
 			listsizes_table=self.__LISTSIZES_TABLE,
 			id_type=self.__ID_TYPE, text_type=self.__TEXT_TYPE,
-			list_index_type=self.__LIST_INDEX_TYPE,
+			list_index_type=self.__INT_TYPE,
 			max_column=self.__MAX_COLUMN))
 
 	def deleteSpecification(self, id):
@@ -249,46 +250,88 @@ class StructureLayer:
 		self.engine.execute("DELETE FROM {id_table} WHERE {id_column}={id}"
 			.format(id_table=self.__ID_TABLE, id_column=self.__ID_COLUMN, id=id))
 
-	def addFieldToSpecification(self, id, field, new_field=True):
+	def checkConflicts(self, id, field):
+		name_copy = field.name[:]
+
+		while len(name_copy) > 0:
+			last = name_copy.pop()
+
+			# Get all fields with names, starting from name_copy, excluding
+			# the one whose name equals name_copy
+			fields = self.getFieldsList(id, _InternalField(self.engine, name_copy),
+				exclude_self=True, all_types=True)
+
+			# we have to check only first field in list
+			# if there are no conflicts, other fields do not conflict too
+			if len(fields) > 0:
+				elem = fields[0].name[len(name_copy)]
+
+				if isinstance(last, str) and not isinstance(elem, str):
+					raise DatabaseError("Cannot modify hash, when list already exists on this level")
+				if not isinstance(last, str) and isinstance(elem, str):
+					raise DatabaseError("Cannot modify list, when hash already exists on this level")
+
+
+	def addFieldToSpecification(self, id, field, new_field, new_type):
 		"""Check if field conforms to hierarchy and if yes, add it"""
 
 		if new_field:
-			# FIXME: hide .name usage in _InternalField
-			name_copy = field.name[:]
+			self.checkConflicts(id, field)
 
-			while len(name_copy) > 0:
-				last = name_copy.pop()
+		if new_type:
+			self.engine.execute("INSERT INTO {id_table} VALUES ({id}, {field_name}, {type}, 1)"
+				.format(id_table=self.__ID_TABLE, id=id, field_name=field.name_as_value_no_type,
+				type=field.type_str_as_value))
+		else:
+			self.engine.execute(("UPDATE {id_table} SET {refcount_column}={refcount_column}+1 " +
+				"WHERE {id_column}={id} AND {field_column}={field_name} AND {type_column}={type}")
+				.format(id_table=self.__ID_TABLE, id=id, field_name=field.name_as_value_no_type,
+				type=field.type_str_as_value,
+				refcount_column=self.__REFCOUNT_COLUMN,
+				field_column=self.__FIELD_COLUMN,
+				type_column=self.__TYPE_COLUMN,
+				id_column=self.__ID_COLUMN))
 
-				# Get all fields with names, starting from name_copy, excluding
-				# the one whose name equals name_copy
-				fields = self.getFieldsList(id, _InternalField(self.engine, name_copy),
-					exclude_self=True, all_types=True)
-
-				# we have to check only first field in list
-				# if there are no conflicts, other fields do not conflict too
-				if len(fields) > 0:
-					elem = fields[0].name[len(name_copy)]
-
-					if isinstance(last, str) and not isinstance(elem, str):
-						raise DatabaseError("Cannot modify hash, when list already exists on this level")
-					if not isinstance(last, str) and isinstance(elem, str):
-						raise DatabaseError("Cannot modify list, when hash already exists on this level")
-
-		self.engine.execute("INSERT INTO {id_table} VALUES ({id}, {field_name}, {type})"
-			.format(id_table=self.__ID_TABLE, id=id, field_name=field.name_as_value_no_type,
-			type=field.type_str_as_value))
-
-	def updateSpecification(self, id, field):
+	def increaseRefcount(self, id, field):
 		"""If information about given field does not exist in specification table, add it"""
-
 		types = self.getValueTypes(id, field)
 
-		if len(types) == 0:
-			self.addFieldToSpecification(id, field, new_field=True)
-		elif not field.type_str in types:
-			self.addFieldToSpecification(id, field, new_field=False)
+		self.addFieldToSpecification(id, field, new_field=(len(types)==0),
+			new_type=(not field.type_str in types))
+
+	def decreaseRefcount(self, id, field, num=1):
+		l = self.engine.execute(("SELECT {refcount_column} FROM {id_table} " +
+			"WHERE {id_column}={id} AND {field_column}={field_name} AND {type_column}={type}")
+			.format(id_table=self.__ID_TABLE, id=id, field_name=field.name_as_value_no_type,
+			type=field.type_str_as_value,
+			refcount_column=self.__REFCOUNT_COLUMN,
+			field_column=self.__FIELD_COLUMN,
+			type_column=self.__TYPE_COLUMN,
+			id_column=self.__ID_COLUMN))
+
+		if len(l) == 0:
+			raise DatabaseError("Attempt to decrease missing refcount")
+
+		if l[0][0] == 1:
+			self.engine.execute(("DELETE FROM {id_table} " +
+				"WHERE {id_column}={id} AND {field_column}={field_name} AND {type_column}={type}")
+				.format(id_table=self.__ID_TABLE, id=id, field_name=field.name_as_value_no_type,
+				type=field.type_str_as_value,
+				field_column=self.__FIELD_COLUMN,
+				type_column=self.__TYPE_COLUMN,
+				id_column=self.__ID_COLUMN))
+		else:
+			self.engine.execute(("UPDATE {id_table} SET {refcount_column}={refcount_column}-{val} " +
+				"WHERE {id_column}={id} AND {field_column}={field_name} AND {type_column}={type}")
+				.format(id_table=self.__ID_TABLE, id=id, field_name=field.name_as_value_no_type,
+				type=field.type_str_as_value,
+				refcount_column=self.__REFCOUNT_COLUMN,
+				field_column=self.__FIELD_COLUMN,
+				type_column=self.__TYPE_COLUMN, val=num,
+				id_column=self.__ID_COLUMN))
 
 	def getValueTypes(self, id, field):
+
 		l = self.engine.execute(("SELECT {type_column} FROM {id_table} " +
 			"WHERE {id_column}={id} AND {field_column}={field_name}")
 			.format(id_table=self.__ID_TABLE, id_column=self.__ID_COLUMN, id=id,
@@ -326,7 +369,7 @@ class StructureLayer:
 
 		# We need just check if there is at least one row with its id
 		# in specification table
-		l = self.engine.execute("SELECT COUNT({field_column}) FROM {id_table} WHERE {id_column}={id}"
+		l = self.engine.execute("SELECT COUNT() FROM {id_table} WHERE {id_column}={id}"
 			.format(id_table=self.__ID_TABLE, id=id,
 			id_column=self.__ID_COLUMN, field_column=self.__FIELD_COLUMN))
 		return l[0][0] > 0
@@ -390,20 +433,25 @@ class StructureLayer:
 				self.updateListSize(id, f, name_copy[-1])
 			name_copy.pop()
 
-		# Create field table if it does not exist yet
-		self.assureFieldTableExists(field)
-
 		# Delete old value (checking all tables because type could be different
 		types = self.getValueTypes(id, field)
+
 		field_copy = _InternalField(self.engine, field.name[:])
 		for type in types:
 			field_copy.type_str = type
 			if self.engine.tableExists(field_copy.name_str):
-				self.engine.execute("DELETE FROM {field_name} WHERE {id_column}={id} {delete_condition}"
-					.format(field_name=field_copy.name_as_table, id=id,
-					delete_condition=field_copy.columns_condition,
-					id_column=self.__ID_COLUMN))
+				self.deleteValues(id, field_copy)
+				#self.engine.execute("DELETE FROM {field_name} WHERE {id_column}={id} {delete_condition}"
+				#	.format(field_name=field_copy.name_as_table, id=id,
+				#	delete_condition=field_copy.columns_condition,
+				#	id_column=self.__ID_COLUMN))
 				break
+
+		# Create field table if it does not exist yet
+		self.assureFieldTableExists(field)
+
+		self.increaseRefcount(id, field) # create object header
+
 
 		# Insert new value
 		self.engine.execute("INSERT INTO {field_name} VALUES ({id}, {value}{columns_values})"
@@ -416,21 +464,24 @@ class StructureLayer:
 			condition = field.columns_condition
 
 		types = self.getValueTypes(id, field)
-
-		res = False
 		for type in types:
 			# delete value(s)
 			field.type_str = type
-			self.engine.execute("DELETE FROM {field_name} WHERE {id_column}={id}{delete_condition}"
+
+			res = self.engine.execute("SELECT COUNT() FROM {field_name} WHERE {id_column}={id}{delete_condition}"
 				.format(field_name=field.name_as_table, id=id, delete_condition=condition,
 				id_column=self.__ID_COLUMN))
+			del_num = res[0][0]
 
-			# check if the table is empty and if it is - delete it too
-			if self.engine.tableIsEmpty(field.name_str):
-				self.engine.deleteTable(field.name_str)
-				res = True
+			if del_num > 0:
+				self.decreaseRefcount(id, field, num=del_num)
+				self.engine.execute("DELETE FROM {field_name} WHERE {id_column}={id}{delete_condition}"
+					.format(field_name=field.name_as_table, id=id, delete_condition=condition,
+					id_column=self.__ID_COLUMN))
 
-		return res
+				# check if the table is empty and if it is - delete it too
+				if self.engine.tableIsEmpty(field.name_str):
+					self.engine.deleteTable(field.name_str)
 
 	def deleteField(self, id, field):
 		"""Delete given field(s)"""
@@ -457,7 +508,7 @@ class StructureLayer:
 		self.engine.execute("CREATE TABLE IF NOT EXISTS {field_name} ({values_str})"
 			.format(field_name=field.name_as_table,
 			values_str=field.getCreationStr(self.__ID_COLUMN,
-				self.__VALUE_COLUMN, self.__ID_TYPE, self.__LIST_INDEX_TYPE)))
+				self.__VALUE_COLUMN, self.__ID_TYPE, self.__INT_TYPE)))
 
 	def deleteObject(self, id):
 		"""Delete object with given ID"""
@@ -570,22 +621,19 @@ class StructureLayer:
 		for fld in fields_to_reenum:
 
 			# if shift is negative, we should delete elements first
-			table_was_deleted = False
 			if shift < 0:
-				table_was_deleted = self.deleteValues(id, fld, target_field.columns_condition)
+				self.deleteValues(id, fld, target_field.columns_condition)
 
 			# shift numbers of all elements in list
-			if not table_was_deleted:
+			types = self.getValueTypes(id, fld)
 
-				types = self.getValueTypes(id, fld)
-
-				for type in types:
-					fld.type_str = type
-					self.engine.execute(("UPDATE {field_name} SET {col_name}={col_name}+{shift} " +
-						"WHERE {id_column}={id}{cond} AND {col_name}>={col_val}")
-						.format(field_name=fld.name_as_table, col_name=col_name,
-						shift=shift, id=id, col_val=col_val, cond=cond,
-						id_column=self.__ID_COLUMN))
+			for type in types:
+				fld.type_str = type
+				self.engine.execute(("UPDATE {field_name} SET {col_name}={col_name}+{shift} " +
+					"WHERE {id_column}={id}{cond} AND {col_name}>={col_val}")
+					.format(field_name=fld.name_as_table, col_name=col_name,
+					shift=shift, id=id, col_val=col_val, cond=cond,
+					id_column=self.__ID_COLUMN))
 
 class SimpleDatabase(interface.Database):
 	"""Class, representing OODB over SQL"""
@@ -718,7 +766,6 @@ class SimpleDatabase(interface.Database):
 	def __processModifyRequest(self, id, fields):
 
 		for field in fields:
-			self.structure.updateSpecification(id, field) # create object header
 			self.structure.setFieldValue(id, field)
 
 	def __processDeleteRequest(self, id, fields):
