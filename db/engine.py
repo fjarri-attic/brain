@@ -35,7 +35,8 @@ class Sqlite3Engine(interface.Engine):
 
 	def execute(self, sql_str):
 		"""Execute given SQL query"""
-		return list(self.cur.execute(sql_str))
+		cur = self.cur.execute(sql_str)
+		return cur.fetchall()
 
 	def tableExists(self, name):
 		res = list(self.cur.execute("SELECT * FROM sqlite_master WHERE type='table' AND name={name}"
