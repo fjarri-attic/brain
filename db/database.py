@@ -792,12 +792,11 @@ class SimpleDatabase(interface.Database):
 		# FIXME: maybe it is worth making a separate function in Structure layer
 		result_list = []
 		for field in fields:
-			for cls in [str, int, float, bytes]:
-				field.value = cls()
+			for type in self.structure.getValueTypes(id, field):
+				field.type_str = type
 				res = self.structure.getFieldValue(id, field)
 				if res != None:
 					result_list += res
-					break
 
 		# FIXME: Hide .name usage in _InternalField
 		return [interface.Field(x.name, x.value) for x in result_list]
