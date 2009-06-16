@@ -219,5 +219,21 @@ class Modify(TestRequest):
 			res = self.db.processRequest(ReadRequest(id))
 			self.checkRequestResult(res, objects[id])
 
+	def testSeveralTypesInList(self):
+		"""Check that list can store values of different types"""
+		fields = [
+			Field(['vals', 0], 'Zack'),
+			Field(['vals', 1], 1),
+			Field(['vals', 2], 1.234),
+			Field(['vals', 3], b'Zack')
+		]
+
+		self.db.processRequest(ModifyRequest('1', fields))
+
+		res = self.db.processRequest(ReadRequest('1'))
+
+		self.checkRequestResult(res, fields)
+
+
 def get_class():
 	return Modify
