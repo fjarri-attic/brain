@@ -213,5 +213,85 @@ class Search(TestRequest):
 
 		self.checkRequestResult(res, ['1'])
 
+	def testConditionGreater(self):
+		"""Test that '>' search condition"""
+		self.prepareStandDifferentTypes()
+
+		# check work for ints
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field(['tracks', None, 'Length']), SearchRequest.GT, 310
+			)))
+
+		self.checkRequestResult(res, ['2'])
+
+		# check work for strings
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field(['tracks', None, 'Name']), SearchRequest.GT, 'Track 2 name'
+			)))
+
+		self.checkRequestResult(res, ['2'])
+
+	def testConditionGreaterOrEqual(self):
+		"""Test that '>=' search condition"""
+		self.prepareStandDifferentTypes()
+
+		# check work for ints
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field(['tracks', None, 'Length']), SearchRequest.GTE, 300
+			)))
+
+		self.checkRequestResult(res, ['1', '2'])
+
+		# check work for strings
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field(['tracks', None, 'Name']), SearchRequest.GTE, 'Track 2 name'
+			)))
+
+		self.checkRequestResult(res, ['1', '2'])
+
+	def testConditionLower(self):
+		"""Test that '<' search condition"""
+		self.prepareStandDifferentTypes()
+
+		# check work for ints
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field(['tracks', None, 'Length']), SearchRequest.LT, 300
+			)))
+
+		self.checkRequestResult(res, ['2'])
+
+		# check work for strings
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field(['tracks', None, 'Name']), SearchRequest.LT, 'Track 3 name'
+			)))
+
+		self.checkRequestResult(res, ['1'])
+
+	def testConditionLowerOrEqual(self):
+		"""Test that '<=' search condition"""
+		self.prepareStandDifferentTypes()
+
+		# check work for ints
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field(['tracks', None, 'Volume']), SearchRequest.LTE, 27.0
+			)))
+
+		self.checkRequestResult(res, ['2'])
+
+		# check work for strings
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field(['tracks', None, 'Name']), SearchRequest.LTE, 'Track 3 name'
+			)))
+
+		self.checkRequestResult(res, ['1', '2'])
+
 def get_class():
 	return Search
