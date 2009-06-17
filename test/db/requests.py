@@ -103,8 +103,8 @@ class TestRequest(unittest.TestCase):
 			Field(['tracks', 0, 'Data'], b'\x00\x01\x02'),
 
 			Field(['tracks', 1, 'Name'], 'Track 2 name'),
-			Field(['tracks', 1, 'Length'], 350),
-			Field(['tracks', 1, 'Volume'], 26.5),
+			Field(['tracks', 1, 'Length'], 350.0),
+			Field(['tracks', 1, 'Volume'], 26),
 			Field(['tracks', 1, 'Rating'], 4),
 			Field(['tracks', 1, 'Authors', 0], 'Carl'),
 			Field(['tracks', 1, 'Authors', 1], 'Dan'),
