@@ -193,15 +193,22 @@ class SearchRequest:
 	# constants for search operators
 	AND = "AND"
 	OR = "OR"
+
 	EQ = "=="
 	REGEXP = "=~"
+	LT = "<"
+	GT = ">"
+	LTE = "<="
+	GTE = ">="
 
 	class Condition:
 		"""Class for main element of search request"""
 
 		def __init__(self, operand1, operator, operand2, invert=False):
 
-			comparisons = [SearchRequest.EQ, SearchRequest.REGEXP]
+			comparisons = [SearchRequest.EQ, SearchRequest.REGEXP,
+				SearchRequest.GT, SearchRequest.GTE,
+				SearchRequest.LT, SearchRequest.LTE]
 			operators = [SearchRequest.AND, SearchRequest.OR]
 
 			if operator in comparisons:

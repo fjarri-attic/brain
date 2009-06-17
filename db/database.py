@@ -564,7 +564,11 @@ class StructureLayer:
 		# mapping to SQL comparisons
 		comparisons = {
 			interface.SearchRequest.EQ: '=',
-			interface.SearchRequest.REGEXP: 'REGEXP'
+			interface.SearchRequest.REGEXP: 'REGEXP',
+			interface.SearchRequest.LT: '<',
+			interface.SearchRequest.GT: '>',
+			interface.SearchRequest.LTE: '<=',
+			interface.SearchRequest.GTE: '>='
 		}
 
 		# construct query
