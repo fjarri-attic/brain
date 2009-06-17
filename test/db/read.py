@@ -77,5 +77,22 @@ class Read(TestRequest):
 
 		self.failUnlessRaises(DatabaseError, self.db.processRequest, ReadRequest('6'))
 
+	def testSeveralTypesAtOnce(self):
+		"""Check that different values of types can be read at once by mask"""
+		self.prepareStandDifferentTypes()
+
+		res = self.db.processRequest(ReadRequest('1', [Field(['meta', None])]))
+
+		self.checkRequestResult(res, [
+			Field(['meta', 0], 'Pikeman'),
+			Field(['meta', 1], 'Archer'),
+			Field(['meta', 2], 1),
+			Field(['meta', 3], 2),
+			Field(['meta', 4], 4.0),
+			Field(['meta', 5], 5.0),
+			Field(['meta', 6], b'Gryphon'),
+			Field(['meta', 7], b'Swordsman')
+		])
+
 def get_class():
 	return Read

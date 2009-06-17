@@ -301,5 +301,18 @@ class Delete(TestRequest):
 
 		self.db.processRequest(DeleteRequest('6'))
 
+	def testSeveralTypesAtOnce(self):
+		"""Check that values of different types can be deleted at once by mask"""
+		self.prepareStandDifferentTypes()
+
+		self.db.processRequest(DeleteRequest('1', [
+			Field(['meta', None])
+		]))
+
+		res = self.db.processRequest(ReadRequest('1', [Field(['meta', None])]))
+
+		self.checkRequestResult(res, [])
+
+
 def get_class():
 	return Delete

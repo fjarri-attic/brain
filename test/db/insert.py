@@ -281,5 +281,37 @@ class Insert(TestRequest):
 			Field(['tracks', 2, 'Authors', 1], 'Fred')
 		])
 
+	def testToListWithSeveralTypes(self):
+		"""
+		Check that several values of different types can be inserted
+		to list which already has values of several types
+		"""
+		self.prepareStandDifferentTypes()
+
+		res = self.db.processRequest(InsertRequest('1',
+			Field(['meta', 2]),
+			[
+				Field([], 'Monk'),
+				Field([], 2),
+				Field([], 10.0)
+			]
+		))
+
+		res = self.db.processRequest(ReadRequest('1', [Field(['meta', None])]))
+
+		self.checkRequestResult(res, [
+			Field(['meta', 0], 'Pikeman'),
+			Field(['meta', 1], 'Archer'),
+			Field(['meta', 2], 'Monk'),
+			Field(['meta', 3], 2),
+			Field(['meta', 4], 10.0),
+			Field(['meta', 5], 1),
+			Field(['meta', 6], 2),
+			Field(['meta', 7], 4.0),
+			Field(['meta', 8], 5.0),
+			Field(['meta', 9], b'Gryphon'),
+			Field(['meta', 10], b'Swordsman')
+		])
+
 def get_class():
 	return Insert
