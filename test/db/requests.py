@@ -89,3 +89,52 @@ class TestRequest(unittest.TestCase):
 			Field(['tracks', 2, 'Name'], value='Track 3 name'),
 			Field(['tracks', 2, 'Authors', 0], value='Rob'),
 			]))
+
+	def prepareStandDifferentTypes(self):
+		"""Prepare DB with several objects and different value types"""
+		self.db.processRequest(ModifyRequest('1', [
+			Field(['name'], 'Album 1'),
+
+			Field(['tracks', 0, 'Name'], 'Track 1 name'),
+			Field(['tracks', 0, 'Length'], 300),
+			Field(['tracks', 0, 'Volume'], 29.4),
+			Field(['tracks', 0, 'Authors', 0], 'Alex'),
+			Field(['tracks', 0, 'Authors', 1], 'Bob'),
+			Field(['tracks', 0, 'Data'], b'\x00\x01\x02'),
+
+			Field(['tracks', 1, 'Name'], 'Track 2 name'),
+			Field(['tracks', 1, 'Length'], 350),
+			Field(['tracks', 1, 'Volume'], 26.5),
+			Field(['tracks', 1, 'Rating'], 4),
+			Field(['tracks', 1, 'Authors', 0], 'Carl'),
+			Field(['tracks', 1, 'Authors', 1], 'Dan'),
+			Field(['tracks', 1, 'Data'], b'\x00\x01\x03'),
+
+			Field(['meta', 0], 'Pikeman'),
+			Field(['meta', 1], 'Archer'),
+			Field(['meta', 2], 1),
+			Field(['meta', 3], 2),
+			Field(['meta', 4], 4.0),
+			Field(['meta', 5], 5.0),
+			Field(['meta', 6], b'Gryphon'),
+			Field(['meta', 7], b'Swordsman')
+			]))
+
+		self.db.processRequest(ModifyRequest('2', [
+			Field(['name'], 'Album 2'),
+
+			Field(['tracks', 0, 'Name'], 'Track 3 name'),
+			Field(['tracks', 0, 'Length'], 290),
+			Field(['tracks', 0, 'Volume'], 33.0),
+			Field(['tracks', 0, 'Authors', 0], 'Earl'),
+			Field(['tracks', 0, 'Authors', 1], 'Fred'),
+			Field(['tracks', 0, 'Authors', 2], 'Greg'),
+			Field(['tracks', 0, 'Data'], b'\x00\x01\x04'),
+
+			Field(['tracks', 1, 'Name'], 'Track 4 name'),
+			Field(['tracks', 1, 'Length'], 370),
+			Field(['tracks', 1, 'Volume'], 22.1),
+			Field(['tracks', 1, 'Rating'], 4),
+			Field(['tracks', 1, 'Authors', 0], 'Hugo'),
+			Field(['tracks', 1, 'Data'], b'\x00\x01\x05')
+			]))
