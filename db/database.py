@@ -256,6 +256,13 @@ class StructureLayer:
 		while len(name_copy) > 0:
 			last = name_copy.pop()
 
+			field_copy = _InternalField(self.engine, name_copy)
+
+			types = self.getValueTypes(id, field_copy)
+			for type in types:
+				field_copy.type_str = type
+				self.deleteField(id, field_copy)
+
 			# Get all fields with names, starting from name_copy, excluding
 			# the one whose name equals name_copy
 			fields = self.getFieldsList(id, _InternalField(self.engine, name_copy),
@@ -520,14 +527,6 @@ class StructureLayer:
 			self.deleteField(id, field)
 
 		self.deleteSpecification(id)
-
-	def objectHasField(self, id, field):
-		"""Check if object has some field"""
-		existing_fields = self.getFieldsList(id)
-
-		# FIXME: hide .name usage in _InternalField
-		existing_names = [existing_field.name for existing_field in existing_fields]
-		return field.clean_name in existing_names
 
 	def buildSqlQuery(self, condition):
 		"""Recursive function to transform condition into SQL query"""

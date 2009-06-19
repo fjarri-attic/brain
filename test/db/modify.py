@@ -234,6 +234,51 @@ class Modify(TestRequest):
 
 		self.checkRequestResult(res, fields)
 
+	def testHashOnTopOfHashValue(self):
+		"""Check that hash can be written on top of existing value"""
+		self.db.processRequest(ModifyRequest('1', [
+			Field(['fld1'], value='val1'),
+			Field(['fld1', 'fld2', 'fld3'], value=2)
+			]))
+
+		res = self.db.processRequest(ReadRequest('1'))
+
+		# only last field value should be saved
+		self.checkRequestResult(res, [
+			Field(['fld1', 'fld2', 'fld3'], 2)
+			])
+
+	def testHashOnTopOfListElement(self):
+		"""Check that hash can be written on top of existing list element"""
+		self.db.processRequest(ModifyRequest('1', [
+			Field(['fld1', 0], value='val1'),
+			Field(['fld1', 1], value='val2'),
+			Field(['fld1', 1, 'fld3'], value=2)
+			]))
+
+		res = self.db.processRequest(ReadRequest('1'))
+
+		# only last field value should be saved
+		self.checkRequestResult(res, [
+			Field(['fld1', 0], value='val1'),
+			Field(['fld1', 1, 'fld3'], value=2)
+			])
+
+	def testListOnTopOfListElement(self):
+		"""Check that list can be written on top of existing list element"""
+		self.db.processRequest(ModifyRequest('1', [
+			Field(['fld1', 0], value='val1'),
+			Field(['fld1', 1], value='val2'),
+			Field(['fld1', 1, 0], value=2)
+			]))
+
+		res = self.db.processRequest(ReadRequest('1'))
+
+		# only last field value should be saved
+		self.checkRequestResult(res, [
+			Field(['fld1', 0], value='val1'),
+			Field(['fld1', 1, 0], value=2)
+			])
 
 def get_class():
 	return Modify
