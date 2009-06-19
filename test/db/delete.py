@@ -313,6 +313,23 @@ class Delete(TestRequest):
 
 		self.checkRequestResult(res, [])
 
+	def testNoneValue(self):
+		"""Check that Null values can be deleted"""
+		self.db.processRequest(ModifyRequest('1', [
+			Field(['fld1', 0], value=None),
+			Field(['fld1', 1], value=1)
+		]))
+		self.db.engine.dump()
+		self.db.processRequest(DeleteRequest('1', [
+			Field(['fld', 0])
+		]))
+
+		res = self.db.processRequest(ReadRequest('1'))
+
+		self.checkRequestResult(res, [
+			Field(['fld1', 0], value=1)
+			])
+
 
 def get_class():
 	return Delete

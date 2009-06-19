@@ -30,10 +30,10 @@ class _InternalField:
 
 	def __get_type_str(self):
 		"""Returns string with SQL type for stored value"""
-		return self.__engine.getColumnType(self.value) if self.value != None else None
+		return self.__engine.getColumnType(self.value) if self.value != None else "NULL"
 
 	def __set_type_str(self, type_str):
-		if type_str == None:
+		if type_str == "NULL":
 			self.value = None
 		else:
 			self.value = self.__engine.getValueClass(type_str)()
@@ -43,8 +43,7 @@ class _InternalField:
 	@property
 	def type_str_as_value(self):
 		"""Returns string with SQL type for stored value"""
-		return self.__engine.getSafeValue(self.type_str)\
-			if self.value != None else "NULL"
+		return self.__engine.getSafeValue(self.type_str)
 
 	@property
 	def name_str_no_type(self):
@@ -396,7 +395,7 @@ class StructureLayer:
 		if not self.engine.tableExists(field.name_str):
 			return None
 
-		if field.type_str == None:
+		if field.type_str == "NULL":
 			l = self.engine.execute(("SELECT NULL{columns_query} FROM {field_name} " +
 				"WHERE {id_column}={id}{columns_condition}")
 				.format(columns_query=field.columns_query, field_name=field.name_as_table,
@@ -456,6 +455,7 @@ class StructureLayer:
 		types = self.getValueTypes(id, field)
 
 		field_copy = _InternalField(self.engine, field.name[:])
+
 		for type in types:
 			field_copy.type_str = type
 			if self.engine.tableExists(field_copy.name_str):
@@ -466,7 +466,6 @@ class StructureLayer:
 		self.assureFieldTableExists(field)
 
 		self.increaseRefcount(id, field) # create object header
-
 
 		# Insert new value
 		self.engine.execute("INSERT INTO {field_name} VALUES ({id}{value}{columns_values})"
