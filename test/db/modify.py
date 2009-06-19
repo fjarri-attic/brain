@@ -243,7 +243,6 @@ class Modify(TestRequest):
 
 		res = self.db.processRequest(ReadRequest('1'))
 
-		# only last field value should be saved
 		self.checkRequestResult(res, [
 			Field(['fld1', 'fld2', 'fld3'], 2)
 			])
@@ -258,7 +257,6 @@ class Modify(TestRequest):
 
 		res = self.db.processRequest(ReadRequest('1'))
 
-		# only last field value should be saved
 		self.checkRequestResult(res, [
 			Field(['fld1', 0], value='val1'),
 			Field(['fld1', 1, 'fld3'], value=2)
@@ -274,10 +272,23 @@ class Modify(TestRequest):
 
 		res = self.db.processRequest(ReadRequest('1'))
 
-		# only last field value should be saved
 		self.checkRequestResult(res, [
 			Field(['fld1', 0], value='val1'),
 			Field(['fld1', 1, 0], value=2)
+			])
+
+	def testNoneValue(self):
+		"""Check basic support of Null values"""
+		self.db.processRequest(ModifyRequest('1', [
+			Field(['fld1', 0], value=None),
+			Field(['fld1', 1], value=1)
+		]))
+
+		res = self.db.processRequest(ReadRequest('1'))
+
+		self.checkRequestResult(res, [
+			Field(['fld1', 0], value=None),
+			Field(['fld1', 1], value=1)
 			])
 
 def get_class():

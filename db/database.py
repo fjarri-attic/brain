@@ -33,7 +33,10 @@ class _InternalField:
 		return self.__engine.getColumnType(self.value) if self.value != None else None
 
 	def __set_type_str(self, type_str):
-		self.value = self.__engine.getValueClass(type_str)()
+		if type_str == None:
+			self.value = None
+		else:
+			self.value = self.__engine.getValueClass(type_str)()
 
 	type_str = property(__get_type_str, __set_type_str)
 
@@ -41,7 +44,7 @@ class _InternalField:
 	def type_str_as_value(self):
 		"""Returns string with SQL type for stored value"""
 		return self.__engine.getSafeValue(self.type_str)\
-			if self.value != None else None
+			if self.value != None else "NULL"
 
 	@property
 	def name_str_no_type(self):
@@ -121,7 +124,9 @@ class _InternalField:
 				res += ", " + self.__getListColumnName(counter) + " " + list_index_type
 				counter += 1
 
-		return ("{id_column} {id_type}, {value_column} {value_type}" + res)\
+		return ("{id_column} {id_type}" +
+			(", {value_column} {value_type}" if self.value != None else "") +
+			res)\
 			.format(id_column=id_column, value_column=value_column,
 			id_type=id_type, value_type=self.type_str)
 
@@ -391,14 +396,21 @@ class StructureLayer:
 		if not self.engine.tableExists(field.name_str):
 			return None
 
-		# Get field values
-		# If field is a mask (i.e., contains Nones), there will be more than one result
-		l = self.engine.execute(("SELECT {value_column}{columns_query} FROM {field_name} " +
-			"WHERE {id_column}={id}{columns_condition}")
-			.format(columns_query=field.columns_query, field_name=field.name_as_table,
-			id=id, columns_condition=field.columns_condition,
-			value_column=self.__VALUE_COLUMN,
-			id_column=self.__ID_COLUMN))
+		if field.type_str == None:
+			l = self.engine.execute(("SELECT NULL{columns_query} FROM {field_name} " +
+				"WHERE {id_column}={id}{columns_condition}")
+				.format(columns_query=field.columns_query, field_name=field.name_as_table,
+				id=id, columns_condition=field.columns_condition,
+				id_column=self.__ID_COLUMN))
+		else:
+			# Get field values
+			# If field is a mask (i.e., contains Nones), there will be more than one result
+			l = self.engine.execute(("SELECT {value_column}{columns_query} FROM {field_name} " +
+				"WHERE {id_column}={id}{columns_condition}")
+				.format(columns_query=field.columns_query, field_name=field.name_as_table,
+				id=id, columns_condition=field.columns_condition,
+				value_column=self.__VALUE_COLUMN,
+				id_column=self.__ID_COLUMN))
 
 		# Convert results to list of _InternalFields
 		res = []
@@ -448,10 +460,6 @@ class StructureLayer:
 			field_copy.type_str = type
 			if self.engine.tableExists(field_copy.name_str):
 				self.deleteValues(id, field_copy)
-				#self.engine.execute("DELETE FROM {field_name} WHERE {id_column}={id} {delete_condition}"
-				#	.format(field_name=field_copy.name_as_table, id=id,
-				#	delete_condition=field_copy.columns_condition,
-				#	id_column=self.__ID_COLUMN))
 				break
 
 		# Create field table if it does not exist yet
@@ -461,9 +469,10 @@ class StructureLayer:
 
 
 		# Insert new value
-		self.engine.execute("INSERT INTO {field_name} VALUES ({id}, {value}{columns_values})"
+		self.engine.execute("INSERT INTO {field_name} VALUES ({id}{value}{columns_values})"
 			.format(field_name=field.name_as_table, id=id,
-			value=field.safe_value, columns_values=field.columns_values))
+			value=((", " + field.safe_value) if field.value != None else ""),
+			columns_values=field.columns_values))
 
 	def deleteValues(self, id, field, condition=None):
 		"""Delete value of given field(s)"""
