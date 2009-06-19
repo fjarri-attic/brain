@@ -319,7 +319,7 @@ class Delete(TestRequest):
 			Field(['fld1', 0], value=None),
 			Field(['fld1', 1], value=1)
 		]))
-		self.db.engine.dump()
+
 		self.db.processRequest(DeleteRequest('1', [
 			Field(['fld', 0])
 		]))
