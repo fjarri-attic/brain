@@ -701,8 +701,7 @@ class LogicLayer:
 
 			# Get all fields with names, starting from name_copy, excluding
 			# the one whose name equals name_copy
-			fields = self.structure.getFieldsList(id, _InternalField(self.engine, name_copy),
-				exclude_self=True)
+			fields = self.structure.getFieldsList(id, field_copy, exclude_self=True)
 
 			# we have to check only first field in list
 			# if there are no conflicts, other fields do not conflict too
