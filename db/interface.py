@@ -57,6 +57,10 @@ class Engine:
 		"""Transform string value so that it could be safely used as table name"""
 		return NotImplementedError
 
+	def getNullValue(self):
+		"""Returns null value to use in queries"""
+		return NotImplementedError
+
 	def begin(self):
 		"""Begin transaction"""
 		return NotImplementedError
@@ -223,7 +227,7 @@ class SearchRequest:
 				if operand2 != None and not val_class in [str, int, float, bytes]:
 					raise FormatError("Operand type is not supported: " +
 						val_class.__name__)
-				
+
 				# Nones only support EQ
 				if operand2 == None and operator != SearchRequest.EQ:
 					raise FormatError("Null value can be only used in equality")

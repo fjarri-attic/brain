@@ -255,6 +255,21 @@ class EngineTest(unittest.TestCase):
 			py_cls = self.engine.getValueClass(sql_type)
 			self.failUnlessEqual(py_cls, cls)
 
+	def testNullValue(self):
+		"""Check that NULLs and operations with them are supported"""
+		self.engine.begin()
+		self.engine.execute("CREATE TABLE ttt (col1 {type}, col2 {type})"
+			.format(type=self.str_type))
+		self.engine.execute("INSERT INTO ttt VALUES ('a', 'b')")
+		self.engine.execute("INSERT INTO ttt VALUES ('a', {null})"
+			.format(null=self.engine.getNullValue()))
+		self.engine.execute("INSERT INTO ttt VALUES ({null}, 'b')"
+			.format(null=self.engine.getNullValue()))
+		res = self.engine.execute("SELECT col2 FROM ttt WHERE col1 ISNULL")
+		self.engine.commit()
+
+		self.failUnlessEqual(res, [('b',)])
+
 def suite():
 	"""Generate test suite for this module"""
 	res = helpers.NamedTestSuite()

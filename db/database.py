@@ -30,20 +30,26 @@ class _InternalField:
 
 	def __get_type_str(self):
 		"""Returns string with SQL type for stored value"""
-		return self.__engine.getColumnType(self.value) if self.value != None else "NULL"
+		return self.__engine.getColumnType(self.value) if self.value != None else None
 
 	def __set_type_str(self, type_str):
-		if type_str == "NULL":
+		if type_str == None:
 			self.value = None
 		else:
 			self.value = self.__engine.getValueClass(type_str)()
 
 	type_str = property(__get_type_str, __set_type_str)
 
+	def isNull(self):
+		return (self.type_str == None)
+
 	@property
 	def type_str_as_value(self):
 		"""Returns string with SQL type for stored value"""
-		return self.__engine.getSafeValue(self.type_str)
+		if self.type_str != None:
+			return self.__engine.getSafeValue(self.type_str)
+		else:
+			return self.__engine.getNullValue()
 
 	@property
 	def name_str_no_type(self):
@@ -312,12 +318,12 @@ class StructureLayer:
 
 	def decreaseRefcount(self, id, field, num=1):
 		l = self.engine.execute(("SELECT {refcount_column} FROM {id_table} " +
-			"WHERE {id_column}={id} AND {field_column}={field_name} AND {type_column}={type}")
+			"WHERE {id_column}={id} AND {field_column}={field_name} AND {type_cond}")
 			.format(id_table=self.__ID_TABLE, id=id, field_name=field.name_as_value_no_type,
-			type=field.type_str_as_value,
+			type_cond = ((self.__TYPE_COLUMN + '=' + field.type_str_as_value)
+				if not field.isNull() else (self.__TYPE_COLUMN + ' ISNULL')),
 			refcount_column=self.__REFCOUNT_COLUMN,
 			field_column=self.__FIELD_COLUMN,
-			type_column=self.__TYPE_COLUMN,
 			id_column=self.__ID_COLUMN))
 
 		if len(l) == 0:
@@ -325,11 +331,11 @@ class StructureLayer:
 
 		if l[0][0] == 1:
 			self.engine.execute(("DELETE FROM {id_table} " +
-				"WHERE {id_column}={id} AND {field_column}={field_name} AND {type_column}={type}")
+				"WHERE {id_column}={id} AND {field_column}={field_name} AND {type_cond}")
 				.format(id_table=self.__ID_TABLE, id=id, field_name=field.name_as_value_no_type,
-				type=field.type_str_as_value,
+				type_cond = ((self.__TYPE_COLUMN + '=' + field.type_str_as_value)
+					if not field.isNull() else (self.__TYPE_COLUMN + ' ISNULL')),
 				field_column=self.__FIELD_COLUMN,
-				type_column=self.__TYPE_COLUMN,
 				id_column=self.__ID_COLUMN))
 		else:
 			self.engine.execute(("UPDATE {id_table} SET {refcount_column}={refcount_column}-{val} " +
@@ -395,7 +401,7 @@ class StructureLayer:
 		if not self.engine.tableExists(field.name_str):
 			return None
 
-		if field.type_str == "NULL":
+		if field.isNull():
 			l = self.engine.execute(("SELECT {columns_query} FROM {field_name} " +
 				"WHERE {id_column}={id}{columns_condition}")
 				.format(columns_query=field.columns_query, field_name=field.name_as_table,
@@ -414,7 +420,7 @@ class StructureLayer:
 		# Convert results to list of _InternalFields
 		res = []
 		for elem in l:
-			if field.type_str == "NULL":
+			if field.isNull():
 				res.append(_InternalField(self.engine, field.getDeterminedName(elem), None))
 			else:
 				res.append(_InternalField(self.engine, field.getDeterminedName(elem[1:]), elem[0]))
@@ -504,14 +510,6 @@ class StructureLayer:
 	def deleteField(self, id, field):
 		"""Delete given field(s)"""
 
-		#print(field.pointsToList())
-		#print(field.name_str)
-		#print(self.engine.tableExists(field.name_str))
-
-		# we can avoid unnecessary work by checking if table exists
-		#if not field.pointsToList():
-		#	return
-		#print(field)
 		if field.pointsToListElement():
 			# deletion of list element requires renumbering of other elements
 			self.renumber(id, field, -1)
@@ -564,7 +562,7 @@ class StructureLayer:
 		if op2 != None:
 			op1.type_str = self.engine.getColumnType(op2)
 		else:
-			op1.type_str = 'NULL'
+			op1.type_str = None
 
 		# If table with given field does not exist, just return empty query
 		if not self.engine.tableExists(op1.name_str):

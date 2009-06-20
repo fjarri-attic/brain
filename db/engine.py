@@ -95,6 +95,9 @@ class Sqlite3Engine(interface.Engine):
 		"""Transform string value so that it could be safely used as table name"""
 		return '"' + s.replace('"', '""') + '"'
 
+	def getNullValue(self):
+		return 'NULL'
+
 	def begin(self):
 		"""Begin transaction"""
 		self.cur.execute("BEGIN TRANSACTION")
