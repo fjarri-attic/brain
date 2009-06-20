@@ -763,15 +763,6 @@ class LogicLayer:
 
 		self.structure.deleteSpecification(id)
 
-	def searchForObjects(self, condition):
-		"""Search for all objects using given search condition"""
-
-		request = self.structure.buildSqlQuery(condition)
-		result = self.engine.execute(request)
-		list_res = [x[0] for x in result]
-
-		return list_res
-
 	def renumber(self, id, target_field, shift):
 		"""Renumber list elements before insertion or deletion"""
 
@@ -785,6 +776,85 @@ class LogicLayer:
 
 			# shift numbers of all elements in list
 			self.structure.renumberList(id, target_field, fld, shift)
+
+	def processModifyRequest(self, id, fields):
+
+		for field in fields:
+			self.setFieldValue(id, field)
+
+	def processDeleteRequest(self, id, fields):
+
+		if fields != None:
+			# remove specified fields
+			for field in fields:
+				self.deleteField(id, field)
+			return
+		else:
+			# delete whole object
+			self.deleteObject(id)
+
+	def processReadRequest(self, id, fields):
+
+		# check if object exists first
+		if not self.structure.objectExists(id):
+			raise DatabaseError("Object " + id + " does not exist")
+
+		# if list of fields was not given, read all object's fields
+		if fields == None:
+			fields = self.structure.getFieldsList(id)
+
+		# FIXME: maybe it is worth making a separate function in Structure layer
+		result_list = []
+		for field in fields:
+			for type in self.structure.getValueTypes(id, field):
+				field.type_str = type
+				res = self.structure.getFieldValue(id, field)
+				if res != None:
+					result_list += res
+
+		# FIXME: Hide .name usage in _InternalField
+		return [interface.Field(x.name, x.value) for x in result_list]
+
+	def processSearchRequest(self, condition):
+		"""Search for all objects using given search condition"""
+
+		request = self.structure.buildSqlQuery(condition)
+		result = self.engine.execute(request)
+		list_res = [x[0] for x in result]
+
+		return list_res
+
+	def processInsertRequest(self, id, target_field, fields, one_position):
+
+		def enumerate(fields_list, col_num, starting_num, one_position=False):
+			"""Enumerate given column in list of fields"""
+			counter = starting_num
+			for field in fields_list:
+				# FIXME: Hide .name usage in _InternalField
+				field.name[col_num] = counter
+				if not one_position:
+					counter += 1
+
+		# FIXME: Hide .name usage in _InternalField
+		target_col = len(target_field.name) - 1 # last column in name of target field
+
+		max = self.structure.getMaxListIndex(id, target_field)
+		if max == None:
+		# list does not exist yet
+			enumerate(fields, target_col, 0, one_position)
+		# FIXME: Hide .name usage in _InternalField
+		elif target_field.name[target_col] == None:
+		# list exists and we are inserting elements to the end
+			starting_num = max + 1
+			enumerate(fields, target_col, starting_num, one_position)
+		else:
+		# list exists and we are inserting elements to the beginning or to the middle
+			self.renumber(id, target_field,
+				(1 if one_position else len(fields)))
+			# FIXME: Hide .name usage in _InternalField
+			enumerate(fields, target_col, target_field.name[target_col], one_position)
+
+		self.processModifyRequest(id, fields)
 
 
 class SimpleDatabase(interface.Database):
@@ -851,10 +921,10 @@ class SimpleDatabase(interface.Database):
 		# (so that we do not have to do it inside a transaction)
 		if isinstance(request, interface.ModifyRequest):
 			params = (request.id, converted_fields)
-			handler = self.__processModifyRequest
+			handler = self.logic.processModifyRequest
 		elif isinstance(request, interface.ReadRequest):
 			params = (request.id, converted_fields)
-			handler = self.__processReadRequest
+			handler = self.logic.processReadRequest
 		elif isinstance(request, interface.InsertRequest):
 
 			# fields to insert have relative names
@@ -863,14 +933,14 @@ class SimpleDatabase(interface.Database):
 
 			params = (request.id, converted_target,
 				converted_fields, request.one_position)
-			handler = self.__processInsertRequest
+			handler = self.logic.processInsertRequest
 		elif isinstance(request, interface.DeleteRequest):
 			params = (request.id, converted_fields)
-			handler = self.__processDeleteRequest
+			handler = self.logic.processDeleteRequest
 		elif isinstance(request, interface.SearchRequest):
 			propagateInversion(converted_condition)
 			params = (converted_condition,)
-			handler = self.__processSearchRequest
+			handler = self.logic.processSearchRequest
 		else:
 			raise DatabaseError("Unknown request type: " + request.__class__.__name__)
 
@@ -883,76 +953,3 @@ class SimpleDatabase(interface.Database):
 			raise
 		self.engine.commit()
 		return res
-
-	def __processInsertRequest(self, id, target_field, fields, one_position):
-
-		def enumerate(fields_list, col_num, starting_num, one_position=False):
-			"""Enumerate given column in list of fields"""
-			counter = starting_num
-			for field in fields_list:
-				# FIXME: Hide .name usage in _InternalField
-				field.name[col_num] = counter
-				if not one_position:
-					counter += 1
-
-		# FIXME: Hide .name usage in _InternalField
-		target_col = len(target_field.name) - 1 # last column in name of target field
-
-		max = self.structure.getMaxListIndex(id, target_field)
-		if max == None:
-		# list does not exist yet
-			enumerate(fields, target_col, 0, one_position)
-		# FIXME: Hide .name usage in _InternalField
-		elif target_field.name[target_col] == None:
-		# list exists and we are inserting elements to the end
-			starting_num = max + 1
-			enumerate(fields, target_col, starting_num, one_position)
-		else:
-		# list exists and we are inserting elements to the beginning or to the middle
-			self.logic.renumber(id, target_field,
-				(1 if one_position else len(fields)))
-			# FIXME: Hide .name usage in _InternalField
-			enumerate(fields, target_col, target_field.name[target_col], one_position)
-
-		self.__processModifyRequest(id, fields)
-
-	def __processModifyRequest(self, id, fields):
-
-		for field in fields:
-			self.logic.setFieldValue(id, field)
-
-	def __processDeleteRequest(self, id, fields):
-
-		if fields != None:
-			# remove specified fields
-			for field in fields:
-				self.logic.deleteField(id, field)
-			return
-		else:
-			# delete whole object
-			self.logic.deleteObject(id)
-
-	def __processReadRequest(self, id, fields):
-
-		# check if object exists first
-		if not self.structure.objectExists(id):
-			raise DatabaseError("Object " + id + " does not exist")
-
-		# if list of fields was not given, read all object's fields
-		if fields == None:
-			fields = self.structure.getFieldsList(id)
-
-		# FIXME: maybe it is worth making a separate function in Structure layer
-		result_list = []
-		for field in fields:
-			for type in self.structure.getValueTypes(id, field):
-				field.type_str = type
-				res = self.structure.getFieldValue(id, field)
-				if res != None:
-					result_list += res
-
-		# FIXME: Hide .name usage in _InternalField
-		return [interface.Field(x.name, x.value) for x in result_list]
-
-	def __processSearchRequest(self, condition):
-		return self.logic.searchForObjects(condition)
