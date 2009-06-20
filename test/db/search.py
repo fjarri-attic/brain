@@ -293,5 +293,38 @@ class Search(TestRequest):
 
 		self.checkRequestResult(res, ['1', '2'])
 
+	def testNoneTypeSimpleCondition(self):
+		"""Test that search condition works for NULL value"""
+		self.prepareStandDifferentTypes()
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field(['tracks', None, 'Volume']), SearchRequest.EQ, None
+			)))
+
+		self.checkRequestResult(res, ['2'])
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+			Field(['tracks', None, 'Volume']), SearchRequest.EQ, None,
+			invert=True
+			)))
+
+		self.checkRequestResult(res, ['1', '3'])
+
+	def testNoneTypeComplexCondition(self):
+		"""Test that complex search condition works for NULL value"""
+		self.prepareStandDifferentTypes()
+
+		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
+		SearchRequest.Condition(
+			Field(['tracks', None, 'Volume']), SearchRequest.EQ, None, invert=True
+			),
+		SearchRequest.AND,
+		SearchRequest.Condition(
+			Field(['tracks', None, 'Length']), SearchRequest.EQ, None
+			)
+		)))
+
+		self.checkRequestResult(res, ['3'])
+
 def get_class():
 	return Search

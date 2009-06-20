@@ -136,5 +136,17 @@ class TestRequest(unittest.TestCase):
 			Field(['tracks', 1, 'Volume'], 22.1),
 			Field(['tracks', 1, 'Rating'], 4),
 			Field(['tracks', 1, 'Authors', 0], 'Hugo'),
-			Field(['tracks', 1, 'Data'], b'\x00\x01\x05')
+			Field(['tracks', 1, 'Data'], b'\x00\x01\x05'),
+
+			Field(['tracks', 2, 'Length'], None),
+			Field(['tracks', 2, 'Volume'], None),
+			Field(['tracks', 2, 'Rating'], None)
+			]))
+
+		self.db.processRequest(ModifyRequest('3', [
+			Field(['name'], 'Album 3'),
+
+			Field(['tracks', 0, 'Length'], None),
+			Field(['tracks', 0, 'Volume'], 0),
+			Field(['tracks', 0, 'Rating'], 0)
 			]))

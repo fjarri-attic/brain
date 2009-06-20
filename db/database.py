@@ -558,7 +558,10 @@ class StructureLayer:
 		op1 = condition.operand1 # it must be Field
 		op2 = condition.operand2 # it must be some value
 
-		op1.value = op2.__class__()
+		if op2 != None:
+			op1.type_str = self.engine.getColumnType(op2)
+		else:
+			op1.type_str = 'NULL'
 
 		# If table with given field does not exist, just return empty query
 		if not self.engine.tableExists(op1.name_str):
@@ -566,7 +569,6 @@ class StructureLayer:
 
 		safe_name = condition.operand1.name_as_table
 		not_str = " NOT " if condition.invert else " "
-		op2_val = self.engine.getSafeValue(op2)
 
 		# mapping to SQL comparisons
 		comparisons = {
@@ -578,17 +580,31 @@ class StructureLayer:
 			interface.SearchRequest.GTE: '>='
 		}
 
-		# construct query
-		result = ("SELECT DISTINCT {id_column} FROM {field_name} " +
-			"WHERE{not_str}{value_column} {comparison} {val}{columns_condition}")\
-			.format(field_name=safe_name, not_str=not_str,
-			comparison=comparisons[condition.operator],
-			val=op2_val, columns_condition=op1.columns_condition,
-			id_column=self.__ID_COLUMN,
-			value_column=self.__VALUE_COLUMN)
+		if op2 != None or not condition.invert:
 
-		if condition.invert:
-			result += (" UNION SELECT * FROM (SELECT {id_column} FROM {id_table} " +
+			if op2 != None:
+				op2_val = self.engine.getSafeValue(op2)
+				comp_str = "WHERE" + not_str + " " + self.__VALUE_COLUMN + ' ' +\
+					comparisons[condition.operator] + ' ' + op2_val
+			else:
+				comp_str = ""
+
+			# construct query
+			result = ("SELECT DISTINCT {id_column} FROM {field_name} " +
+				"{comp_str}{columns_condition}")\
+				.format(field_name=safe_name, not_str=not_str,
+				columns_condition=op1.columns_condition,
+				id_column=self.__ID_COLUMN,
+				comp_str=comp_str)
+
+			if condition.invert:
+				result += (" UNION SELECT * FROM (SELECT {id_column} FROM {id_table} " +
+					"EXCEPT SELECT {id_column} FROM {field_name})")\
+					.format(id_table=self.__ID_TABLE, field_name=safe_name,
+					id_column=self.__ID_COLUMN)
+
+		else:
+			result = ("SELECT * FROM (SELECT {id_column} FROM {id_table} " +
 				"EXCEPT SELECT {id_column} FROM {field_name})")\
 				.format(id_table=self.__ID_TABLE, field_name=safe_name,
 				id_column=self.__ID_COLUMN)
@@ -599,6 +615,7 @@ class StructureLayer:
 		"""Search for all objects using given search condition"""
 
 		request = self.buildSqlQuery(condition)
+		print(request)
 		result = self.engine.execute(request)
 		list_res = [x[0] for x in result]
 
