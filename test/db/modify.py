@@ -238,13 +238,15 @@ class Modify(TestRequest):
 		"""Check that hash can be written on top of existing value"""
 		self.db.processRequest(ModifyRequest('1', [
 			Field(['fld1'], value='val1'),
-			Field(['fld1', 'fld2', 'fld3'], value=2)
+			Field(['fld1', 'fld2', 'fld3'], value=2),
+			Field(['fld1', 'fld2', 'fld4'], value='a')
 			]))
 
 		res = self.db.processRequest(ReadRequest('1'))
 
 		self.checkRequestResult(res, [
-			Field(['fld1', 'fld2', 'fld3'], 2)
+			Field(['fld1', 'fld2', 'fld3'], 2),
+			Field(['fld1', 'fld2', 'fld4'], value='a')
 			])
 
 	def testHashOnTopOfListElement(self):
