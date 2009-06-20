@@ -615,7 +615,6 @@ class StructureLayer:
 		"""Search for all objects using given search condition"""
 
 		request = self.buildSqlQuery(condition)
-		print(request)
 		result = self.engine.execute(request)
 		list_res = [x[0] for x in result]
 
