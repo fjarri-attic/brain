@@ -3,6 +3,7 @@
 import unittest
 import sys
 import traceback
+import time
 
 class _StreamWrapper:
 	"""Used to decorate file-like objects with some handy methods"""
@@ -119,14 +120,18 @@ class TextTestRunner:
 		res = _ResultCollector(self.__stream, self.__verbosity)
 
 		self.__stream.writeln("=" * 70)
+		time1 = time.time()
 		suite.run(res)
+		time2 = time.time()
 		self.__stream.writeln("=" * 70)
+		self.__stream.writeln("Finished in {0:.3f} seconds".format(time2 - time1))
 
 		# Display results
 		if not res.wasSuccessful():
 			failures, errors = len(res.failures), len(res.errors)
-			self.__stream.writeln("FAIL: %(failures)i failures, %(errors)i errors, %(passed)i passed" %
-				{'failures' : failures, 'errors' : errors, 'passed' : (res.testsRun - failures - errors)})
+			self.__stream.writeln("FAIL: {failures} failures, {errors} errors, {passed} passed"
+				.format(failures=failures, errors=errors,
+				passed=(res.testsRun - failures - errors)))
 		else:
 			self.__stream.writeln("OK: " + str(res.testsRun) + " testcases passed")
 
