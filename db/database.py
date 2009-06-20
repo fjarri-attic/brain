@@ -233,11 +233,11 @@ class StructureLayer:
 
 		# create support tables
 		self.engine.begin()
-		self.__createSupportTables()
+		self.createSupportTables()
 		self.engine.commit()
 
 
-	def __createSupportTables(self):
+	def createSupportTables(self):
 		"""Create database support tables (sort of caching)"""
 
 		# create specification table, which holds field names, their types
@@ -275,44 +275,6 @@ class StructureLayer:
 			id_table=self.__ID_TABLE,
 			id_column=self.__ID_COLUMN))
 
-	def checkConflicts(self, id, field):
-		"""
-		Check that adding this field does not break the database structure, namely:
-		given field can either contain value, or list, or map, not several at once
-		"""
-
-		# make a copy of field's name because we will change it
-		name_copy = field.name[:]
-
-		while len(name_copy) > 0:
-
-			last = name_copy.pop() # go up one level
-
-			field_copy = _InternalField(self.engine, name_copy)
-
-			# delete all values which names are a part of the name of field to add
-			# in other words, no named maps or lists
-			types = self.getValueTypes(id, field_copy)
-			for type in types:
-				field_copy.type_str = type
-				self.deleteField(id, field_copy)
-
-			# Get all fields with names, starting from name_copy, excluding
-			# the one whose name equals name_copy
-			fields = self.getFieldsList(id, _InternalField(self.engine, name_copy),
-				exclude_self=True)
-
-			# we have to check only first field in list
-			# if there are no conflicts, other fields do not conflict too
-			if len(fields) > 0:
-				elem = fields[0].name[len(name_copy)]
-
-				if isinstance(last, str) and not isinstance(elem, str):
-					raise DatabaseError("Cannot modify map, when list already exists on this level")
-				if not isinstance(last, str) and isinstance(elem, str):
-					raise DatabaseError("Cannot modify list, when map already exists on this level")
-
-
 	def increaseRefcount(self, id, field, new_type):
 		"""
 		Increase reference counter of givent field and type (or create it)
@@ -342,19 +304,6 @@ class StructureLayer:
 				refcount_column=self.__REFCOUNT_COLUMN,
 				type=field.type_str_as_value,
 				type_column=self.__TYPE_COLUMN))
-
-	def addFieldToSpecification(self, id, field):
-		"""Check if field conforms to hierarchy and if yes, add it"""
-
-		# check if there are already field with this name in object
-		types = self.getValueTypes(id, field)
-
-		# if adding a new field, ensure that there will be
-		# no conflicts in database structure
-		if len(types) == 0:
-			self.checkConflicts(id, field)
-
-		self.increaseRefcount(id, field, new_type=(not field.type_str in types))
 
 	def decreaseRefcount(self, id, field, num=1):
 		"""
@@ -533,81 +482,6 @@ class StructureLayer:
 				listsizes_table=self.__LISTSIZES_TABLE,
 				val=val))
 
-	def setFieldValue(self, id, field):
-		"""Set value of given field"""
-
-		# Update maximum values cache
-		# FIXME: hide .name usage in _InternalField
-		name_copy = field.name[:]
-		while len(name_copy) > 0:
-			if isinstance(name_copy[-1], int):
-				f = _InternalField(self.engine, name_copy)
-				self.updateListSize(id, f, name_copy[-1])
-			name_copy.pop()
-
-		# Delete old value (checking all tables because type could be different)
-		# FIXME: add test, showing that it is really necessary to delete all fields
-		types = self.getValueTypes(id, field)
-		field_copy = _InternalField(self.engine, field.name)
-		for type in types:
-			field_copy.type_str = type
-			self.deleteValues(id, field_copy)
-
-		# Create field table if it does not exist yet
-		self.assureFieldTableExists(field)
-
-		self.addFieldToSpecification(id, field) # create object header
-
-		# Insert new value
-		new_value = (", " + field.safe_value) if field.value != None else ""
-		self.engine.execute(("INSERT INTO {field_name} " +
-			"VALUES ({id}{value}{columns_values})").format(
-			columns_values=field.columns_values,
-			field_name=field.name_as_table,
-			id=id,
-			value=new_value))
-
-	def deleteValues(self, id, field, condition=None):
-		"""Delete value of given field(s)"""
-
-		# if there is no special condition, take the mask of given field
-		if condition == None:
-			condition = field.columns_condition
-
-		types = self.getValueTypes(id, field)
-		for type in types:
-
-			# prepare query for deletion
-			field.type_str = type
-			query_str = "FROM {field_name} WHERE {id_column}={id}{delete_condition}".format(
-				delete_condition=condition,
-				field_name=field.name_as_table,
-				id=id,
-				id_column=self.__ID_COLUMN)
-
-			# get number of records to be deleted
-			res = self.engine.execute("SELECT COUNT() " + query_str)
-			del_num = res[0][0]
-
-			# if there are any, delete them
-			if del_num > 0:
-				self.decreaseRefcount(id, field, num=del_num)
-				self.engine.execute("DELETE " + query_str)
-
-				# check if the table is empty and if it is - delete it too
-				if self.engine.tableIsEmpty(field.name_str):
-					self.engine.deleteTable(field.name_str)
-
-	def deleteField(self, id, field):
-		"""Delete given field(s)"""
-
-		if field.pointsToListElement():
-			# deletion of list element requires renumbering of other elements
-			self.renumber(id, field, -1)
-		else:
-			# otherwise just delete values using given field mask
-			self.deleteValues(id, field)
-
 	def assureFieldTableExists(self, field):
 		"""Create table for storing values of this field if it does not exist yet"""
 
@@ -617,16 +491,22 @@ class StructureLayer:
 			values_str=field.getCreationStr(self.__ID_COLUMN,
 				self.__VALUE_COLUMN, self.__ID_TYPE, self.__INT_TYPE)))
 
-	def deleteObject(self, id):
-		"""Delete object with given ID"""
+	def getMaxListIndex(self, id, field):
+		"""Get maximum value of list index for the undefined column of the field"""
 
-		fields = self.getFieldsList(id)
+		l = self.engine.execute(("SELECT {max_column} FROM {listsizes_table} " +
+			"WHERE {id_column}={id} AND {field_column}={field_name}").format(
+			field_column=self.__FIELD_COLUMN,
+			field_name=field.name_hashstr,
+			id=id,
+			id_column=self.__ID_COLUMN,
+			listsizes_table=self.__LISTSIZES_TABLE,
+			max_column=self.__MAX_COLUMN))
 
-		# for each field, remove it from tables
-		for field in fields:
-			self.deleteField(id, field)
-
-		self.deleteSpecification(id)
+		if len(l) > 0:
+			return l[0][0]
+		else:
+			return None
 
 	def buildSqlQuery(self, condition):
 		"""Recursive function to transform condition into SQL query"""
@@ -712,6 +592,174 @@ class StructureLayer:
 
 		return result
 
+	def renumberList(self, id, target_field, field, shift):
+		"""
+		Shift indexes in given list
+		target_field - points to list which is being processed
+		field - child field for one of the elements of this list
+		"""
+
+		# Get the name and the value of last numerical column
+		col_name, col_val = target_field.getLastListColumn()
+		cond = target_field.renumber_condition
+
+		# renumber list indexes for all types
+		types = self.getValueTypes(id, field)
+		for type in types:
+			field.type_str = type
+			self.engine.execute(("UPDATE {field_name} " +
+				"SET {col_name}={col_name}+{shift} " +
+				"WHERE {id_column}={id}{cond} AND {col_name}>={col_val}").format(
+				col_name=col_name,
+				col_val=col_val,
+				cond=cond,
+				field_name=field.name_as_table,
+				id=id,
+				id_column=self.__ID_COLUMN,
+				shift=shift))
+
+	def deleteValues(self, id, field, condition=None):
+		"""Delete value of given field(s)"""
+
+		# if there is no special condition, take the mask of given field
+		if condition == None:
+			condition = field.columns_condition
+
+		types = self.getValueTypes(id, field)
+		for type in types:
+
+			# prepare query for deletion
+			field.type_str = type
+			query_str = "FROM {field_name} WHERE {id_column}={id}{delete_condition}".format(
+				delete_condition=condition,
+				field_name=field.name_as_table,
+				id=id,
+				id_column=self.__ID_COLUMN)
+
+			# get number of records to be deleted
+			res = self.engine.execute("SELECT COUNT() " + query_str)
+			del_num = res[0][0]
+
+			# if there are any, delete them
+			if del_num > 0:
+				self.decreaseRefcount(id, field, num=del_num)
+				self.engine.execute("DELETE " + query_str)
+
+				# check if the table is empty and if it is - delete it too
+				if self.engine.tableIsEmpty(field.name_str):
+					self.engine.deleteTable(field.name_str)
+
+	def addValueRecord(self, id, field):
+		"""Add value to the corresponding table"""
+
+		new_value = (", " + field.safe_value) if field.value != None else ""
+		self.engine.execute(("INSERT INTO {field_name} " +
+			"VALUES ({id}{value}{columns_values})").format(
+			columns_values=field.columns_values,
+			field_name=field.name_as_table,
+			id=id,
+			value=new_value))
+
+#
+#
+#
+
+	def deleteField(self, id, field):
+		"""Delete given field(s)"""
+
+		if field.pointsToListElement():
+			# deletion of list element requires renumbering of other elements
+			self.renumber(id, field, -1)
+		else:
+			# otherwise just delete values using given field mask
+			self.deleteValues(id, field)
+
+	def checkForConflicts(self, id, field):
+		"""
+		Check that adding this field does not break the database structure, namely:
+		given field can either contain value, or list, or map, not several at once
+		"""
+
+		# make a copy of field's name because we will change it
+		name_copy = field.name[:]
+
+		while len(name_copy) > 0:
+
+			last = name_copy.pop() # go up one level
+
+			field_copy = _InternalField(self.engine, name_copy)
+
+			# delete all values which names are a part of the name of field to add
+			# in other words, no named maps or lists
+			types = self.getValueTypes(id, field_copy)
+			for type in types:
+				field_copy.type_str = type
+				self.deleteField(id, field_copy)
+
+			# Get all fields with names, starting from name_copy, excluding
+			# the one whose name equals name_copy
+			fields = self.getFieldsList(id, _InternalField(self.engine, name_copy),
+				exclude_self=True)
+
+			# we have to check only first field in list
+			# if there are no conflicts, other fields do not conflict too
+			if len(fields) > 0:
+				elem = fields[0].name[len(name_copy)]
+
+				if isinstance(last, str) and not isinstance(elem, str):
+					raise DatabaseError("Cannot modify map, when list already exists on this level")
+				if not isinstance(last, str) and isinstance(elem, str):
+					raise DatabaseError("Cannot modify list, when map already exists on this level")
+
+	def addFieldToSpecification(self, id, field):
+		"""Check if field conforms to hierarchy and if yes, add it"""
+
+		# check if there are already field with this name in object
+		types = self.getValueTypes(id, field)
+
+		# if adding a new field, ensure that there will be
+		# no conflicts in database structure
+		if len(types) == 0:
+			self.checkForConflicts(id, field)
+
+		self.increaseRefcount(id, field, new_type=(not field.type_str in types))
+
+	def setFieldValue(self, id, field):
+		"""Set value of given field"""
+
+		# Update maximum values cache
+		# FIXME: hide .name usage in _InternalField
+		name_copy = field.name[:]
+		while len(name_copy) > 0:
+			if isinstance(name_copy[-1], int):
+				f = _InternalField(self.engine, name_copy)
+				self.updateListSize(id, f, name_copy[-1])
+			name_copy.pop()
+
+		# Delete old value (checking all tables because type could be different)
+		# FIXME: add test, showing that it is really necessary to delete all fields
+		types = self.getValueTypes(id, field)
+		field_copy = _InternalField(self.engine, field.name)
+		for type in types:
+			field_copy.type_str = type
+			self.deleteValues(id, field_copy)
+
+		# Create field table if it does not exist yet
+		self.assureFieldTableExists(field)
+		self.addFieldToSpecification(id, field) # create object header
+		self.addValueRecord(id, field) # Insert new value
+
+	def deleteObject(self, id):
+		"""Delete object with given ID"""
+
+		fields = self.getFieldsList(id)
+
+		# for each field, remove it from tables
+		for field in fields:
+			self.deleteField(id, field)
+
+		self.deleteSpecification(id)
+
 	def searchForObjects(self, condition):
 		"""Search for all objects using given search condition"""
 
@@ -721,29 +769,8 @@ class StructureLayer:
 
 		return list_res
 
-	def getMaxListIndex(self, id, field):
-		"""Get maximum value of list index for the undefined column of the field"""
-
-		l = self.engine.execute(("SELECT {max_column} FROM {listsizes_table} " +
-			"WHERE {id_column}={id} AND {field_column}={field_name}").format(
-			field_column=self.__FIELD_COLUMN,
-			field_name=field.name_hashstr,
-			id=id,
-			id_column=self.__ID_COLUMN,
-			listsizes_table=self.__LISTSIZES_TABLE,
-			max_column=self.__MAX_COLUMN))
-
-		if len(l) > 0:
-			return l[0][0]
-		else:
-			return None
-
 	def renumber(self, id, target_field, shift):
 		"""Renumber list elements before insertion or deletion"""
-
-		# Get the name and the value of last numerical column
-		col_name, col_val = target_field.getLastListColumn()
-		cond = target_field.renumber_condition
 
 		# Get all child field names
 		fields_to_reenum = self.getFieldsList(id, target_field)
@@ -754,19 +781,7 @@ class StructureLayer:
 				self.deleteValues(id, fld, target_field.columns_condition)
 
 			# shift numbers of all elements in list
-			types = self.getValueTypes(id, fld)
-			for type in types:
-				fld.type_str = type
-				self.engine.execute(("UPDATE {field_name} " +
-					"SET {col_name}={col_name}+{shift} " +
-					"WHERE {id_column}={id}{cond} AND {col_name}>={col_val}").format(
-					col_name=col_name,
-					col_val=col_val,
-					cond=cond,
-					field_name=fld.name_as_table,
-					id=id,
-					id_column=self.__ID_COLUMN,
-					shift=shift))
+			self.renumberList(id, target_field, fld, shift)
 
 
 class SimpleDatabase(interface.Database):
