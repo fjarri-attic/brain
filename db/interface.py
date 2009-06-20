@@ -220,12 +220,16 @@ class SearchRequest:
 				val_class = operand2.__class__
 
 				# check if value type is supported
-				if not val_class in [str, int, float, bytes]:
+				if operand2 != None and not val_class in [str, int, float, bytes]:
 					raise FormatError("Operand type is not supported: " +
 						val_class.__name__)
+				
+				# Nones only support EQ
+				if operand2 == None and operator != SearchRequest.EQ:
+					raise FormatError("Null value can be only used in equality")
 
 				# regexp is valid only for strings and blobs
-				if operator == SearchRequest.REGEXP and val_class != str and val_class != bytes:
+				if operator == SearchRequest.REGEXP and not val_class in [str, bytes]:
 					raise FormatError("Values of type " + val_class.__name__ +
 						" do not support regexp condition")
 

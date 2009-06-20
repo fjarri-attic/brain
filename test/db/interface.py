@@ -246,6 +246,18 @@ class Format(unittest.TestCase):
 				construct_condition(cls)
 			else:
 				self.failUnlessRaises(FormatError, construct_condition, cls)
+	
+	def testNoneInSearchCondition(self):
+		"""Test that None value can be used in search condition"""
+		
+		# check that Nones can be used in equalities
+		SearchRequest.Condition(Field('fld'), SearchRequest.EQ, None)
+		
+		# check that Nones cannot be used with other operators
+		for op in [SearchRequest.REGEXP, SearchRequest.LT, SearchRequest.LTE,
+				SearchRequest.GT, SearchRequest.GTE]:
+			self.failUnlessRaises(FormatError, SearchRequest.Condition,
+				Field('fld'), op, None)
 
 def suite():
 	"""Generate test suite for this module"""
