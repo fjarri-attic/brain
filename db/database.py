@@ -660,9 +660,12 @@ class StructureLayer:
 			id=id,
 			value=new_value))
 
-#
-#
-#
+class LogicLayer:
+	"""Class, representing DDB logic"""
+
+	def __init__(self, engine, structure):
+		self.engine = engine
+		self.structure = structure
 
 	def deleteField(self, id, field):
 		"""Delete given field(s)"""
@@ -672,7 +675,7 @@ class StructureLayer:
 			self.renumber(id, field, -1)
 		else:
 			# otherwise just delete values using given field mask
-			self.deleteValues(id, field)
+			self.structure.deleteValues(id, field)
 
 	def checkForConflicts(self, id, field):
 		"""
@@ -691,14 +694,14 @@ class StructureLayer:
 
 			# delete all values which names are a part of the name of field to add
 			# in other words, no named maps or lists
-			types = self.getValueTypes(id, field_copy)
+			types = self.structure.getValueTypes(id, field_copy)
 			for type in types:
 				field_copy.type_str = type
 				self.deleteField(id, field_copy)
 
 			# Get all fields with names, starting from name_copy, excluding
 			# the one whose name equals name_copy
-			fields = self.getFieldsList(id, _InternalField(self.engine, name_copy),
+			fields = self.structure.getFieldsList(id, _InternalField(self.engine, name_copy),
 				exclude_self=True)
 
 			# we have to check only first field in list
@@ -715,14 +718,14 @@ class StructureLayer:
 		"""Check if field conforms to hierarchy and if yes, add it"""
 
 		# check if there are already field with this name in object
-		types = self.getValueTypes(id, field)
+		types = self.structure.getValueTypes(id, field)
 
 		# if adding a new field, ensure that there will be
 		# no conflicts in database structure
 		if len(types) == 0:
 			self.checkForConflicts(id, field)
 
-		self.increaseRefcount(id, field, new_type=(not field.type_str in types))
+		self.structure.increaseRefcount(id, field, new_type=(not field.type_str in types))
 
 	def setFieldValue(self, id, field):
 		"""Set value of given field"""
@@ -733,37 +736,37 @@ class StructureLayer:
 		while len(name_copy) > 0:
 			if isinstance(name_copy[-1], int):
 				f = _InternalField(self.engine, name_copy)
-				self.updateListSize(id, f, name_copy[-1])
+				self.structure.updateListSize(id, f, name_copy[-1])
 			name_copy.pop()
 
 		# Delete old value (checking all tables because type could be different)
 		# FIXME: add test, showing that it is really necessary to delete all fields
-		types = self.getValueTypes(id, field)
+		types = self.structure.getValueTypes(id, field)
 		field_copy = _InternalField(self.engine, field.name)
 		for type in types:
 			field_copy.type_str = type
-			self.deleteValues(id, field_copy)
+			self.structure.deleteValues(id, field_copy)
 
 		# Create field table if it does not exist yet
-		self.assureFieldTableExists(field)
+		self.structure.assureFieldTableExists(field)
 		self.addFieldToSpecification(id, field) # create object header
-		self.addValueRecord(id, field) # Insert new value
+		self.structure.addValueRecord(id, field) # Insert new value
 
 	def deleteObject(self, id):
 		"""Delete object with given ID"""
 
-		fields = self.getFieldsList(id)
+		fields = self.structure.getFieldsList(id)
 
 		# for each field, remove it from tables
 		for field in fields:
 			self.deleteField(id, field)
 
-		self.deleteSpecification(id)
+		self.structure.deleteSpecification(id)
 
 	def searchForObjects(self, condition):
 		"""Search for all objects using given search condition"""
 
-		request = self.buildSqlQuery(condition)
+		request = self.structure.buildSqlQuery(condition)
 		result = self.engine.execute(request)
 		list_res = [x[0] for x in result]
 
@@ -773,25 +776,26 @@ class StructureLayer:
 		"""Renumber list elements before insertion or deletion"""
 
 		# Get all child field names
-		fields_to_reenum = self.getFieldsList(id, target_field)
+		fields_to_reenum = self.structure.getFieldsList(id, target_field)
 		for fld in fields_to_reenum:
 
 			# if shift is negative, we should delete elements first
 			if shift < 0:
-				self.deleteValues(id, fld, target_field.columns_condition)
+				self.structure.deleteValues(id, fld, target_field.columns_condition)
 
 			# shift numbers of all elements in list
-			self.renumberList(id, target_field, fld, shift)
+			self.structure.renumberList(id, target_field, fld, shift)
 
 
 class SimpleDatabase(interface.Database):
-	"""Class, representing OODB over SQL"""
+	"""Class, representing DDB request handler"""
 
 	def __init__(self, path, engine_class):
 		if not issubclass(engine_class, interface.Engine):
 			raise DatabaseError("Engine class must be derived from Engine interface")
 		self.engine = engine_class(path)
 		self.structure = StructureLayer(self.engine)
+		self.logic = LogicLayer(self.engine, self.structure)
 
 	def processRequest(self, request):
 		"""Start/stop transaction, handle exceptions"""
@@ -905,7 +909,7 @@ class SimpleDatabase(interface.Database):
 			enumerate(fields, target_col, starting_num, one_position)
 		else:
 		# list exists and we are inserting elements to the beginning or to the middle
-			self.structure.renumber(id, target_field,
+			self.logic.renumber(id, target_field,
 				(1 if one_position else len(fields)))
 			# FIXME: Hide .name usage in _InternalField
 			enumerate(fields, target_col, target_field.name[target_col], one_position)
@@ -915,18 +919,18 @@ class SimpleDatabase(interface.Database):
 	def __processModifyRequest(self, id, fields):
 
 		for field in fields:
-			self.structure.setFieldValue(id, field)
+			self.logic.setFieldValue(id, field)
 
 	def __processDeleteRequest(self, id, fields):
 
 		if fields != None:
 			# remove specified fields
 			for field in fields:
-				self.structure.deleteField(id, field)
+				self.logic.deleteField(id, field)
 			return
 		else:
 			# delete whole object
-			self.structure.deleteObject(id)
+			self.logic.deleteObject(id)
 
 	def __processReadRequest(self, id, fields):
 
@@ -951,4 +955,4 @@ class SimpleDatabase(interface.Database):
 		return [interface.Field(x.name, x.value) for x in result_list]
 
 	def __processSearchRequest(self, condition):
-		return self.structure.searchForObjects(condition)
+		return self.logic.searchForObjects(condition)
