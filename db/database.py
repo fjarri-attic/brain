@@ -1,4 +1,4 @@
-"""Module with classes, describing OO wrapper over SQL"""
+"""Module with classes, describing DDB wrapper over SQL"""
 
 import sqlite3
 import re
@@ -7,9 +7,11 @@ import copy
 from . import interface
 from . import engine
 
+
 class DatabaseError(Exception):
 	"""Request tried to do something conflicting with DB structure"""
 	pass
+
 
 class _InternalField:
 	"""Class for more convenient handling of Field objects"""
@@ -199,15 +201,20 @@ class _InternalField:
 	def __repr__(self):
 		return str(self)
 
+
 class StructureLayer:
 	"""Class which is connected to DB engine and incapsulates all SQL queries"""
 
 	__ID_COLUMN = 'id' # name of column with object id in all tables
-	__FIELD_COLUMN = 'field' # name of column with field names in specification table
+
+	# column names for specification table
+	__FIELD_COLUMN = 'field' # field names
+	__TYPE_COLUMN = 'type' # field types
+	__REFCOUNT_COLUMN = 'refcount' # number of records with this type
+
 	__MAX_COLUMN = 'max' # name of column with maximum list index values
 	__VALUE_COLUMN = 'value' # name of column with field values
-	__TYPE_COLUMN = 'type'
-	__REFCOUNT_COLUMN = 'refcount'
+
 
 	def __init__(self, engine):
 		self.engine = engine
@@ -229,44 +236,62 @@ class StructureLayer:
 		self.__createSupportTables()
 		self.engine.commit()
 
-	#
-	# Specification-oriented functions
-	#
 
 	def __createSupportTables(self):
-		"""Create table (id, field) for storing information about objects' field names"""
-		self.engine.execute(("CREATE table IF NOT EXISTS {id_table} " +
-			"({id_column} {id_type}, {field_column} {text_type}, {type_column} {text_type}, " +
-			"{refcount_column} {refcount_type})")
-			.format(id_table=self.__ID_TABLE, id_column=self.__ID_COLUMN,
-			field_column=self.__FIELD_COLUMN,
-			id_type=self.__ID_TYPE, text_type=self.__TEXT_TYPE,
-			type_column=self.__TYPE_COLUMN,
-			refcount_column=self.__REFCOUNT_COLUMN,
-			refcount_type=self.__INT_TYPE))
+		"""Create database support tables (sort of caching)"""
 
-		self.engine.execute(("CREATE table IF NOT EXISTS {listsizes_table} " +
-			"({id_column} {id_type}, {field_column} {text_type}, {max_column} {list_index_type})")
-			.format(id_column=self.__ID_COLUMN,
+		# create specification table, which holds field names, their types
+		# and number of records of each type for all database objects
+		self.engine.execute(("CREATE table IF NOT EXISTS {id_table} " +
+			"({id_column} {id_type}, {field_column} {text_type}, " +
+			"{type_column} {text_type}, " +
+			"{refcount_column} {refcount_type})").format(
 			field_column=self.__FIELD_COLUMN,
+			id_column=self.__ID_COLUMN,
+			id_table=self.__ID_TABLE,
+			id_type=self.__ID_TYPE,
+			refcount_column=self.__REFCOUNT_COLUMN,
+			refcount_type=self.__INT_TYPE,
+			text_type=self.__TEXT_TYPE,
+			type_column=self.__TYPE_COLUMN))
+
+		# create support table which holds maximum list index for each list
+		# existing in database
+		self.engine.execute(("CREATE table IF NOT EXISTS {listsizes_table} " +
+			"({id_column} {id_type}, {field_column} {text_type}, " +
+			"{max_column} {list_index_type})").format(
+			field_column=self.__FIELD_COLUMN,
+			id_column=self.__ID_COLUMN,
+			id_type=self.__ID_TYPE,
 			listsizes_table=self.__LISTSIZES_TABLE,
-			id_type=self.__ID_TYPE, text_type=self.__TEXT_TYPE,
 			list_index_type=self.__INT_TYPE,
-			max_column=self.__MAX_COLUMN))
+			max_column=self.__MAX_COLUMN,
+			text_type=self.__TEXT_TYPE))
 
 	def deleteSpecification(self, id):
 		"""Delete all information about object from specification table"""
-		self.engine.execute("DELETE FROM {id_table} WHERE {id_column}={id}"
-			.format(id_table=self.__ID_TABLE, id_column=self.__ID_COLUMN, id=id))
+		self.engine.execute("DELETE FROM {id_table} WHERE {id_column}={id}".format(
+			id=id,
+			id_table=self.__ID_TABLE,
+			id_column=self.__ID_COLUMN))
 
 	def checkConflicts(self, id, field):
+		"""
+		Check that adding this field does not break the database structure, namely:
+		given field can either contain value, or list, or map, not several at once
+		"""
+
+		# make a copy of field's name because we will change it
 		name_copy = field.name[:]
 
 		while len(name_copy) > 0:
-			last = name_copy.pop()
+
+			last = name_copy.pop() # go up one level
 
 			field_copy = _InternalField(self.engine, name_copy)
 
+			# delete all values which names are a part of the name of field to add
+			# in other words, no named maps or lists
 			types = self.getValueTypes(id, field_copy)
 			for type in types:
 				field_copy.type_str = type
@@ -275,7 +300,7 @@ class StructureLayer:
 			# Get all fields with names, starting from name_copy, excluding
 			# the one whose name equals name_copy
 			fields = self.getFieldsList(id, _InternalField(self.engine, name_copy),
-				exclude_self=True, all_types=True)
+				exclude_self=True)
 
 			# we have to check only first field in list
 			# if there are no conflicts, other fields do not conflict too
@@ -283,100 +308,149 @@ class StructureLayer:
 				elem = fields[0].name[len(name_copy)]
 
 				if isinstance(last, str) and not isinstance(elem, str):
-					raise DatabaseError("Cannot modify hash, when list already exists on this level")
+					raise DatabaseError("Cannot modify map, when list already exists on this level")
 				if not isinstance(last, str) and isinstance(elem, str):
-					raise DatabaseError("Cannot modify list, when hash already exists on this level")
+					raise DatabaseError("Cannot modify list, when map already exists on this level")
 
 
-	def addFieldToSpecification(self, id, field, new_field, new_type):
-		"""Check if field conforms to hierarchy and if yes, add it"""
-
-		if new_field:
-			self.checkConflicts(id, field)
+	def increaseRefcount(self, id, field, new_type):
+		"""
+		Increase reference counter of givent field and type (or create it)
+		new_field=True means that field with this name does not exist in this object
+		new_type=True means that field with this name and this type does not exist
+		in this object
+		"""
 
 		if new_type:
-			self.engine.execute("INSERT INTO {id_table} VALUES ({id}, {field_name}, {type}, 1)"
-				.format(id_table=self.__ID_TABLE, id=id, field_name=field.name_as_value_no_type,
+		# if adding a value of new type to existing field,
+		# add a reference counter for this field and this type
+			self.engine.execute("INSERT INTO {id_table} VALUES ({id}, {field_name}, {type}, 1)".format(
+				field_name=field.name_as_value_no_type,
+				id=id,
+				id_table=self.__ID_TABLE,
 				type=field.type_str_as_value))
 		else:
+		# otherwise increase the existing reference counter
 			self.engine.execute(("UPDATE {id_table} SET {refcount_column}={refcount_column}+1 " +
-				"WHERE {id_column}={id} AND {field_column}={field_name} AND {type_column}={type}")
-				.format(id_table=self.__ID_TABLE, id=id, field_name=field.name_as_value_no_type,
-				type=field.type_str_as_value,
-				refcount_column=self.__REFCOUNT_COLUMN,
+				"WHERE {id_column}={id} AND {field_column}={field_name} " +
+				"AND {type_column}={type}").format(
 				field_column=self.__FIELD_COLUMN,
-				type_column=self.__TYPE_COLUMN,
-				id_column=self.__ID_COLUMN))
+				field_name=field.name_as_value_no_type,
+				id=id,
+				id_column=self.__ID_COLUMN,
+				id_table=self.__ID_TABLE,
+				refcount_column=self.__REFCOUNT_COLUMN,
+				type=field.type_str_as_value,
+				type_column=self.__TYPE_COLUMN))
 
-	def increaseRefcount(self, id, field):
-		"""If information about given field does not exist in specification table, add it"""
+	def addFieldToSpecification(self, id, field):
+		"""Check if field conforms to hierarchy and if yes, add it"""
+
+		# check if there are already field with this name in object
 		types = self.getValueTypes(id, field)
 
-		self.addFieldToSpecification(id, field, new_field=(len(types)==0),
-			new_type=(not field.type_str in types))
+		# if adding a new field, ensure that there will be
+		# no conflicts in database structure
+		if len(types) == 0:
+			self.checkConflicts(id, field)
+
+		self.increaseRefcount(id, field, new_type=(not field.type_str in types))
 
 	def decreaseRefcount(self, id, field, num=1):
-		l = self.engine.execute(("SELECT {refcount_column} FROM {id_table} " +
-			"WHERE {id_column}={id} AND {field_column}={field_name} AND {type_cond}")
-			.format(id_table=self.__ID_TABLE, id=id, field_name=field.name_as_value_no_type,
-			type_cond = ((self.__TYPE_COLUMN + '=' + field.type_str_as_value)
-				if not field.isNull() else (self.__TYPE_COLUMN + ' ISNULL')),
-			refcount_column=self.__REFCOUNT_COLUMN,
-			field_column=self.__FIELD_COLUMN,
-			id_column=self.__ID_COLUMN))
+		"""
+		Decrease reference count for given field and type
+		one can specify a decrement if deleting values by mask
+		"""
 
-		if len(l) == 0:
-			raise DatabaseError("Attempt to decrease missing refcount")
-
-		if l[0][0] == 1:
-			self.engine.execute(("DELETE FROM {id_table} " +
-				"WHERE {id_column}={id} AND {field_column}={field_name} AND {type_cond}")
-				.format(id_table=self.__ID_TABLE, id=id, field_name=field.name_as_value_no_type,
-				type_cond = ((self.__TYPE_COLUMN + '=' + field.type_str_as_value)
-					if not field.isNull() else (self.__TYPE_COLUMN + ' ISNULL')),
-				field_column=self.__FIELD_COLUMN,
-				id_column=self.__ID_COLUMN))
+		# build condition for selecting necessary type
+		# if type is Null, we should use ISNULL, because '=NULL' won't work
+		if field.isNull():
+			type_cond = self.__TYPE_COLUMN + ' ISNULL'
 		else:
-			self.engine.execute(("UPDATE {id_table} SET {refcount_column}={refcount_column}-{val} " +
-				"WHERE {id_column}={id} AND {field_column}={field_name} AND {type_column}={type}")
-				.format(id_table=self.__ID_TABLE, id=id, field_name=field.name_as_value_no_type,
-				type=field.type_str_as_value,
-				refcount_column=self.__REFCOUNT_COLUMN,
+			type_cond = self.__TYPE_COLUMN + '=' + field.type_str_as_value
+
+		# get current value of reference counter
+		l = self.engine.execute(("SELECT {refcount_column} FROM {id_table} " +
+			"WHERE {id_column}={id} AND {field_column}={field_name} AND {type_cond}").format(
+			field_column=self.__FIELD_COLUMN,
+			field_name=field.name_as_value_no_type,
+			id=id,
+			id_column=self.__ID_COLUMN,
+			id_table=self.__ID_TABLE,
+			refcount_column=self.__REFCOUNT_COLUMN,
+			type_cond=type_cond))
+
+		if l[0][0] < num:
+		# if for some reason counter value is lower than expected, we will raise
+		# exception, because this bug can be hard to catch later
+			raise DatabaseError("Unexpected value of reference counter: " + str(l[0][0]))
+		if l[0][0] == num:
+		# if these references are the last ones, delete this counter
+			self.engine.execute(("DELETE FROM {id_table} " +
+				"WHERE {id_column}={id} AND {field_column}={field_name} AND {type_cond}").format(
 				field_column=self.__FIELD_COLUMN,
-				type_column=self.__TYPE_COLUMN, val=num,
-				id_column=self.__ID_COLUMN))
+				field_name=field.name_as_value_no_type,
+				id=id,
+				id_column=self.__ID_COLUMN,
+				id_table=self.__ID_TABLE,
+				type_cond=type_cond))
+		else:
+		# otherwise just decrease the counter by given value
+			self.engine.execute(("UPDATE {id_table} SET {refcount_column}={refcount_column}-{val} " +
+				"WHERE {id_column}={id} AND {field_column}={field_name} " +
+				"AND {type_column}={type}").format(
+				field_column=self.__FIELD_COLUMN,
+				field_name=field.name_as_value_no_type,
+				id=id,
+				id_column=self.__ID_COLUMN,
+				id_table=self.__ID_TABLE,
+				refcount_column=self.__REFCOUNT_COLUMN,
+				type=field.type_str_as_value,
+				type_column=self.__TYPE_COLUMN, val=num))
 
 	def getValueTypes(self, id, field):
+		"""Returns list of value types already stored in given field"""
 
+		# just query specification table for all types for given object and field
 		l = self.engine.execute(("SELECT {type_column} FROM {id_table} " +
-			"WHERE {id_column}={id} AND {field_column}={field_name}")
-			.format(id_table=self.__ID_TABLE, id_column=self.__ID_COLUMN, id=id,
-			field_column=self.__FIELD_COLUMN, field_name=field.name_as_value_no_type,
+			"WHERE {id_column}={id} AND {field_column}={field_name}").format(
+			field_column=self.__FIELD_COLUMN,
+			field_name=field.name_as_value_no_type,
+			id=id,
+			id_column=self.__ID_COLUMN,
+			id_table=self.__ID_TABLE,
 			type_column=self.__TYPE_COLUMN))
 
 		return [x[0] for x in l]
 
-	def getFieldsList(self, id, field=None, exclude_self=False, all_types=True):
+	def getFieldsList(self, id, field=None, exclude_self=False):
 		"""
-		Get list of fields for given object.
+		Get list of fields of all possible types for given object.
 		If field is given, return only those whose names start from its name
 		If exclude_self is true, exclude 'field' itself from results
-		If all_types is true, get fields of all types
 		"""
 
+		if field != None:
 		# If field is given, return only fields, which contain its name in the beginning
-		regexp_cond = ((" AND {field_column} REGEXP {regexp}") if field != None else "")
-		regexp_val = (self.engine.getSafeValue("^" + field.name_str_no_type +
-			("." if exclude_self else "")) if field != None else None)
-		type = field.type_str_as_value if field != None else None
+			regexp_cond = " AND {field_column} REGEXP {regexp}"
+			regexp_val = self.engine.getSafeValue("^" + field.name_str_no_type +
+				("." if exclude_self else ""))
+			type = field.type_str_as_value
+		else:
+			regexp_cond = ""
+			regexp_val = None
+			type = None
 
 		# Get list of fields
 		l = self.engine.execute(("SELECT DISTINCT {field_column} FROM {id_table} " +
-			"WHERE {id_column}={id}" + regexp_cond +
-			(" AND {type_column}={type}" if not all_types and field != None else ""))
-			.format(id_table=self.__ID_TABLE, id=id, regexp=regexp_val,
-			id_column=self.__ID_COLUMN, field_column=self.__FIELD_COLUMN,
-			type_column=self.__TYPE_COLUMN, type=type))
+			"WHERE {id_column}={id}" + regexp_cond).format(
+			field_column=self.__FIELD_COLUMN,
+			id=id,
+			id_column=self.__ID_COLUMN,
+			id_table=self.__ID_TABLE,
+			regexp=regexp_val,
+			type=type,
+			type_column=self.__TYPE_COLUMN))
 
 		return [_InternalField.fromNameStr(self.engine, x[0]) for x in l]
 
@@ -385,67 +459,79 @@ class StructureLayer:
 
 		# We need just check if there is at least one row with its id
 		# in specification table
-		l = self.engine.execute("SELECT COUNT() FROM {id_table} WHERE {id_column}={id}"
-			.format(id_table=self.__ID_TABLE, id=id,
-			id_column=self.__ID_COLUMN, field_column=self.__FIELD_COLUMN))
+		l = self.engine.execute("SELECT COUNT() FROM {id_table} WHERE {id_column}={id}".format(
+			field_column=self.__FIELD_COLUMN,
+			id=id,
+			id_column=self.__ID_COLUMN,
+			id_table=self.__ID_TABLE))
+
 		return l[0][0] > 0
 
-	#
-	# Other functions
-	#
 
 	def getFieldValue(self, id, field):
 		"""Read value of given field(s)"""
 
+		# if there is no such field - nothing to do
 		if not self.engine.tableExists(field.name_str):
 			return None
 
-		if field.isNull():
-			l = self.engine.execute(("SELECT {columns_query} FROM {field_name} " +
-				"WHERE {id_column}={id}{columns_condition}")
-				.format(columns_query=field.columns_query, field_name=field.name_as_table,
-				id=id, columns_condition=field.columns_condition,
-				id_column=self.__ID_COLUMN))
-		else:
-			# Get field values
-			# If field is a mask (i.e., contains Nones), there will be more than one result
-			l = self.engine.execute(("SELECT {value_column}{columns_query} FROM {field_name} " +
-				"WHERE {id_column}={id}{columns_condition}")
-				.format(columns_query=field.columns_query, field_name=field.name_as_table,
-				id=id, columns_condition=field.columns_condition,
-				value_column=self.__VALUE_COLUMN,
-				id_column=self.__ID_COLUMN))
+		# Get field values
+		# If field is a mask (i.e., contains Nones), there will be more than one result
+		l = self.engine.execute(("SELECT {value_column}{columns_query} FROM {field_name} " +
+			"WHERE {id_column}={id}{columns_condition}").format(
+			columns_condition=field.columns_condition,
+			columns_query=field.columns_query,
+			field_name=field.name_as_table,
+			id=id,
+			id_column=self.__ID_COLUMN,
+			value_column=self.__VALUE_COLUMN if not field.isNull() else ""))
 
 		# Convert results to list of _InternalFields
 		res = []
 		for elem in l:
 			if field.isNull():
-				res.append(_InternalField(self.engine, field.getDeterminedName(elem), None))
+			# in NULL table there is no values, all columns are list indexes
+				list_indexes = elem
+				value = None
 			else:
-				res.append(_InternalField(self.engine, field.getDeterminedName(elem[1:]), elem[0]))
+			# in non-NULL table first element is a value itself
+				list_indexes = elem[1:]
+				value = elem[0]
 
-		if len(res) > 0:
-			return res
-		else:
-			return None
+			res.append(_InternalField(self.engine,
+				field.getDeterminedName(list_indexes), value))
+
+		return res
 
 	def updateListSize(self, id, field, val):
 		"""Update information about the size of given list"""
-		max = self.getMaxNumber(id, field)
+
+		# get current maximum list index for given list
+		max = self.getMaxListIndex(id, field)
+
 		if max != None:
-			if max > val:
-				return
+		# if there is a list, and given value is greater than maximum index, update it
 
-			self.engine.execute(("DELETE FROM {listsizes_table} " +
-				"WHERE {id_column}={id} AND {field_column}={field_name}")
-				.format(id=id, field_name=field.name_hashstr,
-				listsizes_table=self.__LISTSIZES_TABLE,
+			if max > val: return
+
+			self.engine.execute(("UPDATE {listsizes_table} " +
+				"SET {max_column}={val} " +
+				"WHERE {id_column}={id} AND {field_column}={field_name}").format(
+				field_column=self.__FIELD_COLUMN,
+				field_name=field.name_hashstr,
+				id=id,
 				id_column=self.__ID_COLUMN,
-				field_column=self.__FIELD_COLUMN))
-
-		self.engine.execute("INSERT INTO {listsizes_table} VALUES ({id}, {field_name}, {val})"
-			.format(id=id, field_name=field.name_hashstr, val=val,
-			listsizes_table=self.__LISTSIZES_TABLE))
+				listsizes_table=self.__LISTSIZES_TABLE,
+				max_column=self.__MAX_COLUMN,
+				val=val))
+		else:
+		# create new record
+			self.engine.execute(("INSERT INTO {listsizes_table} " +
+				"VALUES ({id}, {field_name}, {val})").format(
+				field_name=field.name_hashstr,
+				id=id,
+				listsizes_table=self.__LISTSIZES_TABLE,
+				val=val))
 
 	def setFieldValue(self, id, field):
 		"""Set value of given field"""
@@ -459,48 +545,54 @@ class StructureLayer:
 				self.updateListSize(id, f, name_copy[-1])
 			name_copy.pop()
 
-		# Delete old value (checking all tables because type could be different
+		# Delete old value (checking all tables because type could be different)
+		# FIXME: add test, showing that it is really necessary to delete all fields
 		types = self.getValueTypes(id, field)
-
-		field_copy = _InternalField(self.engine, field.name[:])
-
+		field_copy = _InternalField(self.engine, field.name)
 		for type in types:
 			field_copy.type_str = type
-			if self.engine.tableExists(field_copy.name_str):
-				self.deleteValues(id, field_copy)
-				break
+			self.deleteValues(id, field_copy)
 
 		# Create field table if it does not exist yet
 		self.assureFieldTableExists(field)
 
-		self.increaseRefcount(id, field) # create object header
+		self.addFieldToSpecification(id, field) # create object header
 
 		# Insert new value
-		self.engine.execute("INSERT INTO {field_name} VALUES ({id}{value}{columns_values})"
-			.format(field_name=field.name_as_table, id=id,
-			value=((", " + field.safe_value) if field.value != None else ""),
-			columns_values=field.columns_values))
+		new_value = (", " + field.safe_value) if field.value != None else ""
+		self.engine.execute(("INSERT INTO {field_name} " +
+			"VALUES ({id}{value}{columns_values})").format(
+			columns_values=field.columns_values,
+			field_name=field.name_as_table,
+			id=id,
+			value=new_value))
 
 	def deleteValues(self, id, field, condition=None):
 		"""Delete value of given field(s)"""
+
+		# if there is no special condition, take the mask of given field
 		if condition == None:
 			condition = field.columns_condition
 
 		types = self.getValueTypes(id, field)
 		for type in types:
-			# delete value(s)
-			field.type_str = type
 
-			res = self.engine.execute("SELECT COUNT() FROM {field_name} WHERE {id_column}={id}{delete_condition}"
-				.format(field_name=field.name_as_table, id=id, delete_condition=condition,
-				id_column=self.__ID_COLUMN))
+			# prepare query for deletion
+			field.type_str = type
+			query_str = "FROM {field_name} WHERE {id_column}={id}{delete_condition}".format(
+				delete_condition=condition,
+				field_name=field.name_as_table,
+				id=id,
+				id_column=self.__ID_COLUMN)
+
+			# get number of records to be deleted
+			res = self.engine.execute("SELECT COUNT() " + query_str)
 			del_num = res[0][0]
 
+			# if there are any, delete them
 			if del_num > 0:
 				self.decreaseRefcount(id, field, num=del_num)
-				self.engine.execute("DELETE FROM {field_name} WHERE {id_column}={id}{delete_condition}"
-					.format(field_name=field.name_as_table, id=id, delete_condition=condition,
-					id_column=self.__ID_COLUMN))
+				self.engine.execute("DELETE " + query_str)
 
 				# check if the table is empty and if it is - delete it too
 				if self.engine.tableIsEmpty(field.name_str):
@@ -528,7 +620,7 @@ class StructureLayer:
 	def deleteObject(self, id):
 		"""Delete object with given ID"""
 
-		fields = self.getFieldsList(id, all_types=True)
+		fields = self.getFieldsList(id)
 
 		# for each field, remove it from tables
 		for field in fields:
@@ -558,6 +650,7 @@ class StructureLayer:
 		op1 = condition.operand1 # it must be Field
 		op2 = condition.operand2 # it must be some value
 
+		# set proper type for the field
 		if op2 != None:
 			op1.type_str = self.engine.getColumnType(op2)
 		else:
@@ -580,34 +673,42 @@ class StructureLayer:
 			interface.SearchRequest.GTE: '>='
 		}
 
+		# build query
+
 		if op2 != None or not condition.invert:
 
+			# construct comparing condition
 			if op2 != None:
-				op2_val = self.engine.getSafeValue(op2)
-				comp_str = "WHERE" + not_str + " " + self.__VALUE_COLUMN + ' ' +\
-					comparisons[condition.operator] + ' ' + op2_val
+				comp_str = "WHERE{not_str} {value_column} {comp} {val}".format(
+					comp=comparisons[condition.operator],
+					not_str=not_str,
+					val=self.engine.getSafeValue(op2),
+					value_column=self.__VALUE_COLUMN)
 			else:
 				comp_str = ""
 
 			# construct query
 			result = ("SELECT DISTINCT {id_column} FROM {field_name} " +
-				"{comp_str}{columns_condition}")\
-				.format(field_name=safe_name, not_str=not_str,
+				"{comp_str}{columns_condition}").format(
 				columns_condition=op1.columns_condition,
-				id_column=self.__ID_COLUMN,
-				comp_str=comp_str)
+				comp_str=comp_str,
+				field_name=safe_name,
+				id_column=self.__ID_COLUMN)
 
 			if condition.invert:
-				result += (" UNION SELECT * FROM (SELECT {id_column} FROM {id_table} " +
-					"EXCEPT SELECT {id_column} FROM {field_name})")\
-					.format(id_table=self.__ID_TABLE, field_name=safe_name,
-					id_column=self.__ID_COLUMN)
-
+			# we will add objects that do not even have such field
+				result += " UNION "
 		else:
-			result = ("SELECT * FROM (SELECT {id_column} FROM {id_table} " +
-				"EXCEPT SELECT {id_column} FROM {field_name})")\
-				.format(id_table=self.__ID_TABLE, field_name=safe_name,
-				id_column=self.__ID_COLUMN)
+			result = ""
+
+		# if we need to invert results, we have to add all objects that do
+		# not have this field explicitly, because they won't be caught by previous query
+		if condition.invert:
+			result += ("SELECT * FROM (SELECT {id_column} FROM {id_table} " +
+				"EXCEPT SELECT {id_column} FROM {field_name})").format(
+				field_name=safe_name,
+				id_column=self.__ID_COLUMN,
+				id_table=self.__ID_TABLE)
 
 		return result
 
@@ -620,16 +721,17 @@ class StructureLayer:
 
 		return list_res
 
-	def getMaxNumber(self, id, field):
+	def getMaxListIndex(self, id, field):
 		"""Get maximum value of list index for the undefined column of the field"""
 
 		l = self.engine.execute(("SELECT {max_column} FROM {listsizes_table} " +
-			"WHERE {id_column}={id} AND {field_column}={field_name}")
-			.format(id=id, field_name=field.name_hashstr,
-			max_column=self.__MAX_COLUMN,
-			id_column=self.__ID_COLUMN,
+			"WHERE {id_column}={id} AND {field_column}={field_name}").format(
 			field_column=self.__FIELD_COLUMN,
-			listsizes_table=self.__LISTSIZES_TABLE))
+			field_name=field.name_hashstr,
+			id=id,
+			id_column=self.__ID_COLUMN,
+			listsizes_table=self.__LISTSIZES_TABLE,
+			max_column=self.__MAX_COLUMN))
 
 		if len(l) > 0:
 			return l[0][0]
@@ -644,7 +746,7 @@ class StructureLayer:
 		cond = target_field.renumber_condition
 
 		# Get all child field names
-		fields_to_reenum = self.getFieldsList(id, target_field, all_types=True)
+		fields_to_reenum = self.getFieldsList(id, target_field)
 		for fld in fields_to_reenum:
 
 			# if shift is negative, we should delete elements first
@@ -653,14 +755,19 @@ class StructureLayer:
 
 			# shift numbers of all elements in list
 			types = self.getValueTypes(id, fld)
-
 			for type in types:
 				fld.type_str = type
-				self.engine.execute(("UPDATE {field_name} SET {col_name}={col_name}+{shift} " +
-					"WHERE {id_column}={id}{cond} AND {col_name}>={col_val}")
-					.format(field_name=fld.name_as_table, col_name=col_name,
-					shift=shift, id=id, col_val=col_val, cond=cond,
-					id_column=self.__ID_COLUMN))
+				self.engine.execute(("UPDATE {field_name} " +
+					"SET {col_name}={col_name}+{shift} " +
+					"WHERE {id_column}={id}{cond} AND {col_name}>={col_val}").format(
+					col_name=col_name,
+					col_val=col_val,
+					cond=cond,
+					field_name=fld.name_as_table,
+					id=id,
+					id_column=self.__ID_COLUMN,
+					shift=shift))
+
 
 class SimpleDatabase(interface.Database):
 	"""Class, representing OODB over SQL"""
@@ -772,7 +879,7 @@ class SimpleDatabase(interface.Database):
 		# FIXME: Hide .name usage in _InternalField
 		target_col = len(target_field.name) - 1 # last column in name of target field
 
-		max = self.structure.getMaxNumber(id, target_field)
+		max = self.structure.getMaxListIndex(id, target_field)
 		if max == None:
 		# list does not exist yet
 			enumerate(fields, target_col, 0, one_position)
