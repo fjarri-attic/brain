@@ -19,20 +19,27 @@ class _InternalField:
 		self.name = name[:]
 		self.value = value
 
+	@classmethod
+	def fromNameStr(cls, engine, name_str, value=None):
+		"""Create object using stringified name instead of list"""
+
+		# cut prefix 'field' from the resulting list
+		return cls(engine, engine.getNameList(name_str)[1:], value)
+
 	def __getListColumnName(self, index):
 		"""Get name of additional list column corresponding to given index"""
 		return "c" + str(index)
 
-	@classmethod
-	def fromNameStr(cls, engine, name_str, value=None):
-		"""Create object using stringified name instead of list"""
-		return cls(engine, engine.getNameList(name_str)[1:], value)
+	def isNull(self):
+		"""Whether field contains Null value"""
+		return (self.value == None)
 
 	def __get_type_str(self):
 		"""Returns string with SQL type for stored value"""
-		return self.__engine.getColumnType(self.value) if self.value != None else None
+		return self.__engine.getColumnType(self.value) if not self.isNull() else None
 
 	def __set_type_str(self, type_str):
+		"""Set field type using given value from specification table"""
 		if type_str == None:
 			self.value = None
 		else:
@@ -40,19 +47,17 @@ class _InternalField:
 
 	type_str = property(__get_type_str, __set_type_str)
 
-	def isNull(self):
-		return (self.type_str == None)
-
 	@property
 	def type_str_as_value(self):
 		"""Returns string with SQL type for stored value"""
-		if self.type_str != None:
+		if not self.isNull():
 			return self.__engine.getSafeValue(self.type_str)
 		else:
 			return self.__engine.getNullValue()
 
 	@property
 	def name_str_no_type(self):
+		"""Returns name string with no type specifier"""
 		return self.__engine.getNameString(['field'] + self.name)
 
 	@property
@@ -80,11 +85,6 @@ class _InternalField:
 		return self.__engine.getSafeValue(self.name_str_no_type)
 
 	@property
-	def clean_name(self):
-		"""Returns name with only hash elements"""
-		return [(x if isinstance(x, str) else None) for x in self.name]
-
-	@property
 	def columns_query(self):
 		"""Returns string with additional values list necessary to query the value of this field"""
 		numeric_columns = filter(lambda x: not isinstance(x, str), self.name)
@@ -95,7 +95,9 @@ class _InternalField:
 				l.append(self.__getListColumnName(counter))
 			counter += 1
 
-		return ((', ' if self.value != None else '') + ', '.join(l) if len(l) > 0 else '')
+		# if value is null, this condition will be used alone,
+		# so there's no need in leading comma
+		return (('' if self.isNull() else ', ') + ', '.join(l) if len(l) > 0 else '')
 
 	@property
 	def columns_condition(self):
@@ -130,10 +132,11 @@ class _InternalField:
 				counter += 1
 
 		return ("{id_column} {id_type}" +
-			(", {value_column} {value_type}" if self.value != None else "") +
-			res)\
-			.format(id_column=id_column, value_column=value_column,
-			id_type=id_type, value_type=self.type_str)
+			(", {value_column} {value_type}" if not self.isNull() else "") + res).format(
+			id_column=id_column,
+			value_column=value_column,
+			id_type=id_type,
+			value_type=self.type_str)
 
 	@property
 	def columns_values(self):
@@ -153,10 +156,6 @@ class _InternalField:
 		"""Returns True if field points to element of the list"""
 		list_elems = self.__getListElements()
 		return len(list_elems) > 0 and list_elems[-1] != None
-
-	def pointsToList(self):
-		"""Returns True if last name element corresponds to list"""
-		return not isinstance(self.name[-1], str)
 
 	def getLastListColumn(self):
 		"""Returns name and value of column corresponding to the last name element"""
