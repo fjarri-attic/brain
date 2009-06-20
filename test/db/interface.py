@@ -22,8 +22,8 @@ class Format(unittest.TestCase):
 		"""Test field creation with list name"""
 		f = Field(['test', 1, None], '1')
 
-	def testFieldInitWithHash(self):
-		"""Test field creation with hash name"""
+	def testFieldInitWithMap(self):
+		"""Test field creation with map name"""
 		self.failUnlessRaises(FormatError, Field, {'test': 1}, '1')
 
 	def testFieldInitWithWrongList(self):
@@ -115,7 +115,7 @@ class Format(unittest.TestCase):
 			'1', Field(['test', None, 1]),
 			[Field('test', 1)])
 
-	def testInsertRequestTargetPointsToHash(self):
+	def testInsertRequestTargetPointsToMap(self):
 		"""Test that InsertRequest requires target pointing to list"""
 		self.failUnlessRaises(FormatError, InsertRequest,
 			'1', Field(['test', 1, 'aaa']),

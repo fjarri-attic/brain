@@ -142,16 +142,16 @@ class Modify(TestRequest):
 			Field(['tracks', 2, 'Lyrics', 0], 'Blablabla')
 		]))
 
-	def testListOnTopOfHash(self):
-		"""Check that list cannot be created if hash exists on the same level"""
+	def testListOnTopOfMap(self):
+		"""Check that list cannot be created if map exists on the same level"""
 		self.prepareStandNestedList()
 
 		self.failUnlessRaises(DatabaseError, self.db.processRequest,
 			ModifyRequest('1', [Field(['tracks', 2, 0], 'Blablabla')])
 		)
 
-	def testHashOnTopOfList(self):
-		"""Check that hash cannot be created if list exists on the same level"""
+	def testMapOnTopOfList(self):
+		"""Check that map cannot be created if list exists on the same level"""
 		self.prepareStandNestedList()
 
 		self.failUnlessRaises(DatabaseError, self.db.processRequest,
@@ -234,8 +234,8 @@ class Modify(TestRequest):
 
 		self.checkRequestResult(res, fields)
 
-	def testHashOnTopOfHashValue(self):
-		"""Check that hash can be written on top of existing value"""
+	def testMapOnTopOfMapValue(self):
+		"""Check that map can be written on top of existing value"""
 		self.db.processRequest(ModifyRequest('1', [
 			Field(['fld1'], value='val1'),
 			Field(['fld1', 'fld2', 'fld3'], value=2),
@@ -249,8 +249,8 @@ class Modify(TestRequest):
 			Field(['fld1', 'fld2', 'fld4'], value='a')
 			])
 
-	def testHashOnTopOfListElement(self):
-		"""Check that hash can be written on top of existing list element"""
+	def testMapOnTopOfListElement(self):
+		"""Check that map can be written on top of existing list element"""
 		self.db.processRequest(ModifyRequest('1', [
 			Field(['fld1', 0], value='val1'),
 			Field(['fld1', 1], value='val2'),
