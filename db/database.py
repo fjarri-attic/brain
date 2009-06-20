@@ -89,7 +89,7 @@ class _InternalField:
 				l.append(self.__getListColumnName(counter))
 			counter += 1
 
-		return (', '.join([''] + l) if len(l) > 0 else '')
+		return ((', ' if self.value != None else '') + ', '.join(l) if len(l) > 0 else '')
 
 	@property
 	def columns_condition(self):
@@ -396,7 +396,7 @@ class StructureLayer:
 			return None
 
 		if field.type_str == "NULL":
-			l = self.engine.execute(("SELECT NULL{columns_query} FROM {field_name} " +
+			l = self.engine.execute(("SELECT {columns_query} FROM {field_name} " +
 				"WHERE {id_column}={id}{columns_condition}")
 				.format(columns_query=field.columns_query, field_name=field.name_as_table,
 				id=id, columns_condition=field.columns_condition,
@@ -414,7 +414,10 @@ class StructureLayer:
 		# Convert results to list of _InternalFields
 		res = []
 		for elem in l:
-			res.append(_InternalField(self.engine, field.getDeterminedName(elem[1:]), elem[0]))
+			if field.type_str == "NULL":
+				res.append(_InternalField(self.engine, field.getDeterminedName(elem), None))
+			else:
+				res.append(_InternalField(self.engine, field.getDeterminedName(elem[1:]), elem[0]))
 
 		if len(res) > 0:
 			return res
