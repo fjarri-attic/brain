@@ -19,7 +19,7 @@ class _InternalField:
 	def __init__(self, engine, name, value=None):
 		self.__engine = engine
 		self.name = name[:]
-		self.value = value
+		self.__value = value
 
 	@classmethod
 	def fromNameStr(cls, engine, name_str, value=None):
@@ -27,6 +27,15 @@ class _InternalField:
 
 		# cut prefix 'field' from the resulting list
 		return cls(engine, engine.getNameList(name_str)[1:], value)
+
+	@classmethod
+	def fromField(cls, engine, field):
+		"""Create object using interface.Field instance"""
+		return _InternalField(engine, field.name, field.value)
+
+	def toField(self):
+		"""Create interface.Field object from self"""
+		return interface.Field(self.name, self.__value)
 
 	def ancestors(self, include_self):
 		"""
@@ -45,18 +54,18 @@ class _InternalField:
 
 	def isNull(self):
 		"""Whether field contains Null value"""
-		return (self.value == None)
+		return (self.__value == None)
 
 	def __get_type_str(self):
 		"""Returns string with SQL type for stored value"""
-		return self.__engine.getColumnType(self.value) if not self.isNull() else None
+		return self.__engine.getColumnType(self.__value) if not self.isNull() else None
 
 	def __set_type_str(self, type_str):
 		"""Set field type using given value from specification table"""
 		if type_str == None:
-			self.value = None
+			self.__value = None
 		else:
-			self.value = self.__engine.getValueClass(type_str)()
+			self.__value = self.__engine.getValueClass(type_str)()
 
 	type_str = property(__get_type_str, __set_type_str)
 
@@ -76,7 +85,7 @@ class _InternalField:
 	@property
 	def safe_value(self):
 		"""Returns value in form that can be safely used as value in queries"""
-		return self.__engine.getSafeValue(self.value)
+		return self.__engine.getSafeValue(self.__value)
 
 	@property
 	def name_str(self):
@@ -210,7 +219,7 @@ class _InternalField:
 
 	def __str__(self):
 		return "IField (" + repr(self.name) + \
-			(", value=" + repr(self.value) if self.value else "") + ")"
+			(", value=" + repr(self.__value) if self.__value else "") + ")"
 
 	def __repr__(self):
 		return str(self)
@@ -667,7 +676,7 @@ class StructureLayer:
 	def addValueRecord(self, id, field):
 		"""Add value to the corresponding table"""
 
-		new_value = (", " + field.safe_value) if field.value != None else ""
+		new_value = (", " + field.safe_value) if not field.isNull() else ""
 		self.engine.execute(("INSERT INTO {field_name} " +
 			"VALUES ({id}{value}{columns_values})").format(
 			columns_values=field.columns_values,
@@ -807,7 +816,6 @@ class LogicLayer:
 		if fields == None:
 			fields = self.structure.getFieldsList(id)
 
-		# FIXME: maybe it is worth making a separate function in Structure layer
 		result_list = []
 		for field in fields:
 			for type in self.structure.getValueTypes(id, field):
@@ -816,8 +824,7 @@ class LogicLayer:
 				if res != None:
 					result_list += res
 
-		# FIXME: Hide .name usage in _InternalField
-		return [interface.Field(x.name, x.value) for x in result_list]
+		return [x.toField() for x in result_list]
 
 	def processSearchRequest(self, condition):
 		"""Search for all objects using given search condition"""
@@ -877,15 +884,15 @@ class SimpleDatabase(interface.Database):
 		def convertFields(fields, engine):
 			"""Convert given fields list to _InternalFields list"""
 			if fields != None:
-				return [_InternalField(engine, x.name, x.value) for x in fields]
+				return [_InternalField.fromField(engine, x) for x in fields]
 			else:
 				return None
 
 		def convertCondition(condition, engine):
 			"""Convert fields in given condition to _InternalFields"""
 			if condition.leaf:
-				condition.operand1 = _InternalField(engine,
-					condition.operand1.name, condition.operand1.value)
+				condition.operand1 = _InternalField.fromField(
+					engine, condition.operand1)
 			else:
 				convertCondition(condition.operand1, engine)
 				convertCondition(condition.operand2, engine)
@@ -918,8 +925,8 @@ class SimpleDatabase(interface.Database):
 			convertCondition(converted_condition, self.engine)
 
 		if hasattr(request, 'target_field'):
-			converted_target = _InternalField(self.engine,
-				request.target_field.name, request.target_field.value)
+			converted_target = _InternalField.fromField(
+				self.engine, request.target_field)
 
 		# Prepare handler function and parameters list
 		# (so that we do not have to do it inside a transaction)
