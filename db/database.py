@@ -423,7 +423,16 @@ class StructureLayer:
 			type=type,
 			type_column=self.__TYPE_COLUMN))
 
-		return [_InternalField.fromNameStr(self.engine, x[0]) for x in l]
+		# fill the beginnings of found field names with the name of
+		# given field (if any) or just construct result list
+		res = []
+		for elem in l:
+			fld = _InternalField.fromNameStr(self.engine, elem[0])
+			if field != None:
+				fld.name[:len(field.name)] = field.name
+			res.append(fld)
+
+		return res
 
 	def objectExists(self, id):
 		"""Check if object exists in database"""
@@ -824,6 +833,11 @@ class LogicLayer:
 		# if list of fields was not given, read all object's fields
 		if fields == None:
 			fields = self.structure.getFieldsList(id)
+		else:
+			res = []
+			for field in fields:
+				res += self.structure.getFieldsList(id, field)
+			fields = res
 
 		result_list = []
 		for field in fields:
