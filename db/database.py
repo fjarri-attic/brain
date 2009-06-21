@@ -295,10 +295,12 @@ class StructureLayer:
 
 	def increaseRefcount(self, id, field, new_type):
 		"""
-		Increase reference counter of givent field and type (or create it)
+		Increase reference counter of given field and type (or create it)
 		new_field=True means that field with this name does not exist in this object
 		new_type=True means that field with this name and this type does not exist
 		in this object
+
+		field should have definite type
 		"""
 
 		if new_type:
@@ -327,6 +329,8 @@ class StructureLayer:
 		"""
 		Decrease reference count for given field and type
 		one can specify a decrement if deleting values by mask
+
+		field should have definite type
 		"""
 
 		# build condition for selecting necessary type
@@ -436,7 +440,11 @@ class StructureLayer:
 
 
 	def getFieldValue(self, id, field):
-		"""Read value of given field(s)"""
+		"""
+		Read value of given field(s)
+
+		field should have definite type
+		"""
 
 		# if there is no such field - nothing to do
 		if not self.engine.tableExists(field.name_str):
@@ -502,7 +510,11 @@ class StructureLayer:
 				val=val))
 
 	def assureFieldTableExists(self, field):
-		"""Create table for storing values of this field if it does not exist yet"""
+		"""
+		Create table for storing values of this field if it does not exist yet
+
+		field should have definite type
+		"""
 
 		# Create table
 		self.engine.execute("CREATE TABLE IF NOT EXISTS {field_name} ({values_str})"
@@ -671,7 +683,11 @@ class StructureLayer:
 					self.engine.deleteTable(field_copy.name_str)
 
 	def addValueRecord(self, id, field):
-		"""Add value to the corresponding table"""
+		"""
+		Add value to the corresponding table
+
+		field should have definite type
+		"""
 
 		new_value = (", " + field.safe_value) if not field.isNull() else ""
 		self.engine.execute(("INSERT INTO {field_name} " +
@@ -680,6 +696,7 @@ class StructureLayer:
 			field_name=field.name_as_table,
 			id=id,
 			value=new_value))
+
 
 class LogicLayer:
 	"""Class, representing DDB logic"""
