@@ -18,12 +18,14 @@ class ElemTreeParser:
 
 		# TODO: perform validation against DTD here
 
-		if not root.tag in handlers.keys():
-			raise Exception("Unknown request type: " + root.tag)
+		#if not root.tag in handlers.keys():
+		#	raise Exception("Unknown request type: " + root.tag)
 
 		# Find id
-		target_id = root.find('id').text
-		return handlers[root.tag](target_id, root.find('fields'))
+		return self.__elementTreeToData(root)
+		#target_id = root.find('id').text
+		
+		#return handlers[root.tag](target_id, root.find('fields'))
 
 	def __elementToValue(self, elem):
 		if elem != None:
@@ -62,42 +64,41 @@ class ElemTreeParser:
 
 p = ElemTreeParser()
 r = '''
-<add>
+<request>
+	<type>add</type>
 	<id>1</id>
-	<fields>
-		<field name='name'>Marty</field>
-		<field name='phone'>111</field>
+	<fields><map>
+		<field name='name' type='str'>Marty</field>
+		<field name='phone' type='str'>111</field>
 		<list name='friends'>
-			<data>Friends list</data>
-			<fields>
-				<field name='name'>Sasha</field>
-				<field name='phone'>222</field>
-			</fields>
-			<fields>
-				<field name='name'>Pasha</field>
-				<field name='phone'>333</field>
-			</fields>
+			<map>
+				<field name='name' type='str'>Sasha</field>
+				<field name='phone' type='int'>222</field>
+			</map>
+			<map>
+				<field name='name' type='str'>Pasha</field>
+				<field name='phone' type='int'>333</field>
+			</map>
 		</list>
-		<fields name='info'>
+		<map name='info'>
 			<list name='friends'>
-				<data>Friends list</data>
-				<fields>
-					<field name='name'>Sasha</field>
-					<field name='phone'>222</field>
-				</fields>
-				<fields>
-					<field name='name'>Pasha</field>
-					<field name='phone'>333</field>
-				</fields>
+				<map>
+					<field name='name' type='str'>Sasha</field>
+					<field name='phone' type='int'>222</field>
+				</map>
+				<map>
+					<field name='name' type='str'>Pasha</field>
+					<field name='phone' type='int'>333</field>
+				</map>
 			</list>
-			<field name='age'>20</field>
-			<field name='height'>180</field>
-		</fields>
-	</fields>
-</add>
+			<field name='age' type='int'>20</field>
+			<field name='height' type='int'>180</field>
+		</map>
+	</map></fields>
+</request>
 '''
 
-def flattenHierarchy(data, separator):
+def xmlToPython(data, separator):
 	def flattenNode(node, prefix=[]):
 		value, children = node
 		if value != None:
@@ -119,12 +120,24 @@ def flattenHierarchy(data, separator):
 
 	return [(separator.join(path), value) for path, value in flattenNode(data)]
 
+def flattenHierarchy(data):
+	def flattenNode(node, prefix=[]):
+		if isinstance(node, dict):
+			results = [flattenNode(node[x], list(prefix) + [x]) for x in node.keys()]
+			return functools.reduce(list.__add__, results, [])
+		elif isinstance(node, list):
+			results = [flattenNode(x, list(prefix) + [i]) for i, x in enumerate(node)]
+			return functools.reduce(list.__add__, results, [])
+		elif node == None or node.__class__ in SIMPLE_TYPES:
+			return [(prefix, node)]
+		else:
+			raise Exception("Unsupported type: " + node.__type__)
 
-value, data = p.parseRequest(r)
+	return [(path, value) for path, value in flattenNode(data)]
 
-#print(repr(data))
-l = flattenHierarchy((value, data), '.')
+res = p.parseRequest(r)
 
-for path, value in l:
-	print(repr(path) + ": " + repr(value))
+print(res)
+#l = flattenHierarchy((value, data), '.')
+#	print(repr(path) + ": " + repr(value))
 

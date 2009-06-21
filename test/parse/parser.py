@@ -6,7 +6,7 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import unittest
 from test import helpers
-from parse.xml import *
+from parse.parser import *
 
 class Parsing(unittest.TestCase):
 	"""Test operation of XML parser"""
