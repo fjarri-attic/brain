@@ -321,7 +321,7 @@ class Delete(TestRequest):
 		]))
 
 		self.db.processRequest(DeleteRequest('1', [
-			Field(['fld', 0])
+			Field(['fld1', 0])
 		]))
 
 		res = self.db.processRequest(ReadRequest('1'))
