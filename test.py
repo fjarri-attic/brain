@@ -3,6 +3,7 @@
 import test.db.requests_all
 import test.db.interface
 import test.db.engine
+import test.parse.xml
 import test.helpers
 
 def suite():
@@ -10,6 +11,8 @@ def suite():
 	res.addTest(test.db.requests_all.suite())
 	res.addTest(test.db.interface.suite())
 	res.addTest(test.db.engine.suite())
+
+	res.addTest(test.parse.xml.suite())
 	return res
 
 if __name__ == '__main__':
