@@ -330,6 +330,21 @@ class Delete(TestRequest):
 			Field(['fld1', 0], value=1)
 			])
 
+	def testListInTheMiddle(self):
+		"""Regression test for incorrect _InternalField.pointsToListElement() work"""
+		self.prepareStandNestedList()
+
+		# here pointsToListElements() returned true, because the last list index
+		# is defined; but it is not the last name element, so the field really
+		# does not point to list
+		self.db.processRequest(DeleteRequest('1', [
+			Field(['tracks', 0, 'Name'])
+		]))
+
+		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None, 'Name'])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 1, 'Name'], value='Track 2 name')
+		])
 
 def get_class():
 	return Delete

@@ -178,16 +178,12 @@ class _InternalField:
 		"""Returns True if field points to element of the list"""
 		return isinstance(self.name[-1], int)
 
-		# FIXME: add testcase to prove that code below is wrong:
-		#list_elems = self.__getListElements()
-		#return len(list_elems) > 0 and list_elems[-1] != None
-
 	def getLastListColumn(self):
 		"""Returns name and value of column corresponding to the last name element"""
 
 		# This function makes sense only if self.pointsToListElement() is True
 		if not self.pointsToListElement():
-			return None, None
+			raise DatabaseError("Field should point to list element")
 
 		list_elems = self.__getListElements()
 		col_num = len(list_elems) - 1 # index of last column
@@ -201,7 +197,7 @@ class _InternalField:
 
 		# This function makes sense only if self.pointsToListElement() is True
 		if not self.pointsToListElement():
-			return None, None
+			raise DatabaseError("Field should point to list element")
 
 		self_copy = _InternalField(self.__engine, self.name)
 		self_copy.name[-1] = None
