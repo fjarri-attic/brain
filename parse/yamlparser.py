@@ -1,12 +1,11 @@
-import interfaces
 import yaml
 import functools
 
-SEPARATOR = "."
 SIMPLE_TYPES = [
 	int,
 	str,
-	float
+	float,
+	bytes
 ]
 
 def flattenHierarchy(data):
@@ -15,24 +14,26 @@ def flattenHierarchy(data):
 			results = [flattenNode(node[x], list(prefix) + [x]) for x in node.keys()]
 			return functools.reduce(list.__add__, results, [])
 		elif isinstance(node, list):
-			results = [flattenNode(x, list(prefix) + ['list']) for x in node]
+			results = [flattenNode(x, list(prefix) + [i]) for i, x in enumerate(node)]
 			return functools.reduce(list.__add__, results, [])
-		elif len(list(filter(lambda x: isinstance(node, x), SIMPLE_TYPES))) > 0:
+		elif node == None or node.__class__ in SIMPLE_TYPES:
 			return [(prefix, node)]
 		else:
 			raise Exception("Unsupported type: " + node.__type__)
 
-	return [(SEPARATOR.join(path), value) for path, value in flattenNode(data)]
+	return [(path, value) for path, value in flattenNode(data)]
 
 
-class YamlParser(interfaces.RequestParser):
+class YamlParser:
 
 	def parseRequest(self, request):
 		data = yaml.load(request)
 
-		print(repr(data))
+		print(repr(data['fields']))
 
-		print(flattenHierarchy(data['fields']))
+		res = flattenHierarchy(data['fields'])
+		for fld in res:
+			print(fld)
 
 
 
@@ -47,8 +48,11 @@ fields:
     -
       name: Alice
       gender: female
+      age: 22
+      birthday:
     -
       name: Cat
       gender: male
+      age: 4
 '''
 y.parseRequest(r)
