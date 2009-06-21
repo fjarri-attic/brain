@@ -293,5 +293,26 @@ class Modify(TestRequest):
 			Field(['fld1', 1], value=1)
 			])
 
+	def testChangeListElementType(self):
+		"""
+		Regression test, showing that it is necessary to check all possible
+		value types when modifying value in list
+		"""
+		self.db.processRequest(ModifyRequest('1', [
+			Field(['fld1', 0], value=1),
+			Field(['fld1', 1], value='a')
+		]))
+
+		self.db.processRequest(ModifyRequest('1', [
+			Field(['fld1', 1], value=2)
+		]))
+
+		res = self.db.processRequest(ReadRequest('1'))
+
+		self.checkRequestResult(res, [
+			Field(['fld1', 0], value=1),
+			Field(['fld1', 1], value=2)
+			])
+
 def get_class():
 	return Modify

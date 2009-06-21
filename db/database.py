@@ -640,18 +640,20 @@ class StructureLayer:
 	def deleteValues(self, id, field, condition=None):
 		"""Delete value of given field(s)"""
 
+		field_copy = _InternalField(self.engine, field.name)
+
 		# if there is no special condition, take the mask of given field
 		if condition == None:
 			condition = field.columns_condition
 
-		types = self.getValueTypes(id, field)
+		types = self.getValueTypes(id, field_copy)
 		for type in types:
 
 			# prepare query for deletion
-			field.type_str = type
+			field_copy.type_str = type
 			query_str = "FROM {field_name} WHERE {id_column}={id}{delete_condition}".format(
 				delete_condition=condition,
-				field_name=field.name_as_table,
+				field_name=field_copy.name_as_table,
 				id=id,
 				id_column=self.__ID_COLUMN)
 
@@ -661,12 +663,12 @@ class StructureLayer:
 
 			# if there are any, delete them
 			if del_num > 0:
-				self.decreaseRefcount(id, field, num=del_num)
+				self.decreaseRefcount(id, field_copy, num=del_num)
 				self.engine.execute("DELETE " + query_str)
 
 				# check if the table is empty and if it is - delete it too
-				if self.engine.tableIsEmpty(field.name_str):
-					self.engine.deleteTable(field.name_str)
+				if self.engine.tableIsEmpty(field_copy.name_str):
+					self.engine.deleteTable(field_copy.name_str)
 
 	def addValueRecord(self, id, field):
 		"""Add value to the corresponding table"""
@@ -748,12 +750,7 @@ class LogicLayer:
 				self.structure.updateListSize(id, anc)
 
 		# Delete old value (checking all tables because type could be different)
-		# FIXME: add test, showing that it is really necessary to delete all fields
-		types = self.structure.getValueTypes(id, field)
-		field_copy = _InternalField(self.engine, field.name)
-		for type in types:
-			field_copy.type_str = type
-			self.structure.deleteValues(id, field_copy)
+		self.structure.deleteValues(id, field)
 
 		# Create field table if it does not exist yet
 		self.structure.assureFieldTableExists(field)
