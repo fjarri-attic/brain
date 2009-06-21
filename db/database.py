@@ -28,6 +28,17 @@ class _InternalField:
 		# cut prefix 'field' from the resulting list
 		return cls(engine, engine.getNameList(name_str)[1:], value)
 
+	def ancestors(self, include_self):
+		"""
+		Iterate through all ancestor fields
+		Yields tuple (ancestor, last removed name part)
+		"""
+		name_copy = self.name[:]
+		last = name_copy.pop() if not include_self else None
+		while len(name_copy) > 0:
+			yield _InternalField(self.__engine, name_copy), last
+			last = name_copy.pop()
+
 	def __getListColumnName(self, index):
 		"""Get name of additional list column corresponding to given index"""
 		return "c" + str(index)
@@ -156,8 +167,11 @@ class _InternalField:
 
 	def pointsToListElement(self):
 		"""Returns True if field points to element of the list"""
-		list_elems = self.__getListElements()
-		return len(list_elems) > 0 and list_elems[-1] != None
+		return isinstance(self.name[-1], int)
+
+		# FIXME: add testcase to prove that code below is wrong:
+		#list_elems = self.__getListElements()
+		#return len(list_elems) > 0 and list_elems[-1] != None
 
 	def getLastListColumn(self):
 		"""Returns name and value of column corresponding to the last name element"""
@@ -452,11 +466,12 @@ class StructureLayer:
 
 		return res
 
-	def updateListSize(self, id, field, val):
+	def updateListSize(self, id, field):
 		"""Update information about the size of given list"""
 
 		# get current maximum list index for given list
 		max = self.getMaxListIndex(id, field)
+		val = field.name[-1]
 
 		if max != None:
 		# if there is a list, and given value is greater than maximum index, update it
@@ -683,30 +698,24 @@ class LogicLayer:
 		given field can either contain value, or list, or map, not several at once
 		"""
 
-		# make a copy of field's name because we will change it
-		name_copy = field.name[:]
-
-		while len(name_copy) > 0:
-
-			last = name_copy.pop() # go up one level
-
-			field_copy = _InternalField(self.engine, name_copy)
+		# check all ancestor fields in hierarchy
+		for anc, last in field.ancestors(include_self=False):
 
 			# delete all values which names are a part of the name of field to add
 			# in other words, no named maps or lists
-			types = self.structure.getValueTypes(id, field_copy)
+			types = self.structure.getValueTypes(id, anc)
 			for type in types:
-				field_copy.type_str = type
-				self.deleteField(id, field_copy)
+				anc.type_str = type
+				self.deleteField(id, anc)
 
 			# Get all fields with names, starting from name_copy, excluding
 			# the one whose name equals name_copy
-			fields = self.structure.getFieldsList(id, field_copy, exclude_self=True)
+			relatives = self.structure.getFieldsList(id, anc, exclude_self=True)
 
 			# we have to check only first field in list
 			# if there are no conflicts, other fields do not conflict too
-			if len(fields) > 0:
-				elem = fields[0].name[len(name_copy)]
+			if len(relatives) > 0:
+				elem = relatives[0].name[len(anc.name)]
 
 				if isinstance(last, str) and not isinstance(elem, str):
 					raise DatabaseError("Cannot modify map, when list already exists on this level")
@@ -730,13 +739,9 @@ class LogicLayer:
 		"""Set value of given field"""
 
 		# Update maximum values cache
-		# FIXME: hide .name usage in _InternalField
-		name_copy = field.name[:]
-		while len(name_copy) > 0:
-			if isinstance(name_copy[-1], int):
-				f = _InternalField(self.engine, name_copy)
-				self.structure.updateListSize(id, f, name_copy[-1])
-			name_copy.pop()
+		for anc, last in field.ancestors(include_self=True):
+			if anc.pointsToListElement():
+				self.structure.updateListSize(id, anc)
 
 		# Delete old value (checking all tables because type could be different)
 		# FIXME: add test, showing that it is really necessary to delete all fields
