@@ -207,9 +207,8 @@ class _InternalField:
 	def name_hashstr(self):
 		"""
 		Returns string that can serve as hash for field name along with its list elements
-		FIXME: currently there are possible collisions name = ['1'] and name = [1]
 		"""
-		name_copy = [str(x) if x != None else None for x in self.name]
+		name_copy = [repr(x) if x != None else None for x in self.name]
 		name_copy[-1] = None
 		return self.__engine.getSafeValue(self.__engine.getNameString(name_copy))
 
