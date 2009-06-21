@@ -1,8 +1,12 @@
-import interfaces
+import sys, os.path
+scriptdir, scriptfile = os.path.split(sys.argv[0])
+sys.path.append(os.path.join(scriptdir, ".."))
+
+from db import interface
 import xml.etree.ElementTree
 import functools
 
-class ElemTreeParser(interfaces.RequestParser):
+class ElemTreeParser:
 
 	def parseRequest(self, request):
 
@@ -13,14 +17,14 @@ class ElemTreeParser(interfaces.RequestParser):
 		root = xml.etree.ElementTree.fromstring(request)
 
 		# TODO: perform validation against DTD here
-		
+
 		if not root.tag in handlers.keys():
 			raise Exception("Unknown request type: " + root.tag)
-		
-		## Find id
+
+		# Find id
 		target_id = root.find('id').text
 		return handlers[root.tag](target_id, root.find('fields'))
-	
+
 	def __elementToValue(self, elem):
 		if elem != None:
 			value = elem.text.strip()
@@ -29,7 +33,7 @@ class ElemTreeParser(interfaces.RequestParser):
 			return value
 		else:
 			return None
-	
+
 	def __elementTreeToData(self, elem):
 		name = elem.get('name')
 		data_elem = elem.find('data')
@@ -49,12 +53,12 @@ class ElemTreeParser(interfaces.RequestParser):
 			list_elems = elem.getchildren()
 			native_list = [self.__elementTreeToData(x) for x in list_elems]
 			return (name, value, native_list)
-		
+
 	def __parseAddRequest(self, target_id, fields):
 		t1, value, data = self.__elementTreeToData(fields)
 		return value, data
-		# return interfaces.RewriteRequest(target_id, value)
-		
+		# return interface.RewriteRequest(target_id, value)
+
 
 p = ElemTreeParser()
 r = '''
@@ -112,7 +116,7 @@ def flattenHierarchy(data, separator):
 					results += flattenNode((value, node), list(prefix) + [str(i)])
 
 		return self_value + results
-	
+
 	return [(separator.join(path), value) for path, value in flattenNode(data)]
 
 
