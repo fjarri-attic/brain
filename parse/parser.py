@@ -28,7 +28,7 @@ class ElemTreeParser:
 		#return handlers[root.tag](target_id, root.find('fields'))
 
 	def __elementToValue(self, elem):
-		if elem != None:
+		if elem is not None:
 			value = elem.text.strip()
 			if value == '':
 				value = None
@@ -39,7 +39,7 @@ class ElemTreeParser:
 	def __elementTreeToData(self, elem):
 		name = elem.get('name')
 		data_elem = elem.find('data')
-		if data_elem != None:
+		if data_elem is not None:
 			value = self.__elementToValue(data_elem)
 			elem.remove(data_elem)
 		else:
@@ -101,13 +101,13 @@ r = '''
 def xmlToPython(data, separator):
 	def flattenNode(node, prefix=[]):
 		value, children = node
-		if value != None:
+		if value is not None:
 			self_value = [(prefix, node[0])]
 		else:
 			self_value = []
 
 		results = []
-		if children != None:
+		if children is not None:
 			if isinstance(children, dict):
 				lists = [flattenNode(children[x], list(prefix) + [x]) for x in children.keys()]
 				results = functools.reduce(list.__add__, lists, [])
@@ -128,7 +128,7 @@ def flattenHierarchy(data):
 		elif isinstance(node, list):
 			results = [flattenNode(x, list(prefix) + [i]) for i, x in enumerate(node)]
 			return functools.reduce(list.__add__, results, [])
-		elif node == None or node.__class__ in SIMPLE_TYPES:
+		elif node is None or node.__class__ in SIMPLE_TYPES:
 			return [(prefix, node)]
 		else:
 			raise Exception("Unsupported type: " + node.__type__)

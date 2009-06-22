@@ -54,7 +54,7 @@ class _InternalField:
 
 	def isNull(self):
 		"""Whether field contains Null value"""
-		return (self.__value == None)
+		return (self.__value is None)
 
 	def __get_type_str(self):
 		"""Returns string with SQL type for stored value"""
@@ -62,7 +62,7 @@ class _InternalField:
 
 	def __set_type_str(self, type_str):
 		"""Set field type using given value from specification table"""
-		if type_str == None:
+		if type_str is None:
 			self.__value = None
 		else:
 			self.__value = self.__engine.getValueClass(type_str)()
@@ -113,7 +113,7 @@ class _InternalField:
 		counter = 0
 		l = []
 		for column in numeric_columns:
-			if column == None:
+			if column is None:
 				l.append(self.__getListColumnName(counter))
 			counter += 1
 
@@ -131,7 +131,7 @@ class _InternalField:
 		counter = 0
 		l = []
 		for column in numeric_columns:
-			if column != None:
+			if column is not None:
 				l.append(self.__getListColumnName(counter) +
 					"=" + str(column))
 			counter += 1
@@ -141,7 +141,7 @@ class _InternalField:
 	def getDeterminedName(self, vals):
 		"""Returns name with Nones filled with supplied list of values"""
 		vals_copy = list(vals)
-		func = lambda x: vals_copy.pop(0) if x == None else x
+		func = lambda x: vals_copy.pop(0) if x is None else x
 		return list(map(func, self.name))
 
 	def getCreationStr(self, id_column, value_column, id_type, list_index_type):
@@ -208,7 +208,7 @@ class _InternalField:
 		"""
 		Returns string that can serve as hash for field name along with its list elements
 		"""
-		name_copy = [repr(x) if x != None else None for x in self.name]
+		name_copy = [repr(x) if x is not None else None for x in self.name]
 		name_copy[-1] = None
 		return self.__engine.getSafeValue(self.__engine.getNameString(name_copy))
 
@@ -401,7 +401,7 @@ class StructureLayer:
 		If exclude_self is true, exclude 'field' itself from results
 		"""
 
-		if field != None:
+		if field is not None:
 		# If field is given, return only fields, which contain its name in the beginning
 			regexp_cond = " AND {field_column} REGEXP {regexp}"
 			regexp_val = self.engine.getSafeValue("^" + field.name_str_no_type +
@@ -428,7 +428,7 @@ class StructureLayer:
 		res = []
 		for elem in l:
 			fld = _InternalField.fromNameStr(self.engine, elem[0])
-			if field != None:
+			if field is not None:
 				fld.name[:len(field.name)] = field.name
 			res.append(fld)
 
@@ -494,7 +494,7 @@ class StructureLayer:
 		max = self.getMaxListIndex(id, field)
 		val = field.name[-1]
 
-		if max != None:
+		if max is not None:
 		# if there is a list, and given value is greater than maximum index, update it
 
 			if max > val: return
@@ -571,7 +571,7 @@ class StructureLayer:
 		op2 = condition.operand2 # it must be some value
 
 		# set proper type for the field
-		if op2 != None:
+		if op2 is not None:
 			op1.type_str = self.engine.getColumnType(op2)
 		else:
 			op1.type_str = None
@@ -595,10 +595,10 @@ class StructureLayer:
 
 		# build query
 
-		if op2 != None or not condition.invert:
+		if op2 is not None or not condition.invert:
 
 			# construct comparing condition
-			if op2 != None:
+			if op2 is not None:
 				comp_str = "WHERE{not_str} {value_column} {comp} {val}".format(
 					comp=comparisons[condition.operator],
 					not_str=not_str,
@@ -664,7 +664,7 @@ class StructureLayer:
 		field_copy = _InternalField(self.engine, field.name)
 
 		# if there is no special condition, take the mask of given field
-		if condition == None:
+		if condition is None:
 			condition = field.columns_condition
 
 		types = self.getValueTypes(id, field_copy)
@@ -815,7 +815,7 @@ class LogicLayer:
 
 	def processDeleteRequest(self, id, fields):
 
-		if fields != None:
+		if fields is not None:
 			# remove specified fields
 			for field in fields:
 				self.deleteField(id, field)
@@ -831,7 +831,7 @@ class LogicLayer:
 			raise DatabaseError("Object " + id + " does not exist")
 
 		# if list of fields was not given, read all object's fields
-		if fields == None:
+		if fields is None:
 			fields = self.structure.getFieldsList(id)
 		else:
 			res = []
@@ -844,7 +844,7 @@ class LogicLayer:
 			for type in self.structure.getValueTypes(id, field):
 				field.type_str = type
 				res = self.structure.getFieldValue(id, field)
-				if res != None:
+				if res is not None:
 					result_list += res
 
 		return [x.toField() for x in result_list]
@@ -873,11 +873,11 @@ class LogicLayer:
 		target_col = len(target_field.name) - 1 # last column in name of target field
 
 		max = self.structure.getMaxListIndex(id, target_field)
-		if max == None:
+		if max is None:
 		# list does not exist yet
 			enumerate(fields, target_col, 0, one_position)
 		# FIXME: Hide .name usage in _InternalField
-		elif target_field.name[target_col] == None:
+		elif target_field.name[target_col] is None:
 		# list exists and we are inserting elements to the end
 			starting_num = max + 1
 			enumerate(fields, target_col, starting_num, one_position)
@@ -906,7 +906,7 @@ class SimpleDatabase(interface.Database):
 
 		def convertFields(fields, engine):
 			"""Convert given fields list to _InternalFields list"""
-			if fields != None:
+			if fields is not None:
 				return [_InternalField.fromField(engine, x) for x in fields]
 			else:
 				return None

@@ -88,7 +88,7 @@ class Field:
 	def __init__(self, name, value=None):
 
 		# check given name
-		if name == None or name == '':
+		if name is None or name == '':
 			raise FormatError("Field name cannot be empty")
 
 		if not isinstance(name, list):
@@ -98,11 +98,11 @@ class Field:
 		for elem in name:
 			if not isinstance(elem, str) and \
 					not isinstance(elem, int) and \
-					not elem == None:
+					elem is not None:
 				raise FormatError("Field name list must contain only integers, strings or Nones")
 
 		# check value type
-		if not value == None and not value.__class__ in [int, float, str, bytes]:
+		if value is not None and not value.__class__ in [int, float, str, bytes]:
 			raise FormatError("Wrong value class: " + str(value.__class__))
 
 		# initialize fields
@@ -110,7 +110,7 @@ class Field:
 		self.name = copy.deepcopy(name)
 
 	def __eq__(self, other):
-		if other == None:
+		if other is None:
 			return False
 
 		if not isinstance(other, Field):
@@ -130,10 +130,10 @@ class _BaseRequest:
 
 	def __init__(self, id, fields=None):
 
-		if fields != None and not isinstance(fields, list):
+		if fields is not None and not isinstance(fields, list):
 			raise FormatError("Data should be a list")
 
-		if fields != None:
+		if fields is not None:
 			for field in fields:
 				if not isinstance(field, Field):
 					raise FormatError("Data should be a list of Field objects")
@@ -169,18 +169,18 @@ class InsertRequest(_BaseRequest):
 
 		# target field should be determined, except maybe for the last element
 		for elem in target_field.name[:-1]:
-			if elem == None:
+			if elem is None:
 				raise FormatError("Target field should not have None parts in name, " +
 					"except for the last one")
 
 		# target field should point on list
-		if target_field.name[-1] != None and not isinstance(target_field.name[-1], int):
+		if target_field.name[-1] is not None and not isinstance(target_field.name[-1], int):
 			raise FormatError("Last element of target field name should be None or integer")
 
 		# all fields to insert should be fully determined
 		for field in fields:
 			for elem in field.name:
-				if elem == None:
+				if elem is None:
 					raise FormatError("Each of fields to insert should be determined")
 
 		# Initialize fields
@@ -224,12 +224,12 @@ class SearchRequest:
 				val_class = operand2.__class__
 
 				# check if value type is supported
-				if operand2 != None and not val_class in [str, int, float, bytes]:
+				if operand2 is not None and not val_class in [str, int, float, bytes]:
 					raise FormatError("Operand type is not supported: " +
 						val_class.__name__)
 
 				# Nones only support EQ
-				if operand2 == None and operator != SearchRequest.EQ:
+				if operand2 is None and operator != SearchRequest.EQ:
 					raise FormatError("Null value can be only used in equality")
 
 				# regexp is valid only for strings and blobs

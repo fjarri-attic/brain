@@ -16,7 +16,7 @@ def flattenHierarchy(data):
 		elif isinstance(node, list):
 			results = [flattenNode(x, list(prefix) + [i]) for i, x in enumerate(node)]
 			return functools.reduce(list.__add__, results, [])
-		elif node == None or node.__class__ in SIMPLE_TYPES:
+		elif node is None or node.__class__ in SIMPLE_TYPES:
 			return [(prefix, node)]
 		else:
 			raise Exception("Unsupported type: " + node.__type__)
@@ -42,17 +42,26 @@ r = '''
 type: add
 id: 1
 fields:
-  name: Marty
-  phone: 111
-  friends:
-    -
-      name: Alice
-      gender: female
-      age: 22
-      birthday:
-    -
-      name: Cat
-      gender: male
-      age: 4
+  tree:
+    path:
+    data:    
+      name: Marty
+      phone: 111
+      friends:
+        -
+          name: Alice
+          gender: female
+          age: 22
+          birthday:
+        -
+          name: Cat
+          gender: male
+          age: 4
+  field:
+    path:
+      - friends
+      - 2
+      - name
+    value: dog
 '''
 y.parseRequest(r)

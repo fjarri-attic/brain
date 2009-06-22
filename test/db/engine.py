@@ -70,7 +70,7 @@ class EngineTest(unittest.TestCase):
 		]
 
 		for name, expected_res in names:
-			if expected_res == None:
+			if expected_res is None:
 				expected_res = name
 
 			name_str = self.engine.getNameString(name)
