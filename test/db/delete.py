@@ -346,5 +346,52 @@ class Delete(TestRequest):
 			Field(['tracks', 1, 'Name'], value='Track 2 name')
 		])
 
+	def testSubTree(self):
+		"""Check that one can delete a subtree at once"""
+		self.prepareStandDifferentTypes()
+
+		self.db.processRequest(DeleteRequest('1', [
+			Field(['tracks', 0])
+		]))
+
+		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0, 'Name'], 'Track 2 name'),
+			Field(['tracks', 0, 'Length'], 350.0),
+			Field(['tracks', 0, 'Volume'], 26),
+			Field(['tracks', 0, 'Rating'], 4),
+			Field(['tracks', 0, 'Authors', 0], 'Carl'),
+			Field(['tracks', 0, 'Authors', 1], 'Dan'),
+			Field(['tracks', 0, 'Data'], b'\x00\x01\x03')
+		])
+
+	def testRenumberingInRequest(self):
+		"""
+		Check that list indexes will not be invalidated during request processing
+		TODO: currently it does not work; it can be fixed by processing
+		fields list in request
+		"""
+		self.prepareStandDifferentTypes()
+
+		self.db.processRequest(DeleteRequest('1', [
+			# this subtree will be deleted
+			Field(['tracks', 0]),
+
+			# and this one won't, because there is no ('tracks', 1) anymore
+			Field(['tracks', 1, 'Authors'])
+
+		]))
+
+		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None])]))
+		self.checkRequestResult(res, [
+			Field(['tracks', 0, 'Name'], 'Track 2 name'),
+			Field(['tracks', 0, 'Length'], 350.0),
+			Field(['tracks', 0, 'Volume'], 26),
+			Field(['tracks', 0, 'Rating'], 4),
+			Field(['tracks', 0, 'Authors', 0], 'Carl'),
+			Field(['tracks', 0, 'Authors', 1], 'Dan'),
+			Field(['tracks', 0, 'Data'], b'\x00\x01\x03')
+		])
+
 def get_class():
 	return Delete
