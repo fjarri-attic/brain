@@ -5,13 +5,33 @@ sys.path.append(os.path.join(scriptdir, ".."))
 from db import interface, database, engine
 import yaml
 
+
 class Facade:
 
 	def __init__(self):
 		self.sessions = {}
 		self.session_counter = 0
 
-	def parseYamlRequest(self, request):
+	def openSession(self, path, open_existing=None):
+
+		self.session_counter += 1
+		self.sessions[self.session_counter] = database.SimpleDatabase(
+			engine.Sqlite3Engine, path, open_existing)
+
+		return self.session_counter
+
+	def closeSession(self, session):
+
+		self.sessions[session].close()
+		del self.sessions[session]
+
+
+class YamlFacade:
+
+	def __init__(self, facade):
+		self.facade = facade
+
+	def parseRequest(self, request):
 		request = yaml.load(request)
 
 		handlers = {
@@ -28,41 +48,34 @@ class Facade:
 		return handlers[request['type']](request)
 
 	def processOpenRequest(self, request):
-		if not 'name' in request.keys():
-			raise Exception('Database name is missing')
-		name = request['name']
+		if not 'path' in request.keys():
+			raise Exception('Database path is missing')
+		path = request['path']
 
 		open_existing = request['open'] if 'open' in request.keys() else None
 
-		self.session_counter += 1
-		self.sessions[self.session_counter] = database.SimpleDatabase(
-			engine.Sqlite3Engine, name, open_existing)
-
-		return self.session_counter
+		return self.facade.openSession(path, open_existing)
 
 	def processCloseRequest(self, request):
 		if not 'session' in request.keys():
 			raise Exception('Session ID is missing')
 		session = request['session']
 
-		if not session in self.sessions.keys():
-			raise Exception("There is no such session: " + str(session))
+		self.facade.closeSession(session)
 
-		self.sessions[session].close()
-		del self.sessions[session]
 
 if __name__ == '__main__':
-	f = Facade()
+	ff = Facade()
+	f = YamlFacade(ff)
 
-	s = f.parseYamlRequest('''
+	s = f.parseRequest('''
 type: open
-name: 'c:\\gitrepos\\brain\\parse\\test.dat'
-open: 1
+path: 'c:\\gitrepos\\brain\\parse\\test.dat'
 ''')
 
 	print("Opened session: " + str(s))
 
-	f.parseYamlRequest('''
+	f.parseRequest('''
 type: close
 session: {session}
 '''.format(session=s))
