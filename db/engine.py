@@ -2,6 +2,8 @@
 
 import sqlite3
 import re
+import os
+import os.path
 
 from . import interface
 
@@ -14,6 +16,16 @@ class Sqlite3Engine(interface.Engine):
 
 		if path is None:
 			path = ':memory:'
+		else:
+			if open_existing == 1:
+			# do not create DB if it does not exist
+				if not os.path.exists(path):
+					raise Exception(path + " was not found")
+			elif open_existing == 0:
+			# recreate DB even if such file already exists
+				print("Here")
+				if os.path.exists(path):
+					os.remove(path)
 
 		# isolation_level=None disables autocommit, giving us the
 		# possibility to manage transactions manually

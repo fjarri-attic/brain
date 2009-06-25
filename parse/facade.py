@@ -36,7 +36,7 @@ class Facade:
 
 		self.session_counter += 1
 		self.sessions[self.session_counter] = database.SimpleDatabase(
-			engine.Sqlite3Engine, name)
+			engine.Sqlite3Engine, name, open_existing)
 
 		return self.session_counter
 
@@ -53,16 +53,16 @@ class Facade:
 
 if __name__ == '__main__':
 	f = Facade()
-	s = f.parseYamlRequest(
-'''
+
+	s = f.parseYamlRequest('''
 type: open
 name: 'c:\\gitrepos\\brain\\parse\\test.dat'
+open: 1
 ''')
 
 	print("Opened session: " + str(s))
 
-	f.parseYamlRequest(
-'''
+	f.parseYamlRequest('''
 type: close
 session: {session}
 '''.format(session=s))
