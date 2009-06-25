@@ -10,7 +10,10 @@ class Sqlite3Engine(interface.Engine):
 
 	__FIELD_SEP = '.' # separator for field elements in table name
 
-	def __init__(self, path):
+	def __init__(self, path=None, open_existing=None):
+	
+		if path is None:
+			path = ':memory:'
 
 		# isolation_level=None disables autocommit, giving us the
 		# possibility to manage transactions manually

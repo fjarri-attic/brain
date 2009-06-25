@@ -894,7 +894,7 @@ class LogicLayer:
 class SimpleDatabase(interface.Database):
 	"""Class, representing DDB request handler"""
 
-	def __init__(self, path, engine_class):
+	def __init__(self, engine_class, path=None, open_existing=None):
 		if not issubclass(engine_class, interface.Engine):
 			raise DatabaseError("Engine class must be derived from Engine interface")
 		self.engine = engine_class(path)

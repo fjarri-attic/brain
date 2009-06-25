@@ -15,7 +15,7 @@ def suite():
 	res = helpers.NamedTestSuite()
 
 	parameters = [
-		('memory.sqlite3', SimpleDatabase, ':memory:', Sqlite3Engine),
+		('memory.sqlite3', SimpleDatabase, Sqlite3Engine, None),
 	]
 
 	modules = [delete, insert, modify, read, search]
