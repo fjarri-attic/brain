@@ -45,14 +45,18 @@ class Facade:
 			raise Exception('Session ID is missing')
 		session = request['session']
 
-		self.sessions[session] = None
+		if not session in self.sessions.keys():
+			raise Exception("There is no such session: " + str(session))
+
+		self.sessions[session].close()
+		del self.sessions[session]
 
 if __name__ == '__main__':
 	f = Facade()
 	s = f.parseYamlRequest(
 '''
 type: open
-name: ':memory:'
+name: 'c:\\gitrepos\\brain\\parse\\test.dat'
 ''')
 
 	print("Opened session: " + str(s))

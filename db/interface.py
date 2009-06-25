@@ -17,6 +17,9 @@ class FormatError(Exception):
 class Engine:
 	"""Engine layer class interface"""
 
+	def close(self):
+		return NotImplementedError
+
 	def dump(self):
 		"""Dump the whole database to string; used for debug purposes"""
 		return NotImplementedError

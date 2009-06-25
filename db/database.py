@@ -897,9 +897,12 @@ class SimpleDatabase(interface.Database):
 	def __init__(self, engine_class, path=None, open_existing=None):
 		if not issubclass(engine_class, interface.Engine):
 			raise DatabaseError("Engine class must be derived from Engine interface")
-		self.engine = engine_class(path)
+		self.engine = engine_class(path, open_existing)
 		self.structure = StructureLayer(self.engine)
 		self.logic = LogicLayer(self.engine, self.structure)
+
+	def close(self):
+		self.engine.close()
 
 	def processRequest(self, request):
 		"""Start/stop transaction, handle exceptions"""
