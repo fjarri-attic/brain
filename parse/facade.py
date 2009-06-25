@@ -36,7 +36,7 @@ class Facade:
 
 		self.session_counter += 1
 		self.sessions[self.session_counter] = database.SimpleDatabase(
-			name, engine.Sqlite3Engine)
+			engine.Sqlite3Engine, name)
 
 		return self.session_counter
 
