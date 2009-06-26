@@ -18,10 +18,25 @@ class Connection:
 
 	def __init__(self, db):
 		self.db = db
+		self.transaction = False
+		self.requests = []
 
 	def disconnect(self):
 		self.db.disconnect()
 
+	def begin(self):
+		self.transaction = True
+
+	def commit(self):
+		try:
+			self.db.processRequests(requests)
+		finally:
+			self.transaction = False
+			self.requests = []
+
+	def rollback(self):
+		self.transaction = False
+		self.requests = []
 
 class YamlFacade:
 
