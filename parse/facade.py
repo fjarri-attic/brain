@@ -8,28 +8,27 @@ import yaml
 
 class Facade:
 
-	def __init__(self):
-		self.sessions = {}
-		self.session_counter = 0
-
 	def connect(self, path, open_existing=None):
 
-		self.session_counter += 1
-		self.sessions[self.session_counter] = database.SimpleDatabase(
-			engine.Sqlite3Engine, path, open_existing)
+		return Connection(database.SimpleDatabase(
+			engine.Sqlite3Engine, path, open_existing))
 
-		return self.session_counter
 
-	def disconnect(self, session):
+class Connection:
 
-		self.sessions[session].disconnect()
-		del self.sessions[session]
+	def __init__(self, db):
+		self.db = db
+
+	def disconnect(self):
+		self.db.disconnect()
 
 
 class YamlFacade:
 
 	def __init__(self, facade):
 		self.facade = facade
+		self.sessions = {}
+		self.session_counter = 0
 
 	def parseRequest(self, request):
 		request = yaml.load(request)
@@ -54,14 +53,18 @@ class YamlFacade:
 
 		open_existing = request['connect'] if 'connect' in request.keys() else None
 
-		return self.facade.connect(path, open_existing)
+		self.session_counter += 1
+		self.sessions[self.session_counter] = self.facade.connect(path, open_existing)
+
+		return self.session_counter
 
 	def processDisonnectRequest(self, request):
 		if not 'session' in request.keys():
 			raise Exception('Session ID is missing')
 		session = request['session']
 
-		self.facade.disconnect(session)
+		self.sessions[session].disconnect()
+		del self.sessions[session]
 
 
 if __name__ == '__main__':
