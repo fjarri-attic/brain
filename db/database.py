@@ -901,8 +901,8 @@ class SimpleDatabase(interface.Database):
 		self.structure = StructureLayer(self.engine)
 		self.logic = LogicLayer(self.engine, self.structure)
 
-	def close(self):
-		self.engine.close()
+	def disconnect(self):
+		self.engine.disconnect()
 
 	def processRequest(self, request):
 		"""Start/stop transaction, handle exceptions"""

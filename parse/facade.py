@@ -12,7 +12,7 @@ class Facade:
 		self.sessions = {}
 		self.session_counter = 0
 
-	def openSession(self, path, open_existing=None):
+	def connect(self, path, open_existing=None):
 
 		self.session_counter += 1
 		self.sessions[self.session_counter] = database.SimpleDatabase(
@@ -20,9 +20,9 @@ class Facade:
 
 		return self.session_counter
 
-	def closeSession(self, session):
+	def disconnect(self, session):
 
-		self.sessions[session].close()
+		self.sessions[session].disconnect()
 		del self.sessions[session]
 
 
@@ -35,8 +35,8 @@ class YamlFacade:
 		request = yaml.load(request)
 
 		handlers = {
-			'open': self.processOpenRequest,
-			'close': self.processCloseRequest
+			'connect': self.processConnectRequest,
+			'disconnect': self.processDisonnectRequest
 		}
 
 		if not 'type' in request.keys():
@@ -47,21 +47,21 @@ class YamlFacade:
 
 		return handlers[request['type']](request)
 
-	def processOpenRequest(self, request):
+	def processConnectRequest(self, request):
 		if not 'path' in request.keys():
 			raise Exception('Database path is missing')
 		path = request['path']
 
-		open_existing = request['open'] if 'open' in request.keys() else None
+		open_existing = request['connect'] if 'connect' in request.keys() else None
 
-		return self.facade.openSession(path, open_existing)
+		return self.facade.connect(path, open_existing)
 
-	def processCloseRequest(self, request):
+	def processDisonnectRequest(self, request):
 		if not 'session' in request.keys():
 			raise Exception('Session ID is missing')
 		session = request['session']
 
-		self.facade.closeSession(session)
+		self.facade.disconnect(session)
 
 
 if __name__ == '__main__':
@@ -69,14 +69,14 @@ if __name__ == '__main__':
 	f = YamlFacade(ff)
 
 	s = f.parseRequest('''
-type: open
+type: connect
 path: 'c:\\gitrepos\\brain\\parse\\test.dat'
 ''')
 
 	print("Opened session: " + str(s))
 
 	f.parseRequest('''
-type: close
+type: disconnect
 session: {session}
 '''.format(session=s))
 

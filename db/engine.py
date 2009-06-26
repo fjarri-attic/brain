@@ -36,7 +36,7 @@ class Sqlite3Engine(interface.Engine):
 
 		self.cur = self.__conn.cursor()
 
-	def close(self):
+	def disconnect(self):
 		self.__conn.close()
 
 	def dump(self):

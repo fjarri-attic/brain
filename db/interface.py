@@ -17,7 +17,7 @@ class FormatError(Exception):
 class Engine:
 	"""Engine layer class interface"""
 
-	def close(self):
+	def disconnect(self):
 		return NotImplementedError
 
 	def dump(self):
