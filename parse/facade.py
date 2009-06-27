@@ -116,6 +116,8 @@ class Connection:
 				res.append(None)
 			elif isinstance(request, interface.InsertRequest):
 				res.append(None)
+			elif isinstance(request, interface.DeleteRequest):
+				res.append(None)
 
 		return res
 
@@ -139,6 +141,11 @@ class Connection:
 		fields = [interface.Field(relative_path, val) for relative_path, val in parsed]
 		self.requests.append(interface.InsertRequest(
 			id, interface.Field(path), fields))
+
+	@transacted
+	def delete(self, id, path):
+		self.requests.append(interface.DeleteRequest(id, [interface.Field(path)]))
+
 
 class YamlFacade:
 
@@ -190,7 +197,7 @@ if __name__ == '__main__':
 
 	c.modify('1', 'RRR', ['name'])
 	#c.insert('1', ['names', None], 66)
-
+	c.delete('1', ['name'])
 	print(c.read('1'))
 
 	c.disconnect()
