@@ -1,3 +1,8 @@
+import sys, os.path
+scriptdir, scriptfile = os.path.split(sys.argv[0])
+sys.path.append(os.path.join(scriptdir, ".."))
+
+from db import interface
 import yaml
 import functools
 
@@ -44,7 +49,7 @@ id: 1
 fields:
   tree:
     path:
-    data:    
+    data:
       name: Marty
       phone: 111
       friends:
@@ -64,4 +69,58 @@ fields:
       - name
     value: dog
 '''
+
+r2 = """
+data:
+  -
+    path:
+      - friends
+      - 2
+    value:
+      name: Alice
+      gender: F
+      age: 22
+      birthday:
+      tags:
+        - red-headed
+        - glasses
+        - reader
+  -
+    path:
+      - friends
+      - 1
+      - age
+    value: 23
+  -
+    - friends
+    -
+    - gender
+  -
+    path:
+    value:
+      name: Alice
+      gender: F
+      age: 22
+      birthday:
+"""
+
 y.parseRequest(r)
+
+def parseData(root):
+	if isinstance(root, list):
+		return interface.Field(root)
+	else:
+		value = root['value']
+		if isinstance(value, list) or isinstance(value, dict):
+			path = root['path']
+			if path is None: path = []
+
+			return (interface.Field(path),
+				[interface.Field(path, val) for path, val in flattenHierarchy(value)])
+		else:
+			return interface.Field(root['path'], value)
+
+r2_data = yaml.load(r2)
+for elem in r2_data['data']:
+	print("-" * 40)
+	print(repr(parseData(elem)))
