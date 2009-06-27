@@ -4,6 +4,30 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 from db import interface, database, engine
 import yaml
+import functools
+
+SIMPLE_TYPES = [
+	int,
+	str,
+	float,
+	bytes
+]
+
+
+def flattenHierarchy(data):
+	def flattenNode(node, prefix=[]):
+		if isinstance(node, dict):
+			results = [flattenNode(node[x], list(prefix) + [x]) for x in node.keys()]
+			return functools.reduce(list.__add__, results, [])
+		elif isinstance(node, list):
+			results = [flattenNode(x, list(prefix) + [i]) for i, x in enumerate(node)]
+			return functools.reduce(list.__add__, results, [])
+		elif node is None or node.__class__ in SIMPLE_TYPES:
+			return [(prefix, node)]
+		else:
+			raise Exception("Unsupported type: " + node.__type__)
+
+	return [(path, value) for path, value in flattenNode(data)]
 
 
 class Facade:
@@ -12,6 +36,17 @@ class Facade:
 
 		return Connection(database.SimpleDatabase(
 			engine.Sqlite3Engine, path, open_existing))
+
+
+def transacted(func):
+	def handler(obj, *args, **kwds):
+		create_transaction = not obj.transaction
+
+		if create_transaction: obj.begin()
+		func(obj, *args, **kwds)
+		if create_transaction: obj.commit()
+
+	return handler
 
 
 class Connection:
@@ -25,7 +60,10 @@ class Connection:
 		self.db.disconnect()
 
 	def begin(self):
-		self.transaction = True
+		if not self.transaction:
+			self.transaction = True
+		else:
+			raise Exception("Transaction is already in progress")
 
 	def commit(self):
 		try:
@@ -35,8 +73,19 @@ class Connection:
 			self.requests = []
 
 	def rollback(self):
-		self.transaction = False
-		self.requests = []
+		if self.transaction:
+			self.transaction = False
+			self.requests = []
+		else:
+			raise Exception("Transaction is not in progress")
+
+	@transacted
+	def modify(self, id, target, tree):
+		parsed = flattenHierarchy(tree)
+		for path, value in parsed:
+			path = target + path
+			print(interface.Field(path, value))
+
 
 class YamlFacade:
 
@@ -53,20 +102,20 @@ class YamlFacade:
 			'disconnect': self.processDisonnectRequest
 		}
 
-		if not 'type' in request.keys():
+		if not 'type' in request:
 			raise Exception("Request type is missing")
 
-		if not request['type'] in handlers.keys():
+		if not request['type'] in handlers:
 			raise Exception("Unknown request type: " + str(request['type']))
 
 		return handlers[request['type']](request)
 
 	def processConnectRequest(self, request):
-		if not 'path' in request.keys():
+		if not 'path' in request:
 			raise Exception('Database path is missing')
 		path = request['path']
 
-		open_existing = request['connect'] if 'connect' in request.keys() else None
+		open_existing = request['connect'] if 'connect' in request else None
 
 		self.session_counter += 1
 		self.sessions[self.session_counter] = self.facade.connect(path, open_existing)
@@ -74,7 +123,7 @@ class YamlFacade:
 		return self.session_counter
 
 	def processDisonnectRequest(self, request):
-		if not 'session' in request.keys():
+		if not 'session' in request:
 			raise Exception('Session ID is missing')
 		session = request['session']
 
@@ -83,19 +132,9 @@ class YamlFacade:
 
 
 if __name__ == '__main__':
-	ff = Facade()
-	f = YamlFacade(ff)
-
-	s = f.parseRequest('''
-type: connect
-path: 'c:\\gitrepos\\brain\\parse\\test.dat'
-''')
-
-	print("Opened session: " + str(s))
-
-	f.parseRequest('''
-type: disconnect
-session: {session}
-'''.format(session=s))
-
-	print("Closed session: " + str(s))
+	f = Facade()
+	c = f.connect('c:\\gitrepos\\brain\\parse\\test.dat')
+	c.begin()
+	c.modify('1', ['names', 0], {'name': 'Alex', 'age': 22})
+	c.rollback()
+	c.disconnect()
