@@ -80,9 +80,11 @@ class Connection:
 			raise Exception("Transaction is not in progress")
 
 	@transacted
-	def modify(self, id, target, tree):
-		parsed = flattenHierarchy(tree)
-		fields = [interface.Field(target + path, value) for path, value in parsed]
+	def modify(self, id, value, path=None):
+		if path is None: path = []
+		parsed = flattenHierarchy(value)
+		fields = [interface.Field(path + relative_path, val)
+			for relative_path, val in parsed]
 		self.requests.append(interface.ModifyRequest(id, fields))
 
 class YamlFacade:
@@ -133,6 +135,6 @@ if __name__ == '__main__':
 	f = Facade()
 	c = f.connect('c:\\gitrepos\\brain\\parse\\test.dat')
 	c.begin()
-	c.modify('1', ['names', 0], {'name': 'Alex', 'age': 22})
+	c.modify('1', 'RRR', ['name'])
 	c.commit()
 	c.disconnect()
