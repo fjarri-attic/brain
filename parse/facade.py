@@ -29,6 +29,32 @@ def flattenHierarchy(data):
 
 	return [(path, value) for path, value in flattenNode(data)]
 
+def fieldsToTree(fields):
+
+	res = []
+
+	def saveTo(obj, ptr, path, value):
+
+		if isinstance(obj, list) and len(obj) < ptr + 1:
+			obj.insert(ptr, None)
+		elif isinstance(obj, dict) and ptr not in obj:
+			obj[ptr] = None
+
+		if obj[ptr] is None:
+			if isinstance(path[0], str):
+				obj[ptr] = {}
+			else:
+				obj[ptr] = []
+
+		if len(path) == 1:
+			obj[ptr][path[0]] = value
+		else:
+			saveTo(obj[ptr], path[0], path[1:], value)
+
+	for field in fields:
+		saveTo(res, 0, field.name, field.value)
+
+	return res[0]
 
 class Facade:
 
@@ -68,7 +94,8 @@ class Connection:
 
 	def commit(self):
 		try:
-			return self.db.processRequests(self.requests)
+			res = self.db.processRequests(self.requests)
+			return self.transformResults(self.requests, res)
 		finally:
 			self.transaction = False
 			self.requests = []
@@ -79,6 +106,16 @@ class Connection:
 			self.requests = []
 		else:
 			raise Exception("Transaction is not in progress")
+
+	def transformResults(self, requests, results):
+		res = []
+		for result, request in zip(results, requests):
+			if isinstance(request, interface.ReadRequest):
+				res.append(fieldsToTree(result))
+			elif isinstance(request, interface.ModifyRequest):
+				res.append(None)
+
+		return res
 
 	@transacted
 	def modify(self, id, value, path=None):
