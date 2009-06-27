@@ -904,8 +904,8 @@ class SimpleDatabase(interface.Database):
 	def disconnect(self):
 		self.engine.disconnect()
 
-	def processRequest(self, request):
-		"""Start/stop transaction, handle exceptions"""
+	def prepareRequest(self, request):
+		"""Prepare request for processing"""
 
 		def convertFields(fields, engine):
 			"""Convert given fields list to _InternalFields list"""
@@ -981,12 +981,24 @@ class SimpleDatabase(interface.Database):
 		else:
 			raise DatabaseError("Unknown request type: " + request.__class__.__name__)
 
+		return handler, params
+
+	def processRequests(self, requests):
+		"""Start/stop transaction, handle exceptions"""
+
+		prepared_requests = [self.prepareRequest(x) for x in requests]
+
 		# Handle request inside a transaction
 		self.engine.begin()
 		try:
-			res = handler(*params)
+			for handler, params in prepared_requests:
+				res = handler(*params)
 		except:
 			self.engine.rollback()
 			raise
 		self.engine.commit()
 		return res
+
+	def processRequest(self, request):
+		"""Process a single request"""
+		return self.processRequests([request])

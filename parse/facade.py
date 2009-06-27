@@ -67,7 +67,7 @@ class Connection:
 
 	def commit(self):
 		try:
-			self.db.processRequests(requests)
+			self.db.processRequests(self.requests)
 		finally:
 			self.transaction = False
 			self.requests = []
@@ -82,10 +82,8 @@ class Connection:
 	@transacted
 	def modify(self, id, target, tree):
 		parsed = flattenHierarchy(tree)
-		for path, value in parsed:
-			path = target + path
-			print(interface.Field(path, value))
-
+		fields = [interface.Field(target + path, value) for path, value in parsed]
+		self.requests.append(interface.ModifyRequest(id, fields))
 
 class YamlFacade:
 
@@ -136,5 +134,5 @@ if __name__ == '__main__':
 	c = f.connect('c:\\gitrepos\\brain\\parse\\test.dat')
 	c.begin()
 	c.modify('1', ['names', 0], {'name': 'Alex', 'age': 22})
-	c.rollback()
+	c.commit()
 	c.disconnect()
