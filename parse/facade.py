@@ -45,7 +45,7 @@ def transacted(func):
 		if create_transaction: obj.begin()
 		func(obj, *args, **kwds)
 		if create_transaction:
-			return [obj.commit()]
+			return obj.commit()[0]
 
 	return handler
 
