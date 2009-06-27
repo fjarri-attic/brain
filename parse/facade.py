@@ -36,19 +36,19 @@ def fieldsToTree(fields):
 	def saveTo(obj, ptr, path, value):
 
 		if isinstance(obj, list) and len(obj) < ptr + 1:
-			obj.insert(ptr, None)
+			obj.extend([None] * (ptr + 1 - len(obj)))
 		elif isinstance(obj, dict) and ptr not in obj:
 			obj[ptr] = None
 
-		if obj[ptr] is None:
-			if isinstance(path[0], str):
-				obj[ptr] = {}
-			else:
-				obj[ptr] = []
-
-		if len(path) == 1:
-			obj[ptr][path[0]] = value
+		if len(path) == 0:
+			obj[ptr] = value
 		else:
+			if obj[ptr] is None:
+				if isinstance(path[0], str):
+					obj[ptr] = {}
+				else:
+					obj[ptr] = []
+
 			saveTo(obj[ptr], path[0], path[1:], value)
 
 	for field in fields:
@@ -114,6 +114,8 @@ class Connection:
 				res.append(fieldsToTree(result))
 			elif isinstance(request, interface.ModifyRequest):
 				res.append(None)
+			elif isinstance(request, interface.InsertRequest):
+				res.append(None)
 
 		return res
 
@@ -131,6 +133,12 @@ class Connection:
 			path = interface.Field(path)
 		self.requests.append(interface.ReadRequest(id, path))
 
+	@transacted
+	def insert(self, id, path, value=None):
+		parsed = flattenHierarchy(value)
+		fields = [interface.Field(relative_path, val) for relative_path, val in parsed]
+		self.requests.append(interface.InsertRequest(
+			id, interface.Field(path), fields))
 
 class YamlFacade:
 
@@ -181,6 +189,7 @@ if __name__ == '__main__':
 	c = f.connect('c:\\gitrepos\\brain\\parse\\test.dat')
 
 	c.modify('1', 'RRR', ['name'])
+	#c.insert('1', ['names', None], 66)
 
 	print(c.read('1'))
 
