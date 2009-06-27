@@ -62,6 +62,11 @@ class Format(unittest.TestCase):
 		f1 = Field(['test1', 1, None], 1)
 		f2 = Field(['test2', 1, None], 2)
 		self.failIfEqual(f1, f2)
+	
+	def testFieldEmptyName(self):
+		"""Check that field cannot have empty name"""
+		self.failUnlessRaises(FormatError, Field, None, 1)
+		self.failUnlessRaises(FormatError, Field, "", 1)
 
 	# Tests for common part of field-oriented requests
 
