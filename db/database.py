@@ -989,10 +989,11 @@ class SimpleDatabase(interface.Database):
 		prepared_requests = [self.prepareRequest(x) for x in requests]
 
 		# Handle request inside a transaction
+		res = []
 		self.engine.begin()
 		try:
 			for handler, params in prepared_requests:
-				res = handler(*params)
+				res.append(handler(*params))
 		except:
 			self.engine.rollback()
 			raise
@@ -1001,4 +1002,4 @@ class SimpleDatabase(interface.Database):
 
 	def processRequest(self, request):
 		"""Process a single request"""
-		return self.processRequests([request])
+		return self.processRequests([request])[0]
