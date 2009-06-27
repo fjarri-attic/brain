@@ -44,7 +44,8 @@ def transacted(func):
 
 		if create_transaction: obj.begin()
 		func(obj, *args, **kwds)
-		if create_transaction: obj.commit()
+		if create_transaction:
+			return [obj.commit()]
 
 	return handler
 
@@ -67,7 +68,7 @@ class Connection:
 
 	def commit(self):
 		try:
-			self.db.processRequests(self.requests)
+			return self.db.processRequests(self.requests)
 		finally:
 			self.transaction = False
 			self.requests = []
@@ -86,6 +87,13 @@ class Connection:
 		fields = [interface.Field(path + relative_path, val)
 			for relative_path, val in parsed]
 		self.requests.append(interface.ModifyRequest(id, fields))
+
+	@transacted
+	def read(self, id, path=None):
+		if path is not None:
+			path = interface.Field(path)
+		self.requests.append(interface.ReadRequest(id, path))
+
 
 class YamlFacade:
 
@@ -134,7 +142,9 @@ class YamlFacade:
 if __name__ == '__main__':
 	f = Facade()
 	c = f.connect('c:\\gitrepos\\brain\\parse\\test.dat')
-	c.begin()
+
 	c.modify('1', 'RRR', ['name'])
-	c.commit()
+
+	print(c.read('1'))
+
 	c.disconnect()
