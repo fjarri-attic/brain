@@ -118,6 +118,8 @@ class Connection:
 				res.append(None)
 			elif isinstance(request, interface.DeleteRequest):
 				res.append(None)
+			elif isinstance(request, interface.SearchRequest):
+				res.append(result)
 
 		return res
 
@@ -145,6 +147,10 @@ class Connection:
 	@transacted
 	def delete(self, id, path):
 		self.requests.append(interface.DeleteRequest(id, [interface.Field(path)]))
+
+	@transacted
+	def search(self, condition):
+		self.requests.append(interface.SearchRequest(condition))
 
 
 class YamlFacade:
@@ -199,5 +205,9 @@ if __name__ == '__main__':
 	#c.insert('1', ['names', None], 66)
 	c.delete('1', ['name'])
 	print(c.read('1'))
+	print(dir(interface))
+	print(c.search(interface.SearchRequest.Condition(
+		interface.Field(['age']), interface.SearchRequest.EQ, 22
+	)))
 
 	c.disconnect()
