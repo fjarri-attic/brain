@@ -38,34 +38,34 @@ class TestRequest(unittest.TestCase):
 		self.failUnless(len(res) == len(expected), "Request returned " + str(len(res)) + " results")
 		_compareLists(res, expected)
 
-	def addObject(self, id, fields={}):
+	def addObject(self, fields={}):
 		"""Add object with given fields to database"""
 		field_objs = [Field(key, fields[key]) for key in fields.keys()]
-		self.db.processRequest(ModifyRequest(id, field_objs))
+		return self.db.processRequest(ModifyRequest(None, field_objs))
 
 	def prepareStandNoList(self):
 		"""Prepare DB wiht several objects which contain only hashes"""
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
-		self.addObject('2', {'name': 'Bob', 'phone': '2222'})
-		self.addObject('3', {'name': 'Carl', 'phone': '3333', 'age': '27'})
-		self.addObject('4', {'name': 'Don', 'phone': '4444', 'age': '20'})
-		self.addObject('5', {'name': 'Alex', 'phone': '1111', 'age': '22'})
+		self.id1 = self.addObject({'name': 'Alex', 'phone': '1111'})
+		self.id2 = self.addObject({'name': 'Bob', 'phone': '2222'})
+		self.id3 = self.addObject({'name': 'Carl', 'phone': '3333', 'age': '27'})
+		self.id4 = self.addObject({'name': 'Don', 'phone': '4444', 'age': '20'})
+		self.id5 = self.addObject({'name': 'Alex', 'phone': '1111', 'age': '22'})
 
 	def prepareStandSimpleList(self):
 		"""Prepare DB with several objects which contain simple lists"""
-		self.db.processRequest(ModifyRequest('1', [
+		self.id1 = self.db.processRequest(ModifyRequest(None, [
 			Field(['tracks', 0], value='Track 1'),
 			Field(['tracks', 1], value='Track 2'),
 			Field(['tracks', 2], value='Track 3')]
 			))
-		self.db.processRequest(ModifyRequest('2', [
+		self.id2 = self.db.processRequest(ModifyRequest(None, [
 			Field(['tracks', 0], value='Track 2'),
 			Field(['tracks', 1], value='Track 1')]
 			))
 
 	def prepareStandNestedList(self):
 		"""Prepare DB with several objects which contain nested lists"""
-		self.db.processRequest(ModifyRequest('1', [
+		self.id1 = self.db.processRequest(ModifyRequest(None, [
 			Field(['tracks', 0, 'Name'], value='Track 1 name'),
 			Field(['tracks', 0, 'Length'], value='Track 1 length'),
 			Field(['tracks', 0, 'Authors', 0], value='Alex'),
@@ -77,7 +77,7 @@ class TestRequest(unittest.TestCase):
 			Field(['tracks', 2, 'Lyrics', 0], value='Lalala')
 			]))
 
-		self.db.processRequest(ModifyRequest('2', [
+		self.id2 = self.db.processRequest(ModifyRequest(None, [
 			Field(['tracks', 0, 'Name'], value='Track 1 name'),
 			Field(['tracks', 0, 'Length'], value='Track 1 length'),
 			Field(['tracks', 0, 'Authors', 0], value='Carl II'),
@@ -92,7 +92,7 @@ class TestRequest(unittest.TestCase):
 
 	def prepareStandDifferentTypes(self):
 		"""Prepare DB with several objects and different value types"""
-		self.db.processRequest(ModifyRequest('1', [
+		self.id1 = self.db.processRequest(ModifyRequest(None, [
 			Field(['name'], 'Album 1'),
 
 			Field(['tracks', 0, 'Name'], 'Track 1 name'),
@@ -120,7 +120,7 @@ class TestRequest(unittest.TestCase):
 			Field(['meta', 7], b'Swordsman')
 			]))
 
-		self.db.processRequest(ModifyRequest('2', [
+		self.id2 = self.db.processRequest(ModifyRequest(None, [
 			Field(['name'], 'Album 2'),
 
 			Field(['tracks', 0, 'Name'], 'Track 3 name'),
@@ -143,7 +143,7 @@ class TestRequest(unittest.TestCase):
 			Field(['tracks', 2, 'Rating'], None)
 			]))
 
-		self.db.processRequest(ModifyRequest('3', [
+		self.id3 = self.db.processRequest(ModifyRequest(None, [
 			Field(['name'], 'Album 3'),
 
 			Field(['tracks', 0, 'Length'], None),

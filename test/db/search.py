@@ -27,7 +27,7 @@ class Search(TestRequest):
 			)
 		)))
 
-		self.checkRequestResult(res, ['5'])
+		self.checkRequestResult(res, [self.id5])
 
 	def testConditionOr(self):
 		"""Check complex condition with Or operator"""
@@ -43,7 +43,7 @@ class Search(TestRequest):
 			)
 		)))
 
-		self.checkRequestResult(res, ['2', '3'])
+		self.checkRequestResult(res, [self.id2, self.id3])
 
 	def testConditionInvert(self):
 		"""Check operation of inversion flag in condition"""
@@ -59,7 +59,7 @@ class Search(TestRequest):
 			)
 		)))
 
-		self.checkRequestResult(res, ['1'])
+		self.checkRequestResult(res, [self.id1])
 
 	def testConditionInvertInRootAnd(self):
 		"""Check if inversion flag works in the root of condition with AND"""
@@ -76,7 +76,7 @@ class Search(TestRequest):
 		invert=True
 		)))
 
-		self.checkRequestResult(res, ['2', '3', '4', '5'])
+		self.checkRequestResult(res, [self.id2, self.id3, self.id4, self.id5])
 
 	def testConditionInvertInRootOr(self):
 		"""Check if inversion flag works in the root of condition with OR"""
@@ -93,7 +93,7 @@ class Search(TestRequest):
 		invert=True
 		)))
 
-		self.checkRequestResult(res, ['3'])
+		self.checkRequestResult(res, [self.id3])
 
 	def testConditionRegexp(self):
 		"""Check operation of regexp-based condition"""
@@ -109,7 +109,7 @@ class Search(TestRequest):
 			)
 		)))
 
-		self.checkRequestResult(res, ['1', '2', '3', '4'])
+		self.checkRequestResult(res, [self.id1, self.id2, self.id3, self.id4])
 
 	def testConditionRegexpOnPart(self):
 		"""Regression for bug when there was match() instead of search() in regexp callback"""
@@ -119,7 +119,7 @@ class Search(TestRequest):
 			Field('name'), SearchRequest.REGEXP, 'ex'
 			)))
 
-		self.checkRequestResult(res, ['1', '5'])
+		self.checkRequestResult(res, [self.id1, self.id5])
 
 	def testNonExistentFieldInAndCondition(self):
 		"""Check that condition on non-existent field works with And operator"""
@@ -155,7 +155,7 @@ class Search(TestRequest):
 			)
 		)))
 
-		self.checkRequestResult(res, ['1', '5'])
+		self.checkRequestResult(res, [self.id1, self.id5])
 
 	def testListOneLevel(self):
 		"""Check searching in simple lists"""
@@ -165,7 +165,7 @@ class Search(TestRequest):
 			Field(['tracks', None]), SearchRequest.EQ, 'Track 2'
 			)))
 
-		self.checkRequestResult(res, ['1', '2'])
+		self.checkRequestResult(res, [self.id1, self.id2])
 
 	def testListOneLevelDefinedPosition(self):
 		"""Check search when some of positions in lists are defined"""
@@ -175,7 +175,7 @@ class Search(TestRequest):
 			Field(['tracks', 1]), SearchRequest.EQ, 'Track 2'
 			)))
 
-		self.checkRequestResult(res, ['1'])
+		self.checkRequestResult(res, [self.id1])
 
 	def testNestedList(self):
 		"""Check searching in nested lists"""
@@ -185,7 +185,7 @@ class Search(TestRequest):
 			Field(['tracks', 0, 'Authors', None]), SearchRequest.EQ, 'Alex'
 			)))
 
-		self.checkRequestResult(res, ['1'])
+		self.checkRequestResult(res, [self.id1])
 
 	def testNestedListRegexp(self):
 		"""Check regexp searching in nested lists"""
@@ -195,7 +195,7 @@ class Search(TestRequest):
 			Field(['tracks', 1, 'Authors', None]), SearchRequest.REGEXP, 'Carl'
 			)))
 
-		self.checkRequestResult(res, ['1'])
+		self.checkRequestResult(res, [self.id1])
 
 	def testNestedListComplexCondition(self):
 		"""Check search in nested list with complex condition"""
@@ -211,7 +211,7 @@ class Search(TestRequest):
 			)
 		)))
 
-		self.checkRequestResult(res, ['1'])
+		self.checkRequestResult(res, [self.id1])
 
 	def testConditionGreater(self):
 		"""Test that '>' search condition"""
@@ -223,7 +223,7 @@ class Search(TestRequest):
 			Field(['tracks', None, 'Length']), SearchRequest.GT, 310
 			)))
 
-		self.checkRequestResult(res, ['2'])
+		self.checkRequestResult(res, [self.id2])
 
 		# check work for strings
 
@@ -231,7 +231,7 @@ class Search(TestRequest):
 			Field(['tracks', None, 'Name']), SearchRequest.GT, 'Track 2 name'
 			)))
 
-		self.checkRequestResult(res, ['2'])
+		self.checkRequestResult(res, [self.id2])
 
 	def testConditionGreaterOrEqual(self):
 		"""Test that '>=' search condition"""
@@ -243,7 +243,7 @@ class Search(TestRequest):
 			Field(['tracks', None, 'Length']), SearchRequest.GTE, 300
 			)))
 
-		self.checkRequestResult(res, ['1', '2'])
+		self.checkRequestResult(res, [self.id1, self.id2])
 
 		# check work for strings
 
@@ -251,7 +251,7 @@ class Search(TestRequest):
 			Field(['tracks', None, 'Name']), SearchRequest.GTE, 'Track 2 name'
 			)))
 
-		self.checkRequestResult(res, ['1', '2'])
+		self.checkRequestResult(res, [self.id1, self.id2])
 
 	def testConditionLower(self):
 		"""Test that '<' search condition"""
@@ -263,7 +263,7 @@ class Search(TestRequest):
 			Field(['tracks', None, 'Length']), SearchRequest.LT, 300
 			)))
 
-		self.checkRequestResult(res, ['2'])
+		self.checkRequestResult(res, [self.id2])
 
 		# check work for strings
 
@@ -271,7 +271,7 @@ class Search(TestRequest):
 			Field(['tracks', None, 'Name']), SearchRequest.LT, 'Track 3 name'
 			)))
 
-		self.checkRequestResult(res, ['1'])
+		self.checkRequestResult(res, [self.id1])
 
 	def testConditionLowerOrEqual(self):
 		"""Test that '<=' search condition"""
@@ -283,7 +283,7 @@ class Search(TestRequest):
 			Field(['tracks', None, 'Volume']), SearchRequest.LTE, 27.0
 			)))
 
-		self.checkRequestResult(res, ['2'])
+		self.checkRequestResult(res, [self.id2])
 
 		# check work for strings
 
@@ -291,7 +291,7 @@ class Search(TestRequest):
 			Field(['tracks', None, 'Name']), SearchRequest.LTE, 'Track 3 name'
 			)))
 
-		self.checkRequestResult(res, ['1', '2'])
+		self.checkRequestResult(res, [self.id1, self.id2])
 
 	def testNoneTypeSimpleCondition(self):
 		"""Test that search condition works for NULL value"""
@@ -301,14 +301,14 @@ class Search(TestRequest):
 			Field(['tracks', None, 'Volume']), SearchRequest.EQ, None
 			)))
 
-		self.checkRequestResult(res, ['2'])
+		self.checkRequestResult(res, [self.id2])
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			Field(['tracks', None, 'Volume']), SearchRequest.EQ, None,
 			invert=True
 			)))
 
-		self.checkRequestResult(res, ['1', '3'])
+		self.checkRequestResult(res, [self.id1, self.id3])
 
 	def testNoneTypeComplexCondition(self):
 		"""Test that complex search condition works for NULL value"""
@@ -324,7 +324,7 @@ class Search(TestRequest):
 			)
 		)))
 
-		self.checkRequestResult(res, ['3'])
+		self.checkRequestResult(res, [self.id3])
 
 def get_class():
 	return Search

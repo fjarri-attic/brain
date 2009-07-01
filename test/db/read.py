@@ -17,7 +17,7 @@ class Read(TestRequest):
 		"""Check the operation of whole object reading"""
 		self.prepareStandNoList()
 
-		res = self.db.processRequest(ReadRequest('1'))
+		res = self.db.processRequest(ReadRequest(self.id1))
 		self.checkRequestResult(res, [
 			Field('name', 'Alex'),
 			Field('phone', '1111')])
@@ -26,7 +26,7 @@ class Read(TestRequest):
 		"""Check the operation of reading some chosen fields"""
 		self.prepareStandNoList()
 
-		res = self.db.processRequest(ReadRequest('1', [Field('name')]))
+		res = self.db.processRequest(ReadRequest(self.id1, [Field('name')]))
 		self.checkRequestResult(res, [
 			Field('name', 'Alex'),
 			])
@@ -35,7 +35,7 @@ class Read(TestRequest):
 		"""Check that non-existent field is ignored during read"""
 		self.prepareStandNoList()
 
-		res = self.db.processRequest(ReadRequest('1', [Field('name'), Field('age')]))
+		res = self.db.processRequest(ReadRequest(self.id1, [Field('name'), Field('age')]))
 		self.checkRequestResult(res, [
 			Field('name', 'Alex')
 			])
@@ -44,7 +44,7 @@ class Read(TestRequest):
 		"""Check that list values can be read"""
 		self.prepareStandSimpleList()
 
-		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None])]))
+		res = self.db.processRequest(ReadRequest(self.id1, [Field(['tracks', None])]))
 		self.checkRequestResult(res, [
 			Field(['tracks', 0], 'Track 1'),
 			Field(['tracks', 1], 'Track 2'),
@@ -55,7 +55,7 @@ class Read(TestRequest):
 		"""Check that read request works properly when some list positions are defined"""
 		self.prepareStandNestedList()
 
-		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None, 'Authors', 0])]))
+		res = self.db.processRequest(ReadRequest(self.id1, [Field(['tracks', None, 'Authors', 0])]))
 		self.checkRequestResult(res, [
 			Field(['tracks', 0, 'Authors', 0], 'Alex'),
 			Field(['tracks', 1, 'Authors', 0], 'Carl I')
@@ -65,7 +65,7 @@ class Read(TestRequest):
 		"""Check that one can read from list in the middle of the hierarchy"""
 		self.prepareStandNestedList()
 
-		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None, 'Name'])]))
+		res = self.db.processRequest(ReadRequest(self.id1, [Field(['tracks', None, 'Name'])]))
 		self.checkRequestResult(res, [
 			Field(['tracks', 0, 'Name'], 'Track 1 name'),
 			Field(['tracks', 1, 'Name'], 'Track 2 name')
@@ -81,7 +81,7 @@ class Read(TestRequest):
 		"""Check that different values of types can be read at once by mask"""
 		self.prepareStandDifferentTypes()
 
-		res = self.db.processRequest(ReadRequest('1', [Field(['meta', None])]))
+		res = self.db.processRequest(ReadRequest(self.id1, [Field(['meta', None])]))
 
 		self.checkRequestResult(res, [
 			Field(['meta', 0], 'Pikeman'),
@@ -98,7 +98,7 @@ class Read(TestRequest):
 		"""Check that subtree can be read at once"""
 		self.prepareStandNestedList()
 
-		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', 0, 'Authors'])]))
+		res = self.db.processRequest(ReadRequest(self.id1, [Field(['tracks', 0, 'Authors'])]))
 
 		self.checkRequestResult(res, [
 			Field(['tracks', 0, 'Authors', 0], 'Alex'),
@@ -109,7 +109,7 @@ class Read(TestRequest):
 		"""Check that several subtrees can be read at once by mask"""
 		self.prepareStandNestedList()
 
-		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None, 'Authors'])]))
+		res = self.db.processRequest(ReadRequest(self.id1, [Field(['tracks', None, 'Authors'])]))
 
 		self.checkRequestResult(res, [
 			Field(['tracks', 0, 'Authors', 0], 'Alex'),
@@ -121,7 +121,7 @@ class Read(TestRequest):
 		"""Check that several complex structures can be read at once"""
 		self.prepareStandDifferentTypes()
 
-		res = self.db.processRequest(ReadRequest('1', [
+		res = self.db.processRequest(ReadRequest(self.id1, [
 			Field(['tracks', 0]),
 			Field(['meta'])
 		]))

@@ -15,7 +15,7 @@ class Modify(TestRequest):
 
 	def testBlankObjectAddition(self):
 		"""Check that object without fields can be created"""
-		self.addObject('1')
+		self.addObject()
 
 	def testAdditionNoCheck(self):
 		"""Check simple object addition"""
@@ -28,17 +28,17 @@ class Modify(TestRequest):
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			Field('phone'), SearchRequest.EQ, '1111')))
 
-		self.checkRequestResult(res, ['1', '5'])
+		self.checkRequestResult(res, [self.id1, self.id5])
 
 	def testAdditionSameFields(self):
 		"""Check that several equal fields are handled correctly"""
-		self.db.processRequest(ModifyRequest('1', [
+		self.id1 = self.db.processRequest(ModifyRequest(None, [
 			Field(['tracks'], value='Track 1'),
 			Field(['tracks'], value='Track 2'),
 			Field(['tracks'], value='Track 3')]
 			))
 
-		res = self.db.processRequest(ReadRequest('1', [Field(['tracks'])]))
+		res = self.db.processRequest(ReadRequest(self.id1, [Field(['tracks'])]))
 
 		# only last field value should be saved
 		self.checkRequestResult(res, [
@@ -49,7 +49,7 @@ class Modify(TestRequest):
 		"""Check object modification"""
 		self.prepareStandNoList()
 
-		self.db.processRequest(ModifyRequest('1', [
+		self.db.processRequest(ModifyRequest(self.id1, [
 			Field('name', 'Zack')
 		]))
 
@@ -57,43 +57,46 @@ class Modify(TestRequest):
 		"""Object modification with results checking"""
 		self.prepareStandNoList()
 
-		self.db.processRequest(ModifyRequest('1', [
+		self.db.processRequest(ModifyRequest(self.id1, [
 			Field('name', 'Zack')
 		]))
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			Field('name'), SearchRequest.EQ, 'Zack')))
 
-		self.checkRequestResult(res, ['1'])
+		self.checkRequestResult(res, [self.id1])
 
 	def testModificationAddsField(self):
 		"""Check that object modification can add a new field"""
 		self.prepareStandNoList()
 
-		self.db.processRequest(ModifyRequest('1', [
+		self.db.processRequest(ModifyRequest(self.id1, [
 			Field('age', '66')
 		]))
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			Field('age'), SearchRequest.EQ, '66')))
 
-		self.checkRequestResult(res, ['1'])
+		self.checkRequestResult(res, [self.id1])
 
 	def testModificationAddsFieldTwice(self):
 		"""Regression test for non-updating specification"""
 		self.prepareStandNoList()
 
 		# Add new field to object
-		self.db.processRequest(ModifyRequest('1', [
+		self.db.processRequest(ModifyRequest(self.id1, [
 			Field('age', '66')
 		]))
 
 		# Delete object. If specification was not updated,
 		# new field is still in database
-		self.db.processRequest(DeleteRequest('1'))
+		self.db.processRequest(DeleteRequest(self.id1))
 
 		# Add object again
-		self.addObject('1', {'name': 'Alex', 'phone': '1111'})
+		self.db.processRequest(ModifyRequest(self.id1, [
+			Field(['name'], 'Alex'),
+			Field(['phone'], '1111')
+		]))
 
 		# Check that field from old object is not there
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
@@ -105,27 +108,27 @@ class Modify(TestRequest):
 		"""Check that modification preserves existing fields"""
 		self.prepareStandNoList()
 
-		self.db.processRequest(ModifyRequest('2', [
+		self.db.processRequest(ModifyRequest(self.id2, [
 			Field('name', 'Zack')
 		]))
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			Field('phone'), SearchRequest.EQ, '2222')))
 
-		self.checkRequestResult(res, ['2'])
+		self.checkRequestResult(res, [self.id2])
 
 	def testListAdditions(self):
 		"""Regression test for erroneous modify results for lists"""
 		self.prepareStandSimpleList()
 
-		res = self.db.processRequest(ModifyRequest('1',
+		res = self.db.processRequest(ModifyRequest(self.id1,
 			[
 				Field(['tracks', 3], 'Track 4'),
 				Field(['tracks', 4], 'Track 5')
 			]
 		))
 
-		res = self.db.processRequest(ReadRequest('1', [Field(['tracks', None])]))
+		res = self.db.processRequest(ReadRequest(self.id1, [Field(['tracks', None])]))
 		self.checkRequestResult(res, [
 			Field(['tracks', 0], 'Track 1'),
 			Field(['tracks', 1], 'Track 2'),
@@ -138,7 +141,7 @@ class Modify(TestRequest):
 		"""Check that modification request creates necessary hierarchy"""
 		self.prepareStandNestedList()
 
-		self.db.processRequest(ModifyRequest('1', [
+		self.db.processRequest(ModifyRequest(self.id1, [
 			Field(['tracks', 2, 'Lyrics', 0], 'Blablabla')
 		]))
 
@@ -147,7 +150,7 @@ class Modify(TestRequest):
 		self.prepareStandNestedList()
 
 		self.failUnlessRaises(DatabaseError, self.db.processRequest,
-			ModifyRequest('1', [Field(['tracks', 2, 0], 'Blablabla')])
+			ModifyRequest(self.id1, [Field(['tracks', 2, 0], 'Blablabla')])
 		)
 
 	def testMapOnTopOfList(self):
@@ -155,21 +158,21 @@ class Modify(TestRequest):
 		self.prepareStandNestedList()
 
 		self.failUnlessRaises(DatabaseError, self.db.processRequest,
-			ModifyRequest('1', [Field(['tracks', 'some_name'], 'Blablabla')])
+			ModifyRequest(self.id1, [Field(['tracks', 'some_name'], 'Blablabla')])
 		)
 
 	def testModificationAddsNewField(self):
 		"""Check that modification can add totally new field to object"""
 		self.prepareStandNoList()
 
-		self.db.processRequest(ModifyRequest('1', [
+		self.db.processRequest(ModifyRequest(self.id1, [
 			Field('title', 'Mr')
 		]))
 
 		res = self.db.processRequest(SearchRequest(SearchRequest.Condition(
 			Field('title'), SearchRequest.EQ, 'Mr')))
 
-		self.checkRequestResult(res, ['1'])
+		self.checkRequestResult(res, [self.id1])
 
 	def testAdditionDifferentTypes(self):
 		"""Test that values of different types can be added"""
@@ -182,8 +185,8 @@ class Modify(TestRequest):
 			reference_fields.append(fld)
 
 		# check that all of them can be added and read
-		self.db.processRequest(ModifyRequest('1', reference_fields))
-		res = self.db.processRequest(ReadRequest('1'))
+		self.id1 = self.db.processRequest(ModifyRequest(None, reference_fields))
+		res = self.db.processRequest(ReadRequest(self.id1))
 		self.checkRequestResult(res, reference_fields)
 
 	def testModificationChangesFieldType(self):
@@ -192,10 +195,14 @@ class Modify(TestRequest):
 		reference_fields = []
 
 		# create fields with values of different types
+		self.id1 = None
 		for value in values:
 			fld = Field('fld', value)
-			self.db.processRequest(ModifyRequest('1', [fld]))
-			res = self.db.processRequest(ReadRequest('1'))
+			if self.id1 is None:
+				self.id1 = self.db.processRequest(ModifyRequest(None, [fld]))
+			else:
+				self.db.processRequest(ModifyRequest(self.id1, [fld]))
+			res = self.db.processRequest(ReadRequest(self.id1))
 			self.checkRequestResult(res, [fld])
 
 	def testSeveralTypesInOneField(self):
@@ -203,21 +210,21 @@ class Modify(TestRequest):
 		Check that different objects can store values
 		of different types in the same field
 		"""
-		objects = {
-			'1': [Field('fld', 1)],
-			'2': [Field('fld', 'text')],
-			'3': [Field('fld', 1.234)],
-			'4': [Field('fld', b'\x00\x01')]
-		}
+		objects = [
+			[Field('fld', 1)],
+			[Field('fld', 'text')],
+			[Field('fld', 1.234)],
+			[Field('fld', b'\x00\x01')]
+		]
 
 		# create objects
-		for id in objects:
-			self.db.processRequest(ModifyRequest(id, objects[id]))
+		ids_and_objects = [(self.db.processRequest(ModifyRequest(None, fields)), fields)
+			for fields in objects]
 
 		# check that objects can be read
-		for id in objects:
+		for id, fields in ids_and_objects:
 			res = self.db.processRequest(ReadRequest(id))
-			self.checkRequestResult(res, objects[id])
+			self.checkRequestResult(res, fields)
 
 	def testSeveralTypesInList(self):
 		"""Check that list can store values of different types"""
@@ -228,21 +235,21 @@ class Modify(TestRequest):
 			Field(['vals', 3], b'Zack')
 		]
 
-		self.db.processRequest(ModifyRequest('1', fields))
+		self.id1 = self.db.processRequest(ModifyRequest(None, fields))
 
-		res = self.db.processRequest(ReadRequest('1'))
+		res = self.db.processRequest(ReadRequest(self.id1))
 
 		self.checkRequestResult(res, fields)
 
 	def testMapOnTopOfMapValue(self):
 		"""Check that map can be written on top of existing value"""
-		self.db.processRequest(ModifyRequest('1', [
+		self.id1 = self.db.processRequest(ModifyRequest(None, [
 			Field(['fld1'], value='val1'),
 			Field(['fld1', 'fld2', 'fld3'], value=2),
 			Field(['fld1', 'fld2', 'fld4'], value='a')
 			]))
 
-		res = self.db.processRequest(ReadRequest('1'))
+		res = self.db.processRequest(ReadRequest(self.id1))
 
 		self.checkRequestResult(res, [
 			Field(['fld1', 'fld2', 'fld3'], 2),
@@ -251,13 +258,13 @@ class Modify(TestRequest):
 
 	def testMapOnTopOfListElement(self):
 		"""Check that map can be written on top of existing list element"""
-		self.db.processRequest(ModifyRequest('1', [
+		self.id1 = self.db.processRequest(ModifyRequest(None, [
 			Field(['fld1', 0], value='val1'),
 			Field(['fld1', 1], value='val2'),
 			Field(['fld1', 1, 'fld3'], value=2)
 			]))
 
-		res = self.db.processRequest(ReadRequest('1'))
+		res = self.db.processRequest(ReadRequest(self.id1))
 
 		self.checkRequestResult(res, [
 			Field(['fld1', 0], value='val1'),
@@ -266,13 +273,13 @@ class Modify(TestRequest):
 
 	def testListOnTopOfListElement(self):
 		"""Check that list can be written on top of existing list element"""
-		self.db.processRequest(ModifyRequest('1', [
+		self.id1 = self.db.processRequest(ModifyRequest(None, [
 			Field(['fld1', 0], value='val1'),
 			Field(['fld1', 1], value='val2'),
 			Field(['fld1', 1, 0], value=2)
 			]))
 
-		res = self.db.processRequest(ReadRequest('1'))
+		res = self.db.processRequest(ReadRequest(self.id1))
 
 		self.checkRequestResult(res, [
 			Field(['fld1', 0], value='val1'),
@@ -281,12 +288,12 @@ class Modify(TestRequest):
 
 	def testNoneValue(self):
 		"""Check basic support of Null values"""
-		self.db.processRequest(ModifyRequest('1', [
+		self.id1 = self.db.processRequest(ModifyRequest(None, [
 			Field(['fld1', 0], value=None),
 			Field(['fld1', 1], value=1)
 		]))
 
-		res = self.db.processRequest(ReadRequest('1'))
+		res = self.db.processRequest(ReadRequest(self.id1))
 
 		self.checkRequestResult(res, [
 			Field(['fld1', 0], value=None),
@@ -298,16 +305,16 @@ class Modify(TestRequest):
 		Regression test, showing that it is necessary to check all possible
 		value types when modifying value in list
 		"""
-		self.db.processRequest(ModifyRequest('1', [
+		self.id1 = self.db.processRequest(ModifyRequest(None, [
 			Field(['fld1', 0], value=1),
 			Field(['fld1', 1], value='a')
 		]))
 
-		self.db.processRequest(ModifyRequest('1', [
+		self.db.processRequest(ModifyRequest(self.id1, [
 			Field(['fld1', 1], value=2)
 		]))
 
-		res = self.db.processRequest(ReadRequest('1'))
+		res = self.db.processRequest(ReadRequest(self.id1))
 
 		self.checkRequestResult(res, [
 			Field(['fld1', 0], value=1),
