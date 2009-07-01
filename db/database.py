@@ -245,7 +245,7 @@ class StructureLayer:
 			self.engine.getNameString(["listsizes"]))
 
 		# types for support tables
-		self.__ID_TYPE = self.engine.getColumnType(str())
+		self.__ID_TYPE = self.engine.getIdType()
 		self.__TEXT_TYPE = self.engine.getColumnType(str())
 		self.__INT_TYPE = self.engine.getColumnType(int())
 
@@ -810,8 +810,17 @@ class LogicLayer:
 
 	def processModifyRequest(self, id, fields):
 
+		if id is None:
+			new_obj = True
+			id = self.engine.getNewId()
+		else:
+			new_obj = False
+
 		for field in fields:
 			self.setFieldValue(id, field)
+
+		if new_obj:
+			return id
 
 	def processDeleteRequest(self, id, fields):
 
