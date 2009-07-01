@@ -113,7 +113,7 @@ class Connection:
 			if isinstance(request, interface.ReadRequest):
 				res.append(fieldsToTree(result))
 			elif isinstance(request, interface.ModifyRequest):
-				res.append(None)
+				res.append(result)
 			elif isinstance(request, interface.InsertRequest):
 				res.append(None)
 			elif isinstance(request, interface.DeleteRequest):
@@ -151,6 +151,10 @@ class Connection:
 	@transacted
 	def search(self, condition):
 		self.requests.append(interface.SearchRequest(condition))
+
+	@transacted
+	def create(self, value, path=None):
+		self.modify(None, value, path)
 
 
 class YamlFacade:
@@ -199,15 +203,16 @@ class YamlFacade:
 
 if __name__ == '__main__':
 	f = Facade()
-	c = f.connect('c:\\gitrepos\\brain\\parse\\test.dat')
+	c = f.connect('c:\\gitrepos\\brain\\parse\\test.dat', open_existing=0)
 
-	c.modify('1', 'RRR', ['name'])
+	i = c.create('RRR', ['name'])
+	print(i)
+	print(c.create('AAA', ['name']))
 	#c.insert('1', ['names', None], 66)
-	c.delete('1', ['name'])
-	print(c.read('1'))
-	print(dir(interface))
+	#c.delete('1', ['name'])
+	print(c.read(i))
 	print(c.search(interface.SearchRequest.Condition(
-		interface.Field(['age']), interface.SearchRequest.EQ, 22
+		interface.Field(['name']), interface.SearchRequest.EQ, 'AAA'
 	)))
 
 	c.disconnect()
