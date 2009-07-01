@@ -39,6 +39,20 @@ class Sqlite3Engine(interface.Engine):
 	def disconnect(self):
 		self.__conn.close()
 
+	def getNewId(self):
+		if not self.tableExists('max_uuid'):
+			self.execute("CREATE TABLE max_uuid (uuid {type})".format(
+				type=self.getIdType()))
+			self.execute("INSERT INTO max_uuid VALUES (0)")
+
+		self.execute("UPDATE max_uuid SET uuid=uuid+1")
+		res = self.execute("SELECT uuid FROM max_uuid")
+
+		return res[0][0]
+
+	def getIdType(self):
+		return self.getColumnType(int())
+
 	def dump(self):
 		"""Dump the whole database to string; used for debug purposes"""
 		print("Dump:")

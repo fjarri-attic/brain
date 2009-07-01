@@ -18,63 +18,71 @@ class Engine:
 	"""Engine layer class interface"""
 
 	def disconnect(self):
-		return NotImplementedError
+		raise NotImplementedError
 
 	def dump(self):
 		"""Dump the whole database to string; used for debug purposes"""
-		return NotImplementedError
+		raise NotImplementedError
 
 	def execute(self, sql_str):
 		"""Execute given SQL query"""
-		return NotImplementedError
+		raise NotImplementedError
 
-	def tableExists(self, name): return NotImplementedError
-	def tableIsEmpty(self, name): return NotImplementedError
-	def deleteTable(self, name): return NotImplementedError
+	def getNewId(self):
+		"""Return new unique ID for this database"""
+		raise NotImplementedError
+
+	def getIdType(self):
+		"""Return type string for IDs used in this database"""
+		raise NotImplementedError
+
+	def tableExists(self, name): raise NotImplementedError
+	def tableIsEmpty(self, name): raise NotImplementedError
+	def deleteTable(self, name): raise NotImplementedError
 
 	def getEmptyCondition(self):
 		"""Returns condition for compound SELECT which evaluates to empty table"""
-		return NotImplementedError
+		raise NotImplementedError
 
 	def getSafeValue(self, s):
 		"""Transform string value so that it could be safely used in queries"""
-		return NotImplementedError
+		raise NotImplementedError
 
 	def getColumnType(self, val):
 		"""Return SQL type for storing given value"""
-		return NotImplementedError
+		raise NotImplementedError
 
 	def getValueClass(self, type_str):
 		"""Return Python class for the given SQL type"""
-		return NotImplementedError
+		raise NotImplementedError
 
 	def getNameString(self, l):
 		"""Get field name from list"""
-		return NotImplementedError
+		raise NotImplementedError
 
 	def getNameList(self, s):
 		"""Get field name list from string"""
-		return NotImplementedError
+		raise NotImplementedError
 
 	def getSafeName(self, s):
 		"""Transform string value so that it could be safely used as table name"""
-		return NotImplementedError
+		raise NotImplementedError
 
 	def getNullValue(self):
 		"""Returns null value to use in queries"""
-		return NotImplementedError
+		raise NotImplementedError
 
 	def begin(self):
 		"""Begin transaction"""
-		return NotImplementedError
+		raise NotImplementedError
 
 	def commit(self):
 		"""Commit current transaction"""
-		return NotImplementedError
+		raise NotImplementedError
 
 	def rollback(self):
 		"""Rollback current transaction"""
-		return NotImplementedError
+		raise NotImplementedError
 
 class Database:
 	"""Database layer class interface"""
