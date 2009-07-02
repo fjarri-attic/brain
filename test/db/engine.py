@@ -270,6 +270,20 @@ class EngineTest(unittest.TestCase):
 
 		self.failUnlessEqual(res, [('b',)])
 
+	def testIdCounter(self):
+		"""Simple check for internal ID counter"""
+		id1 = self.engine.getNewId()
+		id2 = self.engine.getNewId()
+		self.failIfEqual(id1, id2)
+
+	def testIdCounterType(self):
+		"""Check that ID has proper type"""
+		id1 = self.engine.getNewId()
+
+		self.failUnlessEqual(
+			self.engine.getIdType(),
+			self.engine.getColumnType(id1))
+
 def suite():
 	"""Generate test suite for this module"""
 	res = helpers.NamedTestSuite()
