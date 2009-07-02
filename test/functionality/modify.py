@@ -15,6 +15,8 @@ class Modify(TestRequest):
 	def testBlankObjectAddition(self):
 		"""Check that object without fields cannot be created"""
 		self.failUnlessRaises(Exception, self.conn.create)
+		self.conn.create({})
+		self.conn.create([])
 
 	def testModifyNothing(self):
 		"""Check that modification without parameters does nothing"""
