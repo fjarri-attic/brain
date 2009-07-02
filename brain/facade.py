@@ -13,6 +13,9 @@ SIMPLE_TYPES = [
 	bytes
 ]
 
+DB_ENGINES = {
+	'sqlite3': engine.Sqlite3Engine
+}
 
 def flattenHierarchy(data):
 	def flattenNode(node, prefix=[]):
@@ -56,12 +59,14 @@ def fieldsToTree(fields):
 
 	return res[0]
 
-class Facade:
+def connect(path, open_existing=None, engine=None):
 
-	def connect(self, path, open_existing=None):
+	if engine is None: engine = 'sqlite3'
+	if engine not in DB_ENGINES:
+		raise Exception("Unknown DB engine: " + str(engine))
 
-		return Connection(database.SimpleDatabase(
-			engine.Sqlite3Engine, path, open_existing))
+	return Connection(database.SimpleDatabase(
+		DB_ENGINES[engine], path, open_existing))
 
 
 def transacted(func):
@@ -223,8 +228,7 @@ class YamlFacade:
 
 
 if __name__ == '__main__':
-	f = Facade()
-	c = f.connect('test.dat', open_existing=0)
+	c = connect('test.dat', open_existing=0)
 
 	i = c.create('RRR', ['name'])
 	print(i)
