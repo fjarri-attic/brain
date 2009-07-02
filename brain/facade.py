@@ -130,7 +130,10 @@ class Connection:
 
 	@transacted
 	def modify(self, id, value, path=None):
+		# FIXME: in case path and value are None, we should not poke the database at all
+		if path is None and value is None: value = {}
 		if path is None: path = []
+
 		parsed = flattenHierarchy(value)
 		fields = [interface.Field(path + relative_path, val)
 			for relative_path, val in parsed]
