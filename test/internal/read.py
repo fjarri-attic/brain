@@ -75,7 +75,7 @@ class Read(TestRequest):
 		"""Check that read request for non-existing object raises error"""
 		self.prepareStandNoList()
 
-		self.failUnlessRaises(DatabaseError, self.db.processRequest, ReadRequest('6'))
+		self.failUnlessRaises(interface.LogicError, self.db.processRequest, ReadRequest('6'))
 
 	def testSeveralTypesAtOnce(self):
 		"""Check that different values of types can be read at once by mask"""

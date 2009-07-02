@@ -6,10 +6,26 @@ import copy
 # Exceptions
 #
 
-class FormatError(Exception):
+class BrainError(Exception):
+	"""Base class for brain exceptions"""
+	pass
+
+class FormatError(BrainError):
 	"""Request format error exception"""
 	pass
 
+class LogicError(BrainError):
+	"""Signals an error in logic layer"""
+	pass
+
+class StructureError(BrainError):
+	"""Signals an error in structure layer"""
+	pass
+
+class FacadeError(BrainError):
+	"""Signals an error in facade layer"""
+	pass
+	
 # constants for search operators
 AND = "AND"
 OR = "OR"

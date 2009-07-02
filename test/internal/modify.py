@@ -149,7 +149,7 @@ class Modify(TestRequest):
 		"""Check that list cannot be created if map exists on the same level"""
 		self.prepareStandNestedList()
 
-		self.failUnlessRaises(DatabaseError, self.db.processRequest,
+		self.failUnlessRaises(interface.StructureError, self.db.processRequest,
 			ModifyRequest(self.id1, [Field(['tracks', 2, 0], 'Blablabla')])
 		)
 
@@ -157,7 +157,7 @@ class Modify(TestRequest):
 		"""Check that map cannot be created if list exists on the same level"""
 		self.prepareStandNestedList()
 
-		self.failUnlessRaises(DatabaseError, self.db.processRequest,
+		self.failUnlessRaises(interface.StructureError, self.db.processRequest,
 			ModifyRequest(self.id1, [Field(['tracks', 'some_name'], 'Blablabla')])
 		)
 

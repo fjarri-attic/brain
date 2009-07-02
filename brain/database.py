@@ -7,11 +7,6 @@ import copy
 from . import interface
 
 
-class DatabaseError(Exception):
-	"""Request tried to do something conflicting with DB structure"""
-	pass
-
-
 class _InternalField:
 	"""Class for more convenient handling of Field objects"""
 
@@ -182,7 +177,7 @@ class _InternalField:
 
 		# This function makes sense only if self.pointsToListElement() is True
 		if not self.pointsToListElement():
-			raise DatabaseError("Field should point to list element")
+			raise interface.LogicError("Field should point to list element")
 
 		list_elems = self.__getListElements()
 		col_num = len(list_elems) - 1 # index of last column
@@ -196,7 +191,7 @@ class _InternalField:
 
 		# This function makes sense only if self.pointsToListElement() is True
 		if not self.pointsToListElement():
-			raise DatabaseError("Field should point to list element")
+			raise interface.LogicError("Field should point to list element")
 
 		self_copy = _InternalField(self.__engine, self.name)
 		self_copy.name[-1] = None
@@ -353,7 +348,7 @@ class StructureLayer:
 		if l[0][0] < num:
 		# if for some reason counter value is lower than expected, we will raise
 		# exception, because this bug can be hard to catch later
-			raise DatabaseError("Unexpected value of reference counter: " + str(l[0][0]))
+			raise interface.StructureError("Unexpected value of reference counter: " + str(l[0][0]))
 		if l[0][0] == num:
 		# if these references are the last ones, delete this counter
 			self.engine.execute(("DELETE FROM {id_table} " +
@@ -749,9 +744,9 @@ class LogicLayer:
 				elem = relatives[0].name[len(anc.name)]
 
 				if isinstance(last, str) and not isinstance(elem, str):
-					raise DatabaseError("Cannot modify map, when list already exists on this level")
+					raise interface.StructureError("Cannot modify map, when list already exists on this level")
 				if not isinstance(last, str) and isinstance(elem, str):
-					raise DatabaseError("Cannot modify list, when map already exists on this level")
+					raise interface.StructureError("Cannot modify list, when map already exists on this level")
 
 	def addFieldToSpecification(self, id, field):
 		"""Check if field conforms to hierarchy and if yes, add it"""
@@ -836,7 +831,7 @@ class LogicLayer:
 
 		# check if object exists first
 		if not self.structure.objectExists(id):
-			raise DatabaseError("Object " + id + " does not exist")
+			raise interface.LogicError("Object " + id + " does not exist")
 
 		# if list of fields was not given, read all object's fields
 		if fields is None:
@@ -904,7 +899,7 @@ class SimpleDatabase(interface.Database):
 
 	def __init__(self, engine_class, path=None, open_existing=None):
 		if not issubclass(engine_class, interface.Engine):
-			raise DatabaseError("Engine class must be derived from Engine interface")
+			raise interface.LogicError("Engine class must be derived from Engine interface")
 		self.engine = engine_class(path, open_existing)
 		self.structure = StructureLayer(self.engine)
 		self.logic = LogicLayer(self.engine, self.structure)
@@ -987,7 +982,7 @@ class SimpleDatabase(interface.Database):
 			params = (converted_condition,)
 			handler = self.logic.processSearchRequest
 		else:
-			raise DatabaseError("Unknown request type: " + request.__class__.__name__)
+			raise interface.FormatError("Unknown request type: " + request.__class__.__name__)
 
 		return handler, params
 

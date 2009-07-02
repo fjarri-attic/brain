@@ -28,7 +28,7 @@ def flattenHierarchy(data):
 		elif node is None or node.__class__ in SIMPLE_TYPES:
 			return [(prefix, node)]
 		else:
-			raise Exception("Unsupported type: " + node.__type__)
+			raise interface.FacadeError("Unsupported type: " + node.__type__)
 
 	return [(path, value) for path, value in flattenNode(data)]
 
@@ -63,7 +63,7 @@ def connect(path, open_existing=None, engine=None):
 
 	if engine is None: engine = 'sqlite3'
 	if engine not in DB_ENGINES:
-		raise Exception("Unknown DB engine: " + str(engine))
+		raise interface.FacadeError("Unknown DB engine: " + str(engine))
 
 	return Connection(database.SimpleDatabase(
 		DB_ENGINES[engine], path, open_existing))
@@ -111,13 +111,13 @@ class Connection:
 		if not self.transaction:
 			self.transaction = True
 		else:
-			raise Exception("Transaction is already in progress")
+			raise interface.FacadeError("Transaction is already in progress")
 
 	def commit(self):
-	
+
 		if not self.transaction:
-			raise Exception("Transaction is not in progress")
-	
+			raise interface.FacadeError("Transaction is not in progress")
+
 		try:
 			res = self.db.processRequests(self.requests)
 			return self.transformResults(self.requests, res)
@@ -130,7 +130,7 @@ class Connection:
 			self.transaction = False
 			self.requests = []
 		else:
-			raise Exception("Transaction is not in progress")
+			raise interface.FacadeError("Transaction is not in progress")
 
 	def transformResults(self, requests, results):
 		res = []
@@ -203,16 +203,16 @@ class YamlFacade:
 		}
 
 		if not 'type' in request:
-			raise Exception("Request type is missing")
+			raise interface.FacadeError("Request type is missing")
 
 		if not request['type'] in handlers:
-			raise Exception("Unknown request type: " + str(request['type']))
+			raise interface.FacadeError("Unknown request type: " + str(request['type']))
 
 		return handlers[request['type']](request)
 
 	def processConnectRequest(self, request):
 		if not 'path' in request:
-			raise Exception('Database path is missing')
+			raise interface.FacadeError('Database path is missing')
 		path = request['path']
 
 		open_existing = request['connect'] if 'connect' in request else None
@@ -224,7 +224,7 @@ class YamlFacade:
 
 	def processDisonnectRequest(self, request):
 		if not 'session' in request:
-			raise Exception('Session ID is missing')
+			raise interface.FacadeError('Session ID is missing')
 		session = request['session']
 
 		self.sessions[session].disconnect()
