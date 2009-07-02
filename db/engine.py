@@ -23,7 +23,6 @@ class Sqlite3Engine(interface.Engine):
 					raise Exception(path + " was not found")
 			elif open_existing == 0:
 			# recreate DB even if such file already exists
-				print("Here")
 				if os.path.exists(path):
 					os.remove(path)
 
