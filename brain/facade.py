@@ -68,6 +68,22 @@ def connect(path, open_existing=None, engine=None):
 	return Connection(database.SimpleDatabase(
 		DB_ENGINES[engine], path, open_existing))
 
+def __transformTuple(*args):
+	print(args)
+	if len(args) == 4:
+		invert = True
+		shift = 1
+	else:
+		invert = False
+		shift = 0
+
+	op1 = args[shift]
+	op2 = args[2 + shift]
+
+	op1 = (self.__transformTuple(*op1) if isinstance(op1, tuple) else interface.Field(op1))
+	op2 = (self.__transformTuple(*op2) if isinstance(op2, tuple) else op2)
+
+	return interface.SearchRequest.Condition(op1, args[1 + shift], op2, invert)
 
 def transacted(func):
 	def handler(obj, *args, **kwds):
@@ -98,6 +114,10 @@ class Connection:
 			raise Exception("Transaction is already in progress")
 
 	def commit(self):
+	
+		if not self.transaction:
+			raise Exception("Transaction is not in progress")
+	
 		try:
 			res = self.db.processRequests(self.requests)
 			return self.transformResults(self.requests, res)
@@ -157,33 +177,14 @@ class Connection:
 		self.requests.append(interface.DeleteRequest(id, [interface.Field(path)]))
 
 	@transacted
-	def search_raw(self, condition):
+	def _search(self, condition):
 		self.requests.append(interface.SearchRequest(condition))
 
-	def __transformTuple(self, *args):
-		print(args)
-		if len(args) == 4:
-			invert = True
-			shift = 1
-		else:
-			invert = False
-			shift = 0
-
-		op1 = args[shift]
-		op2 = args[2 + shift]
-
-		op1 = (self.__transformTuple(*op1) if isinstance(op1, tuple) else interface.Field(op1))
-		op2 = (self.__transformTuple(*op2) if isinstance(op2, tuple) else op2)
-
-		return interface.SearchRequest.Condition(op1, args[1 + shift], op2, invert)
-
-	@transacted
 	def search(self, *args):
-		self.search_raw(self.__transformTuple(*args))
+		return self._search(__transformTuple(*args))
 
-	@transacted
 	def create(self, value, path=None):
-		self.modify(None, value, path)
+		return self.modify(None, value, path)
 
 
 class YamlFacade:
