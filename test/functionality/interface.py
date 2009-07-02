@@ -6,7 +6,7 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import unittest
 from test import helpers
-from db.interface import *
+from brain.interface import *
 
 class Format(unittest.TestCase):
 	"""Class which contains all request format testcases"""

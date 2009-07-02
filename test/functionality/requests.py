@@ -5,7 +5,7 @@ scriptdir, scriptfile = os.path.split(sys.argv[0])
 sys.path.append(os.path.join(scriptdir, ".."))
 
 import unittest
-from db.interface import *
+from brain.interface import *
 
 def _compareLists(l1, l2):
 	"""Check if all elements of the first list exist in the second list"""

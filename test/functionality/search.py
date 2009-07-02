@@ -6,9 +6,9 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import unittest
 from test import helpers
-from test.db.requests import TestRequest
-from db.database import *
-from db.interface import *
+from test.functionality.requests import TestRequest
+from brain.database import *
+from brain.interface import *
 
 class Search(TestRequest):
 	"""Test operation of SearchRequest"""

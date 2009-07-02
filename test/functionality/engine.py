@@ -6,7 +6,7 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import unittest
 from test import helpers
-from db.engine import *
+from brain.engine import *
 
 def getParameterized(base_class, name_prefix, db_class, db_file_name):
 	"""Get named test suite with predefined setUp()"""

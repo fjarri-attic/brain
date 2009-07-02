@@ -5,8 +5,8 @@ scriptdir, scriptfile = os.path.split(sys.argv[0])
 sys.path.append(os.path.join(scriptdir, ".."))
 
 import unittest
+from brain.xmlparser import ElemTreeParser
 from test import helpers
-from parse.parser import *
 
 class Parsing(unittest.TestCase):
 	"""Test operation of XML parser"""

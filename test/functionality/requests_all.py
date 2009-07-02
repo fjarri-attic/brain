@@ -6,9 +6,9 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import unittest
 from test import helpers
-from test.db import delete, insert, modify, read, search, requests
-from db.database import *
-from db.engine import *
+from test.functionality import delete, insert, modify, read, search, requests
+from brain.database import *
+from brain.engine import *
 
 def suite():
 	"""Generate test suite for this module"""
