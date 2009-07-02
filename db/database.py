@@ -5,7 +5,6 @@ import re
 import copy
 
 from . import interface
-from . import engine
 
 
 class DatabaseError(Exception):
