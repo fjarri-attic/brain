@@ -3,7 +3,7 @@ scriptdir, scriptfile = os.path.split(sys.argv[0])
 sys.path.append(os.path.join(scriptdir, ".."))
 
 from db import interface, database, engine
-import yaml
+#import yaml
 import functools
 
 SIMPLE_TYPES = [
@@ -149,8 +149,29 @@ class Connection:
 		self.requests.append(interface.DeleteRequest(id, [interface.Field(path)]))
 
 	@transacted
-	def search(self, condition):
+	def search_raw(self, condition):
 		self.requests.append(interface.SearchRequest(condition))
+
+	def __transformTuple(self, *args):
+		print(args)
+		if len(args) == 4:
+			invert = True
+			shift = 1
+		else:
+			invert = False
+			shift = 0
+
+		op1 = args[shift]
+		op2 = args[2 + shift]
+
+		op1 = (self.__transformTuple(*op1) if isinstance(op1, tuple) else interface.Field(op1))
+		op2 = (self.__transformTuple(*op2) if isinstance(op2, tuple) else op2)
+
+		return interface.SearchRequest.Condition(op1, args[1 + shift], op2, invert)
+
+	@transacted
+	def search(self, *args):
+		self.search_raw(self.__transformTuple(*args))
 
 	@transacted
 	def create(self, value, path=None):
@@ -203,7 +224,7 @@ class YamlFacade:
 
 if __name__ == '__main__':
 	f = Facade()
-	c = f.connect('c:\\gitrepos\\brain\\parse\\test.dat', open_existing=0)
+	c = f.connect('test.dat', open_existing=0)
 
 	i = c.create('RRR', ['name'])
 	print(i)
@@ -211,8 +232,6 @@ if __name__ == '__main__':
 	#c.insert('1', ['names', None], 66)
 	#c.delete('1', ['name'])
 	print(c.read(i))
-	print(c.search(interface.SearchRequest.Condition(
-		interface.Field(['name']), interface.SearchRequest.EQ, 'AAA'
-	)))
+	print(c.search(['name'], interface.EQ, 'AAA'))
 
 	c.disconnect()
