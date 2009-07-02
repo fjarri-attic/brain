@@ -6,7 +6,7 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import unittest
 from test import helpers
-from test.functionality import delete, insert, modify, read, search, requests
+from test.internal import delete, insert, modify, read, search, requests
 from brain.database import *
 from brain.engine import *
 
