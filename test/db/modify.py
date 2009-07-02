@@ -321,5 +321,18 @@ class Modify(TestRequest):
 			Field(['fld1', 1], value=2)
 			])
 
+	def testObjectCreation(self):
+		"""Check that passing blank ID to ModifyRequest creates new element"""
+		self.id1 = self.db.processRequest(ModifyRequest(None, [
+			Field(['fld1', 0], value=1)
+		]))
+
+		res = self.db.processRequest(ReadRequest(self.id1))
+
+		self.checkRequestResult(res, [
+			Field(['fld1', 0], value=1)
+			])
+
+
 def get_class():
 	return Modify
