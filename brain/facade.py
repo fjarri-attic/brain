@@ -28,7 +28,7 @@ def flattenHierarchy(data):
 		elif node is None or node.__class__ in SIMPLE_TYPES:
 			return [(prefix, node)]
 		else:
-			raise interface.FacadeError("Unsupported type: " + node.__type__)
+			raise interface.FacadeError("Unsupported type: " + node.__class__.__name__)
 
 	return [(path, value) for path, value in flattenNode(data)]
 
@@ -68,8 +68,7 @@ def connect(path, open_existing=None, engine=None):
 	return Connection(database.SimpleDatabase(
 		DB_ENGINES[engine], path, open_existing))
 
-def __transformTuple(*args):
-	print(args)
+def _transformTuple(*args):
 	if len(args) == 4:
 		invert = True
 		shift = 1
@@ -80,8 +79,8 @@ def __transformTuple(*args):
 	op1 = args[shift]
 	op2 = args[2 + shift]
 
-	op1 = (self.__transformTuple(*op1) if isinstance(op1, tuple) else interface.Field(op1))
-	op2 = (self.__transformTuple(*op2) if isinstance(op2, tuple) else op2)
+	op1 = (self._transformTuple(*op1) if isinstance(op1, tuple) else interface.Field(op1))
+	op2 = (self._transformTuple(*op2) if isinstance(op2, tuple) else op2)
 
 	return interface.SearchRequest.Condition(op1, args[1 + shift], op2, invert)
 
@@ -173,15 +172,17 @@ class Connection:
 			id, interface.Field(path), fields))
 
 	@transacted
-	def delete(self, id, path):
-		self.requests.append(interface.DeleteRequest(id, [interface.Field(path)]))
+	def delete(self, id, path=None):
+		self.requests.append(interface.DeleteRequest(id,
+			[interface.Field(path)] if path is not None else None
+		))
 
 	@transacted
 	def _search(self, condition):
 		self.requests.append(interface.SearchRequest(condition))
 
 	def search(self, *args):
-		return self._search(__transformTuple(*args))
+		return self._search(_transformTuple(*args))
 
 	def create(self, value, path=None):
 		return self.modify(None, value, path)
