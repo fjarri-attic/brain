@@ -1,0 +1,10 @@
+# constants for search operators
+AND = "AND"
+OR = "OR"
+EQ = "=="
+REGEXP = "=~"
+LT = "<"
+GT = ">"
+LTE = "<="
+GTE = ">="
+NOT = "NOT"
