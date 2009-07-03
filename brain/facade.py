@@ -161,7 +161,7 @@ class Connection:
 	@transacted
 	def read(self, id, path=None):
 		if path is not None:
-			path = interface.Field(path)
+			path = [interface.Field(path)]
 		self.requests.append(interface.ReadRequest(id, path))
 
 	@transacted
