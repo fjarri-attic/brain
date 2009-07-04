@@ -6,7 +6,7 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import unittest
 from test import helpers
-from test.internal import read, search, requests
+from test.internal import search, requests
 from brain.database import *
 from brain.engine import *
 
@@ -18,7 +18,7 @@ def suite():
 		('memory.sqlite3', SimpleDatabase, Sqlite3Engine, None),
 	]
 
-	modules = [read, search]
+	modules = [search]
 
 	for parameter in parameters:
 		for module in modules:
