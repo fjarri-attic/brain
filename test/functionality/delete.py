@@ -8,7 +8,6 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import brain
 import brain.op as op
-from test import helpers
 from test.functionality.requests import TestRequest
 
 class Delete(TestRequest):
