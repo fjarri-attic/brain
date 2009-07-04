@@ -45,7 +45,7 @@ class TestRequest(unittest.TestCase):
 		self.id1 = self.conn.create({'tracks': [
 				{'Name': 'Track 1 name', 'Length': 'Track 1 length',
 					'Authors': ['Alex', 'Bob']},
-				{'Name': 'Track 1 name', 'Authors': ['Carl I']},
+				{'Name': 'Track 2 name', 'Authors': ['Carl I']},
 				{'Lyrics': ['Lalala']}
 			]})
 
