@@ -137,7 +137,6 @@ def flattenHierarchy(data):
 
 res = p.parseRequest(r)
 
-print(res)
 #l = flattenHierarchy((value, data), '.')
 #	print(repr(path) + ": " + repr(value))
 
