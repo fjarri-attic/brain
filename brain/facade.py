@@ -81,8 +81,8 @@ def _transformTuple(*args):
 	op1 = args[shift]
 	op2 = args[2 + shift]
 
-	op1 = (self._transformTuple(*op1) if isinstance(op1, tuple) else interface.Field(op1))
-	op2 = (self._transformTuple(*op2) if isinstance(op2, tuple) else op2)
+	op1 = (_transformTuple(*op1) if isinstance(op1, tuple) else interface.Field(op1))
+	op2 = (_transformTuple(*op2) if isinstance(op2, tuple) else op2)
 
 	return interface.SearchRequest.Condition(op1, args[1 + shift], op2, invert)
 
