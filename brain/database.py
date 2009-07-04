@@ -861,16 +861,19 @@ class LogicLayer:
 
 		return list_res
 
-	def processInsertRequest(self, id, target_field, fields, one_position):
+	def processInsertRequest(self, id, target_field, fields, insert_many=False):
 
-		def enumerate(fields_list, col_num, starting_num, one_position=False):
+		def enumerate(fields_list, col_num, starting_num, insert_many):
 			"""Enumerate given column in list of fields"""
 			counter = starting_num
 			for field in fields_list:
 				# FIXME: Hide .name usage in _InternalField
-				field.name[col_num] = counter
-				if not one_position:
+				if insert_many:
+					for fld in field:
+						fld.name[col_num] = counter
 					counter += 1
+				else:
+					field.name[col_num] = counter
 
 		# FIXME: Hide .name usage in _InternalField
 		target_col = len(target_field.name) - 1 # last column in name of target field
@@ -878,18 +881,33 @@ class LogicLayer:
 		max = self.structure.getMaxListIndex(id, target_field)
 		if max is None:
 		# list does not exist yet
-			enumerate(fields, target_col, 0, one_position)
+			enumerate(fields, target_col, 0, insert_many)
+			if insert_many:
+				temp = []
+				for flds in fields:
+					temp += flds
+				fields = temp
 		# FIXME: Hide .name usage in _InternalField
 		elif target_field.name[target_col] is None:
 		# list exists and we are inserting elements to the end
 			starting_num = max + 1
-			enumerate(fields, target_col, starting_num, one_position)
+			enumerate(fields, target_col, starting_num, insert_many)
+			if insert_many:
+				temp = []
+				for flds in fields:
+					temp += flds
+				fields = temp
 		else:
 		# list exists and we are inserting elements to the beginning or to the middle
 			self.renumber(id, target_field,
-				(1 if one_position else len(fields)))
+				(1 if not insert_many else len(fields)))
 			# FIXME: Hide .name usage in _InternalField
-			enumerate(fields, target_col, target_field.name[target_col], one_position)
+			enumerate(fields, target_col, target_field.name[target_col], insert_many)
+			if insert_many:
+				temp = []
+				for flds in fields:
+					temp += flds
+				fields = temp
 
 		self.processModifyRequest(id, fields)
 
@@ -949,6 +967,9 @@ class SimpleDatabase(interface.Database):
 		if hasattr(request, 'fields'):
 			converted_fields = convertFields(request.fields, self.engine)
 
+		if hasattr(request, 'field_groups'):
+			converted_groups = [convertFields(fields, self.engine) for fields in request.field_groups]
+
 		if hasattr(request, 'condition'):
 			converted_condition = copy.deepcopy(request.condition)
 			convertCondition(converted_condition, self.engine)
@@ -971,8 +992,16 @@ class SimpleDatabase(interface.Database):
 			for field in converted_fields:
 				field.name = request.target_field.name + field.name
 
-			params = (request.id, converted_target,
-				converted_fields, request.one_position)
+			params = (request.id, converted_target, converted_fields)
+			handler = self.logic.processInsertRequest
+		elif isinstance(request, interface.InsertManyRequest):
+
+			# fields to insert have relative names
+			for field in converted_groups:
+				for fld in field:
+					fld.name = request.target_field.name + fld.name
+
+			params = (request.id, converted_target,	converted_groups, True)
 			handler = self.logic.processInsertRequest
 		elif isinstance(request, interface.DeleteRequest):
 			params = (request.id, converted_fields)

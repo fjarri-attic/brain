@@ -25,7 +25,7 @@ class StructureError(BrainError):
 class FacadeError(BrainError):
 	"""Signals an error in facade layer"""
 	pass
-	
+
 # constants for search operators
 AND = "AND"
 OR = "OR"
@@ -199,7 +199,7 @@ class ReadRequest(_BaseRequest):
 class InsertRequest(_BaseRequest):
 	"""Request for insertion into list of fields"""
 
-	def __init__(self, id, target_field, fields, one_position=False):
+	def __init__(self, id, target_field, fields):
 
 		# target field should be an object of Field
 		if not isinstance(target_field, Field):
@@ -224,10 +224,15 @@ class InsertRequest(_BaseRequest):
 		# Initialize fields
 		_BaseRequest.__init__(self, id, fields)
 		self.target_field = copy.deepcopy(target_field)
-		self.one_position = one_position
 
 	def __str__(self):
 		return _BaseRequest.__str__(self) + ", target: " + str(self.target_field)
+
+class InsertManyRequest:
+	def __init__(self, id, target_field, field_groups):
+		self.id = id
+		self.target_field = target_field
+		self.field_groups = field_groups
 
 class SearchRequest:
 	"""Request for searching in database"""

@@ -35,7 +35,7 @@ def flattenHierarchy(data):
 def fieldsToTree(fields):
 
 	if len(fields) == 0: return []
-	
+
 	res = []
 
 	def saveTo(obj, ptr, path, value):
@@ -142,6 +142,8 @@ class Connection:
 				res.append(result)
 			elif isinstance(request, interface.InsertRequest):
 				res.append(None)
+			elif isinstance(request, interface.InsertManyRequest):
+				res.append(None)
 			elif isinstance(request, interface.DeleteRequest):
 				res.append(None)
 			elif isinstance(request, interface.SearchRequest):
@@ -167,11 +169,18 @@ class Connection:
 		self.requests.append(interface.ReadRequest(id, path))
 
 	@transacted
-	def insert(self, id, path, value=None):
+	def insert(self, id, path, value):
 		parsed = flattenHierarchy(value)
 		fields = [interface.Field(relative_path, val) for relative_path, val in parsed]
 		self.requests.append(interface.InsertRequest(
 			id, interface.Field(path), fields))
+
+	@transacted
+	def insert_many(self, id, path, values):
+		self.requests.append(interface.InsertManyRequest(
+			id, interface.Field(path),
+			[[interface.Field(relative_path, val) for relative_path, val in flattenHierarchy(value)]
+				for value in values]))
 
 	@transacted
 	def delete(self, id, path=None):
