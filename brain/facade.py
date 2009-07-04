@@ -242,16 +242,3 @@ class YamlFacade:
 		self.sessions[session].disconnect()
 		del self.sessions[session]
 
-
-if __name__ == '__main__':
-	c = connect('test.dat', open_existing=0)
-
-	i = c.create('RRR', ['name'])
-	print(i)
-	print(c.create('AAA', ['name']))
-	#c.insert('1', ['names', None], 66)
-	#c.delete('1', ['name'])
-	print(c.read(i))
-	print(c.search(['name'], interface.EQ, 'AAA'))
-
-	c.disconnect()
