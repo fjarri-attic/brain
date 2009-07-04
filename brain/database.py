@@ -831,7 +831,7 @@ class LogicLayer:
 
 		# check if object exists first
 		if not self.structure.objectExists(id):
-			raise interface.LogicError("Object " + id + " does not exist")
+			raise interface.LogicError("Object " + str(id) + " does not exist")
 
 		# if list of fields was not given, read all object's fields
 		if fields is None:
