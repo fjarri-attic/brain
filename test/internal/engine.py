@@ -5,7 +5,7 @@ scriptdir, scriptfile = os.path.split(sys.argv[0])
 sys.path.append(os.path.join(scriptdir, ".."))
 
 import unittest
-from test import helpers
+import helpers
 from brain.engine import *
 
 def getParameterized(base_class, name_prefix, db_class, db_file_name):

@@ -7,8 +7,8 @@ scriptdir, scriptfile = os.path.split(sys.argv[0])
 sys.path.append(os.path.join(scriptdir, ".."))
 
 import brain
-from test import helpers
-from test.functionality import delete, insert, modify, read, search, requests
+import helpers
+from functionality import delete, insert, modify, read, search, requests
 
 def suite():
 	"""Generate test suite for this module"""

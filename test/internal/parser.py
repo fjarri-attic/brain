@@ -6,7 +6,7 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import unittest
 from brain.xmlparser import ElemTreeParser
-from test import helpers
+import helpers
 
 class Parsing(unittest.TestCase):
 	"""Test operation of XML parser"""
