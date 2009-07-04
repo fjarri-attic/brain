@@ -34,6 +34,8 @@ def flattenHierarchy(data):
 
 def fieldsToTree(fields):
 
+	if len(fields) == 0: return []
+	
 	res = []
 
 	def saveTo(obj, ptr, path, value):
