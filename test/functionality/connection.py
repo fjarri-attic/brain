@@ -18,13 +18,27 @@ class Connection(TestRequest):
 		# we cannot test autocommit on in-memory database
 		if self.db == None: return
 
-		obj = self.conn.create({'name': 'Alex', 'age': 22})
+		data = {'name': 'Alex', 'age': 22}
+		obj = self.conn.create(data)
 
 		# now open another connection to this database and check that
 		# changes were really made
 		conn2 = brain.connect(self.db)
 		res = conn2.read(obj)
-		self.assertEqual(res, {'name': 'Alex', 'age': 22})
+		self.assertEqual(res, data)
+
+	def testAutocommitRollbacksOnError(self):
+		"""Check that in autocommit mode there will be rollback if action raises exception"""
+		data = {'name': 'Alex', 'friends': ['Bob', 'Carl']}
+		obj = self.conn.create(data)
+
+		# this should raise a error, because we are trying
+		# to create map where there is already a list
+		self.assertRaises(brain.StructureError, self.conn.modify,
+			obj, 2, ['friends', 'fld'])
+
+		res = self.conn.read(obj)
+		self.assertEqual(res, data)
 
 
 def get_class():
