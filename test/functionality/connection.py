@@ -27,7 +27,7 @@ class Connection(TestRequest):
 		res = conn2.read(obj)
 		self.assertEqual(res, data)
 
-	def testAutocommitRollbacksOnError(self):
+	def testAutocommitRollsBackOnError(self):
 		"""Check that in autocommit mode there will be rollback if action raises exception"""
 		data = {'name': 'Alex', 'friends': ['Bob', 'Carl']}
 		obj = self.conn.create(data)
