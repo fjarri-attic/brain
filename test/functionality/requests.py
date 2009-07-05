@@ -13,7 +13,11 @@ def getParameterized(base_class, name_prefix, *params):
 	"""Get named test suite with predefined setUp()"""
 	class Derived(base_class):
 		def setUp(self):
+			self.db = params[0]
 			self.conn = brain.connect(*params)
+
+		def tearDown(self):
+			self.conn.disconnect()
 
 	Derived.__name__ = name_prefix + "." + base_class.__name__
 
