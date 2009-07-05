@@ -112,6 +112,16 @@ class Modify(TestRequest):
 		self.assertRaises(brain.StructureError, self.conn.modify,
 			self.id1, 'Blablabla', ['tracks', 'some_name'])
 
+	def testListOnTopOfRootMap(self):
+		"""Check that root list cannot be created if map exists on the same level"""
+		obj = self.conn.create({'name': 'Alex', 'age': 22})
+		self.assertRaises(brain.StructureError, self.conn.modify, obj, 2, [0])
+
+	def testMapOnTopOfRootList(self):
+		"""Check that root map cannot be created if list exists on the same level"""
+		obj = self.conn.create(['abc', 'def'])
+		self.assertRaises(brain.StructureError, self.conn.modify, obj, 2, ['ghi'])
+
 	def testModificationAddsNewField(self):
 		"""Check that modification can add totally new field to object"""
 		self.prepareStandNoList()
@@ -225,6 +235,7 @@ class Modify(TestRequest):
 		obj = self.conn.modify(None, data)
 		res = self.conn.read(obj)
 		self.assertEqual(res, data)
+
 
 def get_class():
 	return Modify

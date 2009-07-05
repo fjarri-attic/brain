@@ -718,7 +718,7 @@ class LogicLayer:
 			# otherwise just delete values using given field mask
 			self.structure.deleteValues(id, field)
 
-	def checkForConflicts(self, id, field):
+	def removeConflicts(self, id, field):
 		"""
 		Check that adding this field does not break the database structure, namely:
 		given field can either contain value, or list, or map, not several at once
@@ -727,26 +727,38 @@ class LogicLayer:
 		# check all ancestor fields in hierarchy
 		for anc, last in field.ancestors(include_self=False):
 
-			# delete all values which names are a part of the name of field to add
+			# delete all values whose names are a part of the name of field to add
 			# in other words, no named maps or lists
 			types = self.structure.getValueTypes(id, anc)
 			for type in types:
 				anc.type_str = type
 				self.deleteField(id, anc)
 
-			# Get all fields with names, starting from name_copy, excluding
-			# the one whose name equals name_copy
-			relatives = self.structure.getFieldsList(id, anc, exclude_self=True)
+			self.checkForListAndMapConflicts(id, anc, last)
 
-			# we have to check only first field in list
-			# if there are no conflicts, other fields do not conflict too
-			if len(relatives) > 0:
-				elem = relatives[0].name[len(anc.name)]
+		# check separately for root level lists and maps
+		self.checkForListAndMapConflicts(id, None, field.name[0])
 
-				if isinstance(last, str) and not isinstance(elem, str):
-					raise interface.StructureError("Cannot modify map, when list already exists on this level")
-				if not isinstance(last, str) and isinstance(elem, str):
-					raise interface.StructureError("Cannot modify list, when map already exists on this level")
+	def checkForListAndMapConflicts(self, id, field, last):
+		"""
+		Check that adding this field will not mean adding list elements to map
+		or map keys to list. If field is None, root level is checked.
+		"""
+
+		# Get all fields with names, starting from name_copy, excluding
+		# the one whose name equals name_copy
+		relatives = self.structure.getFieldsList(id, field, exclude_self=True)
+
+		# we have to check only first field in list
+		# if there are no conflicts, other fields do not conflict too
+		if len(relatives) > 0:
+			elem = relatives[0].name[len(field.name) if field is not None else 0]
+
+			if isinstance(last, str) and not isinstance(elem, str):
+				raise interface.StructureError("Cannot modify map, when list already exists on this level")
+			if not isinstance(last, str) and isinstance(elem, str):
+				raise interface.StructureError("Cannot modify list, when map already exists on this level")
+
 
 	def addFieldToSpecification(self, id, field):
 		"""Check if field conforms to hierarchy and if yes, add it"""
@@ -757,7 +769,7 @@ class LogicLayer:
 		# if adding a new field, ensure that there will be
 		# no conflicts in database structure
 		if len(types) == 0:
-			self.checkForConflicts(id, field)
+			self.removeConflicts(id, field)
 
 		self.structure.increaseRefcount(id, field, new_type=(not field.type_str in types))
 
