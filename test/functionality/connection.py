@@ -120,6 +120,52 @@ class Connection(TestRequest):
 		self.assertEqual(results[4], None)
 		self.assertEqual(results[5], None)
 
+	def testSyncTransactionNoErrors(self):
+		"""Check synchronous transaction operation when there are no errors"""
+
+		data1 = {'name': 'Alex', 'friends': ['Bob', 'Carl']}
+		data2 = {'name': 'Roy', 'friends': ['Ned', 'Mark']}
+
+		self.conn.begin_sync()
+		obj1 = self.conn.create(data1)
+		obj2 = self.conn.create(data2)
+		obj1_data = self.conn.read(obj1)
+		obj2_data = self.conn.read(obj2)
+		self.conn.commit()
+
+		self.assertEqual(obj1_data, data1)
+		self.assertEqual(obj2_data, data2)
+
+	def testSyncTransactionRollback(self):
+		"""Check that synchronous transaction operation can be rolled back"""
+		self.prepareStandNoList()
+
+		self.conn.begin_sync()
+		self.conn.modify(self.id1, {'name': 'Zack'})
+		self.conn.rollback()
+
+		# check that rollback really occurred
+		res = self.conn.read(self.id1)
+		self.assertEqual(res, {'name': 'Alex', 'phone': '1111'})
+
+	def testSyncTransactionError(self):
+		"""Check that sync transaction automatically rolls back on error"""
+		self.prepareStandSimpleList()
+
+		self.conn.begin_sync()
+		self.conn.modify(self.id2, {'name': 'Alex'})
+
+		# this will raise an exception
+		self.assertRaises(brain.StructureError, self.conn.modify,
+			self.id1, 0, ['tracks', 'fld'])
+
+		# check that transaction already ended
+		self.assertRaises(brain.FacadeError, self.conn.rollback)
+
+		# check that rollback really occurred
+		res = self.conn.read(self.id2)
+		self.assertEqual(res, {'tracks': ['Track 2', 'Track 1']})
+
 
 def get_class():
 	return Connection
