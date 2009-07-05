@@ -1047,3 +1047,16 @@ class SimpleDatabase(interface.Database):
 	def processRequest(self, request):
 		"""Process a single request"""
 		return self.processRequests([request])[0]
+
+	def processRequestSync(self, request):
+		handler, params = self.prepareRequest(request)
+		return handler(*params)
+
+	def begin(self):
+		self.engine.begin()
+
+	def commit(self):
+		self.engine.commit()
+
+	def rollback(self):
+		self.engine.rollback()

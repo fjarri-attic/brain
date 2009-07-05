@@ -88,12 +88,24 @@ def _transformTuple(*args):
 
 def transacted(func):
 	def handler(obj, *args, **kwds):
-		create_transaction = not obj.transaction
 
-		if create_transaction: obj.begin()
-		func(obj, *args, **kwds)
-		if create_transaction:
-			return obj.commit()[0]
+		if obj.sync:
+			func(obj, *args, **kwds)
+			try:
+				res = obj.db.processRequestSync(obj.requests[0])
+				processed = obj.transformResults(obj.requests, [res])
+			except:
+				obj.rollback()
+				raise
+			finally:
+				obj.requests = []
+			return processed[0]
+		else:
+			create_transaction = not obj.transaction
+			if create_transaction: obj.begin()
+			func(obj, *args, **kwds)
+			if create_transaction:
+				return obj.commit()[0]
 
 	return handler
 
@@ -103,6 +115,7 @@ class Connection:
 	def __init__(self, db):
 		self.db = db
 		self.transaction = False
+		self.sync = False
 		self.requests = []
 
 	def disconnect(self):
@@ -111,6 +124,15 @@ class Connection:
 	def begin(self):
 		if not self.transaction:
 			self.transaction = True
+			self.sync = False
+		else:
+			raise interface.FacadeError("Transaction is already in progress")
+
+	def begin_sync(self):
+		if not self.transaction:
+			self.db.begin()
+			self.transaction = True
+			self.sync = True
 		else:
 			raise interface.FacadeError("Transaction is already in progress")
 
@@ -119,19 +141,32 @@ class Connection:
 		if not self.transaction:
 			raise interface.FacadeError("Transaction is not in progress")
 
-		try:
-			res = self.db.processRequests(self.requests)
-			return self.transformResults(self.requests, res)
-		finally:
-			self.transaction = False
-			self.requests = []
+		self.transaction = False
+		if self.sync:
+			try:
+				self.db.commit()
+			except:
+				self.db.rollback()
+				raise
+			finally:
+				self.sync = False
+		else:
+			try:
+				res = self.db.processRequests(self.requests)
+				return self.transformResults(self.requests, res)
+			finally:
+				self.requests = []
 
 	def rollback(self):
-		if self.transaction:
-			self.transaction = False
-			self.requests = []
-		else:
+
+		if not self.transaction:
 			raise interface.FacadeError("Transaction is not in progress")
+
+		self.transaction = False
+		if self.sync:
+			self.db.rollback()
+		else:
+			self.requests = []
 
 	def transformResults(self, requests, results):
 		res = []
