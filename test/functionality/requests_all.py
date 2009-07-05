@@ -8,7 +8,7 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import brain
 import helpers
-from functionality import delete, insert, modify, read, search, requests
+from functionality import delete, insert, modify, read, search, requests, connection
 
 def suite():
 	"""Generate test suite for this module"""
@@ -18,7 +18,7 @@ def suite():
 		('memory.sqlite3', None, 'sqlite3')
 	]
 
-	modules = [delete, insert, modify, read, search]
+	modules = [delete, insert, modify, read, search, connection]
 
 	for parameter_list in parameters:
 		for module in modules:
