@@ -1,12 +1,16 @@
 """Unit-tests for database layer interface"""
 
+import unittest
+
 import sys, os.path
 scriptdir, scriptfile = os.path.split(sys.argv[0])
 sys.path.append(os.path.join(scriptdir, ".."))
 
-import unittest
+import brain
 import helpers
 from brain.interface import *
+from brain.database import Field
+
 
 class Format(unittest.TestCase):
 	"""Class which contains all request format testcases"""
@@ -15,58 +19,58 @@ class Format(unittest.TestCase):
 
 	def testFieldInitWithStr(self):
 		"""Test field creation with string name"""
-		f = Field('test', '1')
-		self.failUnlessEqual(f.name, ['test'])
+		f = Field(None, 'test', '1')
+		self.assertEqual(f.name, ['test'])
 
 	def testFieldInitWithList(self):
 		"""Test field creation with list name"""
-		f = Field(['test', 1, None], '1')
+		f = Field(None, ['test', 1, None], '1')
 
 	def testFieldInitWithMap(self):
 		"""Test field creation with map name"""
-		self.failUnlessRaises(FormatError, Field, {'test': 1}, '1')
+		self.assertRaises(brain.FormatError, Field, None, {'test': 1}, '1')
 
 	def testFieldInitWithWrongList(self):
 		"""Test field creation with wrong element in name list"""
-		self.failUnlessRaises(FormatError, Field, ['test', 1, [1, 2]], '1')
+		self.assertRaises(brain.FormatError, Field, None, ['test', 1, [1, 2]], '1')
 
 	def testFieldInitWithEmptyName(self):
 		"""Test field creation with empty string as a name"""
-		self.failUnlessRaises(FormatError, Field, '', '1')
+		self.assertRaises(brain.FormatError, Field, None, '', '1')
 
 	def testFieldInitWithNoName(self):
 		"""Test field creation with None as a name"""
-		self.failUnlessRaises(FormatError, Field, None, '1')
+		self.assertRaises(brain.FormatError, Field, None, None, '1')
 
 	def testFieldCopiesList(self):
 		"""Regression for bug when Field did not copy initializing list"""
 		l = ['test', 1]
-		f = Field(l, '1')
+		f = Field(None, l, '1')
 		l[1] = 2
-		self.failUnlessEqual(f.name[1], 1)
+		self.assertEqual(f.name[1], 1)
 
 	def testFieldEq(self):
 		"""Test == operator for equal fields"""
-		f1 = Field(['test', 1, None], 1)
-		f2 = Field(['test', 1, None], 1)
-		self.failUnlessEqual(f1, f2)
+		f1 = Field(None, ['test', 1, None], 1)
+		f2 = Field(None, ['test', 1, None], 1)
+		self.assertEqual(f1, f2)
 
 	def testFieldNonEqNames(self):
 		"""Test == operator for fields with different names"""
-		f1 = Field(['test1', 1, None], 1)
-		f2 = Field(['test2', 2, None], 1)
+		f1 = Field(None, ['test1', 1, None], 1)
+		f2 = Field(None, ['test2', 2, None], 1)
 		self.failIfEqual(f1, f2)
 
 	def testFieldNonEqValues(self):
 		"""Test == operator for fields with different values"""
-		f1 = Field(['test1', 1, None], 1)
-		f2 = Field(['test2', 1, None], 2)
+		f1 = Field(None, ['test1', 1, None], 1)
+		f2 = Field(None, ['test2', 1, None], 2)
 		self.failIfEqual(f1, f2)
-	
+
 	def testFieldEmptyName(self):
 		"""Check that field cannot have empty name"""
-		self.failUnlessRaises(FormatError, Field, None, 1)
-		self.failUnlessRaises(FormatError, Field, "", 1)
+		self.assertRaises(brain.FormatError, Field, None, None, 1)
+		self.assertRaises(brain.FormatError, Field, None, "", 1)
 
 	# Tests for common part of field-oriented requests
 
@@ -76,61 +80,61 @@ class Format(unittest.TestCase):
 
 	def testRequestOneField(self):
 		"""Test that request cannot be created if field is given as is"""
-		self.failUnlessRaises(FormatError, ModifyRequest,
-			'1', Field('test', 1))
+		self.assertRaises(brain.FormatError, ModifyRequest,
+			'1', Field(None, 'test', 1))
 
 	def testRequestListOfFields(self):
 		"""Test that request can be created from list of fields"""
-		r = ModifyRequest('1', [Field('test', 1), Field('test', 2)])
+		r = ModifyRequest('1', [Field(None, 'test', 1), Field(None, 'test', 2)])
 
 	def testRequestListOfNonFields(self):
 		"""Test that request cannot be created if one of list elements is not Field"""
-		self.failUnlessRaises(FormatError, ModifyRequest,
-			'1', [Field('test', 1), "aaa"])
+		self.assertRaises(brain.FormatError, ModifyRequest,
+			'1', [Field(None, 'test', 1), "aaa"])
 
 	def testRequestCopiesListOfFiels(self):
 		"""Test that request constructor copies given list of fields"""
-		f = Field('test', 2)
-		l = [Field('test', 1), f]
+		f = Field(None, 'test', 2)
+		l = [Field(None, 'test', 1), f]
 		r = ModifyRequest('1', l)
 
 		f.value = 3
 
-		self.failUnlessEqual(r.fields[1].value, 2)
+		self.assertEqual(r.fields[1].value, 2)
 
 	# Additional checks for InsertRequest
 
 	def testInsertRequestTargetIsNotField(self):
 		"""Test that InsertRequest constructor fails if target is not Field"""
-		self.failUnlessRaises(FormatError, InsertRequest,
-			'1', "aaa", [Field('test', 1)])
+		self.assertRaises(brain.FormatError, InsertRequest,
+			'1', "aaa", [Field(None, 'test', 1)])
 
 	def testInsertRequestCopiesTarget(self):
 		"""Test that InsertRequest constructor clones target field object"""
-		f = Field(['test', 1], 2)
-		r = InsertRequest('1', f, [Field('test', 1)])
+		f = Field(None, ['test', 1], 2)
+		r = InsertRequest('1', f, [Field(None, 'test', 1)])
 
 		f.value = 3
 
-		self.failUnlessEqual(r.target_field.value, 2)
+		self.assertEqual(r.target_field.value, 2)
 
 	def testInsertRequestNotDeterminedTarget(self):
 		"""Test that InsertRequest requires determined target"""
-		self.failUnlessRaises(FormatError, InsertRequest,
-			'1', Field(['test', None, 1]),
-			[Field('test', 1)])
+		self.assertRaises(brain.FormatError, InsertRequest,
+			'1', Field(None, ['test', None, 1]),
+			[Field(None, 'test', 1)])
 
 	def testInsertRequestTargetPointsToMap(self):
 		"""Test that InsertRequest requires target pointing to list"""
-		self.failUnlessRaises(FormatError, InsertRequest,
-			'1', Field(['test', 1, 'aaa']),
-			[Field('test', 1)])
+		self.assertRaises(brain.FormatError, InsertRequest,
+			'1', Field(None, ['test', 1, 'aaa']),
+			[Field(None, 'test', 1)])
 
 	def testInsertRequestNotDeterminedField(self):
 		"""Test that InsertRequest requires determined fields to insert"""
-		self.failUnlessRaises(FormatError, InsertRequest,
-			'1', Field(['test', 1, 'aaa']),
-			[Field('test', None)])
+		self.assertRaises(brain.FormatError, InsertRequest,
+			'1', Field(None, ['test', 1, 'aaa']),
+			[Field(None, 'test', None)])
 
 	# Checks for SearchRequest
 
@@ -138,61 +142,61 @@ class Format(unittest.TestCase):
 		"""Test that properly formed SearchRequest does not raise anything"""
 		SearchRequest(SearchRequest.Condition(
 			SearchRequest.Condition(
-				Field('phone'), SearchRequest.EQ, '1111'
+				Field(None, 'phone'), SearchRequest.EQ, '1111'
 			),
 			SearchRequest.OR,
 			SearchRequest.Condition(
 				SearchRequest.Condition(
-					Field('phone'), SearchRequest.EQ, '1111'
+					Field(None, 'phone'), SearchRequest.EQ, '1111'
 				),
 				SearchRequest.AND,
 				SearchRequest.Condition(
-					Field('blablabla'), SearchRequest.REGEXP, '22', invert=True
+					Field(None, 'blablabla'), SearchRequest.REGEXP, '22', invert=True
 				)
 			)
 		))
 
 	def testSearchRequestLeafOperandIsNotField(self):
 		"""Test that condition raises error if first operand in leaf is not Field"""
-		self.failUnlessRaises(FormatError, SearchRequest.Condition,
+		self.assertRaises(brain.FormatError, SearchRequest.Condition,
 			'phone', SearchRequest.EQ, '1111'
 		)
 
 	def testSearchRequestFirstOperandIsNotCondition(self):
 		"""Test that condition raises error if first operand in node is not Condition"""
-		self.failUnlessRaises(FormatError, SearchRequest.Condition,
-			Field('aaa', 1),
+		self.assertRaises(brain.FormatError, SearchRequest.Condition,
+			Field(None, 'aaa', 1),
 			SearchRequest.AND,
 			SearchRequest.Condition(
-				Field('blablabla'), SearchRequest.REGEXP, '22', invert=True
+				Field(None, 'blablabla'), SearchRequest.REGEXP, '22', invert=True
 			)
 		)
 
 	def testSearchRequestSecondOperandIsNotCondition(self):
 		"""Test that condition raises error if second operand in node is not Condition"""
-		self.failUnlessRaises(FormatError, SearchRequest.Condition,
+		self.assertRaises(brain.FormatError, SearchRequest.Condition,
 			SearchRequest.Condition(
-				Field('blablabla'), SearchRequest.REGEXP, '22', invert=True
+				Field(None, 'blablabla'), SearchRequest.REGEXP, '22', invert=True
 			),
 			SearchRequest.AND,
-			Field('aaa', 1)
+			Field(None, 'aaa', 1)
 		)
 
 	def testSearchRequestWrongConditionOperator(self):
 		"""Test that condition raises error if condition operator is unknown"""
-		self.failUnlessRaises(FormatError, SearchRequest.Condition,
+		self.assertRaises(brain.FormatError, SearchRequest.Condition,
 			SearchRequest.Condition(
-				Field('phone'), SearchRequest.EQ, '1111'
+				Field(None, 'phone'), SearchRequest.EQ, '1111'
 			),
 			'something',
 			SearchRequest.Condition(
-				Field('blablabla'), SearchRequest.EQ, '22', invert=True
+				Field(None, 'blablabla'), SearchRequest.EQ, '22', invert=True
 			)
 		)
 
 	def testSearchRequestWrongComparisonOperator(self):
 		"""Test that condition raises error if comparison operator is unknown"""
-		self.failUnlessRaises(FormatError, SearchRequest.Condition,
+		self.assertRaises(brain.FormatError, SearchRequest.Condition,
 			'phone', 'something', '1111'
 		)
 
@@ -200,48 +204,48 @@ class Format(unittest.TestCase):
 		"""Test that SearchRequest uses deepcopy for given condition"""
 		c = SearchRequest.Condition(
 			SearchRequest.Condition(
-				Field('phone'), SearchRequest.EQ, '1111'
+				Field(None, 'phone'), SearchRequest.EQ, '1111'
 			),
 			SearchRequest.AND,
 			SearchRequest.Condition(
-				Field('blablabla'), SearchRequest.EQ, '22', invert=True
+				Field(None, 'blablabla'), SearchRequest.EQ, '22', invert=True
 			)
 		)
 		r = SearchRequest(c)
 
 		c.operand1.operand1.name = ['name']
 
-		self.failUnlessEqual(r.condition.operand1.operand1.name, ['phone'])
+		self.assertEqual(r.condition.operand1.operand1.name, ['phone'])
 
 	def testSearchRequestConditionCopiesSubconditions(self):
 		"""Test that SearchRequest.Condition uses deepcopy for subconditions"""
 		subc = SearchRequest.Condition(
-				Field('phone'), SearchRequest.EQ, '1111'
+				Field(None, 'phone'), SearchRequest.EQ, '1111'
 			)
 		c = SearchRequest.Condition(
 			subc,
 			SearchRequest.AND,
 			SearchRequest.Condition(
-				Field('blablabla'), SearchRequest.EQ, '22', invert=True
+				Field(None, 'blablabla'), SearchRequest.EQ, '22', invert=True
 			)
 		)
 
 		subc.operand1.name = ['name']
 
-		self.failUnlessEqual(c.operand1.operand1.name, ['phone'])
+		self.assertEqual(c.operand1.operand1.name, ['phone'])
 
 	def testSearchRequestConditionEqSupportedTypes(self):
 		"""Test that all necessary types are supported for equality check"""
 		classes = [str, int, float, bytes]
 
 		for cls in classes:
-			c = SearchRequest.Condition(Field('fld'), SearchRequest.EQ, cls())
+			c = SearchRequest.Condition(Field(None, 'fld'), SearchRequest.EQ, cls())
 
 	def testSearchRequestConditionRegexpSupportedTypes(self):
 		"""Test that only strings and bytearrays are supported for regexps"""
 
 		def construct_condition(cls):
-			return SearchRequest.Condition(Field('fld'), SearchRequest.REGEXP, cls())
+			return SearchRequest.Condition(Field(None, 'fld'), SearchRequest.REGEXP, cls())
 
 		classes = [str, int, float, bytes]
 		supported_classes = [str, bytes]
@@ -250,19 +254,19 @@ class Format(unittest.TestCase):
 			if cls in supported_classes:
 				construct_condition(cls)
 			else:
-				self.failUnlessRaises(FormatError, construct_condition, cls)
-	
+				self.assertRaises(brain.FormatError, construct_condition, cls)
+
 	def testNoneInSearchCondition(self):
 		"""Test that None value can be used in search condition"""
-		
+
 		# check that Nones can be used in equalities
-		SearchRequest.Condition(Field('fld'), SearchRequest.EQ, None)
-		
+		SearchRequest.Condition(Field(None, 'fld'), SearchRequest.EQ, None)
+
 		# check that Nones cannot be used with other operators
 		for op in [SearchRequest.REGEXP, SearchRequest.LT, SearchRequest.LTE,
 				SearchRequest.GT, SearchRequest.GTE]:
-			self.failUnlessRaises(FormatError, SearchRequest.Condition,
-				Field('fld'), op, None)
+			self.assertRaises(brain.FormatError, SearchRequest.Condition,
+				Field(None, 'fld'), op, None)
 
 def suite():
 	"""Generate test suite for this module"""

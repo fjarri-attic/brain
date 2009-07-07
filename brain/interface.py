@@ -2,6 +2,13 @@
 
 import copy
 
+import sys, os.path
+scriptdir, scriptfile = os.path.split(sys.argv[0])
+sys.path.append(os.path.join(scriptdir, ".."))
+
+from brain.field import Field
+
+
 #
 # Exceptions
 #
@@ -119,49 +126,6 @@ class Database:
 #
 # Requests
 #
-
-class Field:
-	"""Structure, representing object field"""
-
-	def __init__(self, name, value=None):
-
-		# check given name
-		if name is None or name == '':
-			raise FormatError("Field name cannot be empty")
-
-		if not isinstance(name, list):
-			name = [name]
-
-		# check that list contains only strings, ints and Nones
-		for elem in name:
-			if not isinstance(elem, str) and \
-					not isinstance(elem, int) and \
-					elem is not None:
-				raise FormatError("Field name list must contain only integers, strings or Nones")
-
-		# check value type
-		if value is not None and not value.__class__ in [int, float, str, bytes]:
-			raise FormatError("Wrong value class: " + str(value.__class__))
-
-		# initialize fields
-		self.value = value
-		self.name = copy.deepcopy(name)
-
-	def __eq__(self, other):
-		if other is None:
-			return False
-
-		if not isinstance(other, Field):
-			return False
-
-		return (self.name == other.name) and (self.value == other.value)
-
-	def __str__(self):
-		return "Field (" + str(self.name) + \
-			(", value=" + repr(self.value) if self.value else "") + ")"
-
-	def __repr__(self):
-		return str(self)
 
 class _BaseRequest:
 	"""Base class for request with common format checks"""

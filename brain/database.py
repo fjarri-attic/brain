@@ -5,213 +5,7 @@ import re
 import copy
 
 from . import interface
-
-
-class _InternalField:
-	"""Class for more convenient handling of Field objects"""
-
-	def __init__(self, engine, name, value=None):
-		self.__engine = engine
-		self.name = name[:]
-		self.__value = value
-
-	@classmethod
-	def fromNameStr(cls, engine, name_str, value=None):
-		"""Create object using stringified name instead of list"""
-
-		# cut prefix 'field' from the resulting list
-		return cls(engine, engine.getNameList(name_str)[1:], value)
-
-	@classmethod
-	def fromField(cls, engine, field):
-		"""Create object using interface.Field instance"""
-		return _InternalField(engine, field.name, field.value)
-
-	def toField(self):
-		"""Create interface.Field object from self"""
-		return interface.Field(self.name, self.__value)
-
-	def ancestors(self, include_self):
-		"""
-		Iterate through all ancestor fields
-		Yields tuple (ancestor, last removed name part)
-		"""
-		name_copy = self.name[:]
-		last = name_copy.pop() if not include_self else None
-		while len(name_copy) > 0:
-			yield _InternalField(self.__engine, name_copy), last
-			last = name_copy.pop()
-
-	def __getListColumnName(self, index):
-		"""Get name of additional list column corresponding to given index"""
-		return "c" + str(index)
-
-	def isNull(self):
-		"""Whether field contains Null value"""
-		return (self.__value is None)
-
-	def __get_type_str(self):
-		"""Returns string with SQL type for stored value"""
-		return self.__engine.getColumnType(self.__value) if not self.isNull() else None
-
-	def __set_type_str(self, type_str):
-		"""Set field type using given value from specification table"""
-		if type_str is None:
-			self.__value = None
-		else:
-			self.__value = self.__engine.getValueClass(type_str)()
-
-	type_str = property(__get_type_str, __set_type_str)
-
-	@property
-	def type_str_as_value(self):
-		"""Returns string with SQL type for stored value"""
-		if not self.isNull():
-			return self.__engine.getSafeValue(self.type_str)
-		else:
-			return self.__engine.getNullValue()
-
-	@property
-	def name_str_no_type(self):
-		"""Returns name string with no type specifier"""
-		return self.__engine.getNameString(['field'] + self.name)
-
-	@property
-	def safe_value(self):
-		"""Returns value in form that can be safely used as value in queries"""
-		return self.__engine.getSafeValue(self.__value)
-
-	@property
-	def name_str(self):
-		"""Returns field name in string form"""
-		return self.__engine.getNameString(['field', self.type_str] + self.name)
-
-	@property
-	def name_as_table(self):
-		"""Returns field name in form that can be safely used as a table name"""
-		return self.__engine.getSafeName(self.name_str)
-
-	@property
-	def name_as_value(self):
-		"""Returns field name in form that can be safely used as value in queries"""
-		return self.__engine.getSafeValue(self.name_str)
-
-	@property
-	def name_as_value_no_type(self):
-		return self.__engine.getSafeValue(self.name_str_no_type)
-
-	@property
-	def columns_query(self):
-		"""Returns string with additional values list necessary to query the value of this field"""
-		numeric_columns = filter(lambda x: not isinstance(x, str), self.name)
-		counter = 0
-		l = []
-		for column in numeric_columns:
-			if column is None:
-				l.append(self.__getListColumnName(counter))
-			counter += 1
-
-		# if value is null, this condition will be used alone,
-		# so there's no need in leading comma
-		return (('' if self.isNull() else ', ') + ', '.join(l) if len(l) > 0 else '')
-
-	@property
-	def columns_condition(self):
-		"""Returns string with condition for operations on given field"""
-
-		# do not skip Nones, because we need them for
-		# getting proper index of list column
-		numeric_columns = filter(lambda x: not isinstance(x, str), self.name)
-		counter = 0
-		l = []
-		for column in numeric_columns:
-			if column is not None:
-				l.append(self.__getListColumnName(counter) +
-					"=" + str(column))
-			counter += 1
-
-		return (' AND '.join([''] + l) if len(l) > 0 else '')
-
-	def getDeterminedName(self, vals):
-		"""Returns name with Nones filled with supplied list of values"""
-		vals_copy = list(vals)
-		func = lambda x: vals_copy.pop(0) if x is None else x
-		return list(map(func, self.name))
-
-	def getCreationStr(self, id_column, value_column, id_type, list_index_type):
-		"""Returns string containing list of columns necessary to create field table"""
-		counter = 0
-		res = ""
-		for elem in self.name:
-			if not isinstance(elem, str):
-				res += ", " + self.__getListColumnName(counter) + " " + list_index_type
-				counter += 1
-
-		return ("{id_column} {id_type}" +
-			(", {value_column} {value_type}" if not self.isNull() else "") + res).format(
-			id_column=id_column,
-			value_column=value_column,
-			id_type=id_type,
-			value_type=self.type_str)
-
-	@property
-	def columns_values(self):
-		"""Returns string with values of list columns that can be used in insertion"""
-		res = ""
-		for elem in self.name:
-			if not isinstance(elem, str):
-				res += ", " + str(elem)
-
-		return res
-
-	def __getListElements(self):
-		"""Returns list of non-string name elements (i.e. corresponding to lists)"""
-		return list(filter(lambda x: not isinstance(x, str), self.name))
-
-	def pointsToListElement(self):
-		"""Returns True if field points to element of the list"""
-		return isinstance(self.name[-1], int)
-
-	def getLastListColumn(self):
-		"""Returns name and value of column corresponding to the last name element"""
-
-		# This function makes sense only if self.pointsToListElement() is True
-		if not self.pointsToListElement():
-			raise interface.LogicError("Field should point to list element")
-
-		list_elems = self.__getListElements()
-		col_num = len(list_elems) - 1 # index of last column
-		col_name = self.__getListColumnName(col_num)
-		col_val = list_elems[col_num]
-		return col_name, col_val
-
-	@property
-	def renumber_condition(self):
-		"""Returns condition for renumbering after deletion of this element"""
-
-		# This function makes sense only if self.pointsToListElement() is True
-		if not self.pointsToListElement():
-			raise interface.LogicError("Field should point to list element")
-
-		self_copy = _InternalField(self.__engine, self.name)
-		self_copy.name[-1] = None
-		return self_copy.columns_condition
-
-	@property
-	def name_hashstr(self):
-		"""
-		Returns string that can serve as hash for field name along with its list elements
-		"""
-		name_copy = [repr(x) if x is not None else None for x in self.name]
-		name_copy[-1] = None
-		return self.__engine.getSafeValue(self.__engine.getNameString(name_copy))
-
-	def __str__(self):
-		return "IField (" + repr(self.name) + \
-			(", value=" + repr(self.__value) if self.__value else "") + ")"
-
-	def __repr__(self):
-		return str(self)
+from .field import Field
 
 
 class StructureLayer:
@@ -421,7 +215,7 @@ class StructureLayer:
 		# given field (if any) or just construct result list
 		res = []
 		for elem in l:
-			fld = _InternalField.fromNameStr(self.engine, elem[0])
+			fld = Field.fromNameStr(self.engine, elem[0])
 			if field is not None:
 				fld.name[:len(field.name)] = field.name
 			res.append(fld)
@@ -464,7 +258,7 @@ class StructureLayer:
 			id_column=self.__ID_COLUMN,
 			value_column=self.__VALUE_COLUMN if not field.isNull() else ""))
 
-		# Convert results to list of _InternalFields
+		# Convert results to list of Fields
 		res = []
 		for elem in l:
 			if field.isNull():
@@ -476,7 +270,7 @@ class StructureLayer:
 				list_indexes = elem[1:]
 				value = elem[0]
 
-			res.append(_InternalField(self.engine,
+			res.append(Field(self.engine,
 				field.getDeterminedName(list_indexes), value))
 
 		return res
@@ -655,7 +449,7 @@ class StructureLayer:
 	def deleteValues(self, id, field, condition=None):
 		"""Delete value of given field(s)"""
 
-		field_copy = _InternalField(self.engine, field.name)
+		field_copy = Field(self.engine, field.name)
 
 		# if there is no special condition, take the mask of given field
 		if condition is None:
@@ -862,7 +656,7 @@ class LogicLayer:
 				if res is not None:
 					result_list += res
 
-		return [x.toField() for x in result_list]
+		return result_list
 
 	def processSearchRequest(self, condition):
 		"""Search for all objects using given search condition"""
@@ -879,7 +673,7 @@ class LogicLayer:
 			"""Enumerate given column in list of fields"""
 			counter = starting_num
 			for field in fields_list:
-				# FIXME: Hide .name usage in _InternalField
+				# FIXME: Hide .name usage in Field
 				if insert_many:
 					for fld in field:
 						fld.name[col_num] = counter
@@ -887,7 +681,7 @@ class LogicLayer:
 				else:
 					field.name[col_num] = counter
 
-		# FIXME: Hide .name usage in _InternalField
+		# FIXME: Hide .name usage in Field
 		target_col = len(target_field.name) - 1 # last column in name of target field
 
 		max = self.structure.getMaxListIndex(id, target_field)
@@ -899,7 +693,7 @@ class LogicLayer:
 				for flds in fields:
 					temp += flds
 				fields = temp
-		# FIXME: Hide .name usage in _InternalField
+		# FIXME: Hide .name usage in Field
 		elif target_field.name[target_col] is None:
 		# list exists and we are inserting elements to the end
 			starting_num = max + 1
@@ -913,7 +707,7 @@ class LogicLayer:
 		# list exists and we are inserting elements to the beginning or to the middle
 			self.renumber(id, target_field,
 				(1 if not insert_many else len(fields)))
-			# FIXME: Hide .name usage in _InternalField
+			# FIXME: Hide .name usage in Field
 			enumerate(fields, target_col, target_field.name[target_col], insert_many)
 			if insert_many:
 				temp = []
@@ -940,22 +734,6 @@ class SimpleDatabase(interface.Database):
 	def prepareRequest(self, request):
 		"""Prepare request for processing"""
 
-		def convertFields(fields, engine):
-			"""Convert given fields list to _InternalFields list"""
-			if fields is not None:
-				return [_InternalField.fromField(engine, x) for x in fields]
-			else:
-				return None
-
-		def convertCondition(condition, engine):
-			"""Convert fields in given condition to _InternalFields"""
-			if condition.leaf:
-				condition.operand1 = _InternalField.fromField(
-					engine, condition.operand1)
-			else:
-				convertCondition(condition.operand1, engine)
-				convertCondition(condition.operand2, engine)
-
 		def propagateInversion(condition):
 			"""Propagate inversion flags to the leafs of condition tree"""
 
@@ -975,52 +753,37 @@ class SimpleDatabase(interface.Database):
 				propagateInversion(condition.operand1)
 				propagateInversion(condition.operand2)
 
-		# Convert Fields
-		if hasattr(request, 'fields'):
-			converted_fields = convertFields(request.fields, self.engine)
-
-		if hasattr(request, 'field_groups'):
-			converted_groups = [convertFields(fields, self.engine) for fields in request.field_groups]
-
-		if hasattr(request, 'condition'):
-			converted_condition = copy.deepcopy(request.condition)
-			convertCondition(converted_condition, self.engine)
-
-		if hasattr(request, 'target_field'):
-			converted_target = _InternalField.fromField(
-				self.engine, request.target_field)
-
 		# Prepare handler function and parameters list
 		# (so that we do not have to do it inside a transaction)
 		if isinstance(request, interface.ModifyRequest):
-			params = (request.id, converted_fields)
+			params = (request.id, request.fields)
 			handler = self.logic.processModifyRequest
 		elif isinstance(request, interface.ReadRequest):
-			params = (request.id, converted_fields)
+			params = (request.id, request.fields)
 			handler = self.logic.processReadRequest
 		elif isinstance(request, interface.InsertRequest):
 
 			# fields to insert have relative names
-			for field in converted_fields:
+			for field in request.fields:
 				field.name = request.target_field.name + field.name
 
-			params = (request.id, converted_target, converted_fields)
+			params = (request.id, request.target_field, request.fields)
 			handler = self.logic.processInsertRequest
 		elif isinstance(request, interface.InsertManyRequest):
 
 			# fields to insert have relative names
-			for field in converted_groups:
+			for field in request.field_groups:
 				for fld in field:
 					fld.name = request.target_field.name + fld.name
 
-			params = (request.id, converted_target,	converted_groups, True)
+			params = (request.id, request.target_field, request.field_groups, True)
 			handler = self.logic.processInsertRequest
 		elif isinstance(request, interface.DeleteRequest):
-			params = (request.id, converted_fields)
+			params = (request.id, request.fields)
 			handler = self.logic.processDeleteRequest
 		elif isinstance(request, interface.SearchRequest):
-			propagateInversion(converted_condition)
-			params = (converted_condition,)
+			propagateInversion(request.condition)
+			params = (request.condition,)
 			handler = self.logic.processSearchRequest
 		else:
 			raise interface.FormatError("Unknown request type: " + request.__class__.__name__)

@@ -3,6 +3,7 @@ scriptdir, scriptfile = os.path.split(sys.argv[0])
 sys.path.append(os.path.join(scriptdir, ".."))
 
 from brain import interface, database, engine
+from brain.field import Field
 #import yaml
 import functools
 
@@ -70,7 +71,7 @@ def connect(path, open_existing=None, engine=None):
 	return Connection(database.SimpleDatabase(
 		DB_ENGINES[engine], path, open_existing))
 
-def _transformTuple(*args):
+def _transformTuple(*args, engine):
 	if len(args) == 4:
 		invert = True
 		shift = 1
@@ -81,8 +82,8 @@ def _transformTuple(*args):
 	op1 = args[shift]
 	op2 = args[2 + shift]
 
-	op1 = (_transformTuple(*op1) if isinstance(op1, tuple) else interface.Field(op1))
-	op2 = (_transformTuple(*op2) if isinstance(op2, tuple) else op2)
+	op1 = (_transformTuple(*op1, engine=engine) if isinstance(op1, tuple) else Field(engine, op1))
+	op2 = (_transformTuple(*op2, engine=engine) if isinstance(op2, tuple) else op2)
 
 	return interface.SearchRequest.Condition(op1, args[1 + shift], op2, invert)
 
@@ -193,34 +194,34 @@ class Connection:
 		if path is None: path = []
 
 		parsed = flattenHierarchy(value)
-		fields = [interface.Field(path + relative_path, val)
+		fields = [Field(self.db.engine, path + relative_path, val)
 			for relative_path, val in parsed]
 		self.requests.append(interface.ModifyRequest(id, fields))
 
 	@transacted
 	def read(self, id, path=None):
 		if path is not None:
-			path = [interface.Field(path)]
+			path = [Field(self.db.engine, path)]
 		self.requests.append(interface.ReadRequest(id, path))
 
 	@transacted
 	def insert(self, id, path, value):
 		parsed = flattenHierarchy(value)
-		fields = [interface.Field(relative_path, val) for relative_path, val in parsed]
+		fields = [Field(self.db.engine, relative_path, val) for relative_path, val in parsed]
 		self.requests.append(interface.InsertRequest(
-			id, interface.Field(path), fields))
+			id, Field(self.db.engine, path), fields))
 
 	@transacted
 	def insert_many(self, id, path, values):
 		self.requests.append(interface.InsertManyRequest(
-			id, interface.Field(path),
-			[[interface.Field(relative_path, val) for relative_path, val in flattenHierarchy(value)]
+			id, Field(self.db.engine, path),
+			[[Field(self.db.engine, relative_path, val) for relative_path, val in flattenHierarchy(value)]
 				for value in values]))
 
 	@transacted
 	def delete(self, id, path=None):
 		self.requests.append(interface.DeleteRequest(id,
-			[interface.Field(path)] if path is not None else None
+			[Field(self.db.engine, path)] if path is not None else None
 		))
 
 	@transacted
@@ -228,7 +229,7 @@ class Connection:
 		self.requests.append(interface.SearchRequest(condition))
 
 	def search(self, *args):
-		return self._search(_transformTuple(*args))
+		return self._search(_transformTuple(*args, engine=self.db.engine))
 
 	def create(self, value, path=None):
 		return self.modify(None, value, path)

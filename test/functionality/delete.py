@@ -239,7 +239,7 @@ class Delete(TestRequest):
 		self.assertEqual(res, {'fld1': [1]})
 
 	def testListInTheMiddle(self):
-		"""Regression test for incorrect _InternalField.pointsToListElement() work"""
+		"""Regression test for incorrect Field.pointsToListElement() work"""
 		self.prepareStandNestedList()
 
 		# here pointsToListElements() returned true, because the last list index
