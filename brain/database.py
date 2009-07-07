@@ -6,7 +6,7 @@ import copy
 
 from . import interface
 from .field import Field
-
+from . import op
 
 class StructureLayer:
 	"""Class which is connected to DB engine and incapsulates all SQL queries"""
@@ -346,8 +346,8 @@ class StructureLayer:
 
 			# mapping to SQL operations
 			operations = {
-				interface.SearchRequest.AND: 'INTERSECT',
-				interface.SearchRequest.OR: 'UNION'
+				op.AND: 'INTERSECT',
+				op.OR: 'UNION'
 			}
 
 			return ("SELECT * FROM ({cond1}) {operation} SELECT * FROM ({cond2})"
@@ -373,12 +373,12 @@ class StructureLayer:
 
 		# mapping to SQL comparisons
 		comparisons = {
-			interface.SearchRequest.EQ: '=',
-			interface.SearchRequest.REGEXP: 'REGEXP',
-			interface.SearchRequest.LT: '<',
-			interface.SearchRequest.GT: '>',
-			interface.SearchRequest.LTE: '<=',
-			interface.SearchRequest.GTE: '>='
+			op.EQ: '=',
+			op.REGEXP: 'REGEXP',
+			op.LT: '<',
+			op.GT: '>',
+			op.LTE: '<=',
+			op.GTE: '>='
 		}
 
 		# build query
@@ -745,10 +745,10 @@ class SimpleDatabase(interface.Database):
 					condition.operand1.invert = not condition.operand1.invert
 					condition.operand2.invert = not condition.operand2.invert
 
-					if condition.operator == interface.SearchRequest.AND:
-						condition.operator = interface.SearchRequest.OR
-					elif condition.operator == interface.SearchRequest.OR:
-						condition.operator = interface.SearchRequest.AND
+					if condition.operator == op.AND:
+						condition.operator = op.OR
+					elif condition.operator == op.OR:
+						condition.operator = op.AND
 
 				propagateInversion(condition.operand1)
 				propagateInversion(condition.operand2)

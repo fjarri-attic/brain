@@ -3,6 +3,7 @@ scriptdir, scriptfile = os.path.split(sys.argv[0])
 sys.path.append(os.path.join(scriptdir, ".."))
 
 from brain import interface, database, engine
+import brain.op as op
 from brain.field import Field
 #import yaml
 import functools
@@ -71,7 +72,7 @@ def connect(path, open_existing=None, engine=None):
 	return Connection(database.SimpleDatabase(
 		DB_ENGINES[engine], path, open_existing))
 
-def _transformTuple(*args, engine):
+def _tupleToSearchCondition(*args, engine):
 	if len(args) == 4:
 		invert = True
 		shift = 1
@@ -79,13 +80,40 @@ def _transformTuple(*args, engine):
 		invert = False
 		shift = 0
 
-	op1 = args[shift]
-	op2 = args[2 + shift]
+	operand1 = args[shift]
+	operand2 = args[2 + shift]
+	operator = args[shift + 1]
 
-	op1 = (_transformTuple(*op1, engine=engine) if isinstance(op1, tuple) else Field(engine, op1))
-	op2 = (_transformTuple(*op2, engine=engine) if isinstance(op2, tuple) else op2)
+	comparisons = [op.EQ, op.REGEXP, op.GT, op.GTE, op.LT, op.LTE]
+	operators = [op.AND, op.OR]
 
-	return interface.SearchRequest.Condition(op1, args[1 + shift], op2, invert)
+	if operator in comparisons:
+		# if node operator is a comparison, it is a leaf of condition tree
+		val_class = operand2.__class__
+
+		# check if value type is supported
+		if operand2 is not None and val_class not in SIMPLE_TYPES:
+			raise interface.FormatError("Operand type is not supported: " +
+				val_class.__name__)
+
+		# Nones only support EQ
+		if operand2 is None and operator != op.EQ:
+			raise interface.FormatError("Null value can be only used in equality")
+
+		# regexp is valid only for strings and blobs
+		if operator == op.REGEXP and not val_class in [str, bytes]:
+			raise interface.FormatError("Values of type " + val_class.__name__ +
+				" do not support regexp condition")
+		leaf = True
+	elif operator in operators:
+		leaf = False
+	else:
+		raise interface.FormatError("Wrong operator: " + str(operator))
+
+	operand1 = (_tupleToSearchCondition(*operand1, engine=engine) if isinstance(operand1, tuple) else Field(engine, operand1))
+	operand2 = (_tupleToSearchCondition(*operand2, engine=engine) if isinstance(operand2, tuple) else operand2)
+
+	return interface.SearchRequest.Condition(operand1, args[1 + shift], operand2, invert, leaf)
 
 def transacted(func):
 	def handler(obj, *args, **kwds):
@@ -229,7 +257,7 @@ class Connection:
 		self.requests.append(interface.SearchRequest(condition))
 
 	def search(self, *args):
-		return self._search(_transformTuple(*args, engine=self.db.engine))
+		return self._search(_tupleToSearchCondition(*args, engine=self.db.engine))
 
 	def create(self, value, path=None):
 		return self.modify(None, value, path)

@@ -7,7 +7,7 @@ scriptdir, scriptfile = os.path.split(sys.argv[0])
 sys.path.append(os.path.join(scriptdir, ".."))
 
 from brain.field import Field
-
+import brain.op as op
 
 #
 # Exceptions
@@ -32,17 +32,6 @@ class StructureError(BrainError):
 class FacadeError(BrainError):
 	"""Signals an error in facade layer"""
 	pass
-
-# constants for search operators
-AND = "AND"
-OR = "OR"
-EQ = "=="
-REGEXP = "=~"
-LT = "<"
-GT = ">"
-LTE = "<="
-GTE = ">="
-NOT = "NOT"
 
 #
 # Classes
@@ -201,68 +190,15 @@ class InsertManyRequest:
 class SearchRequest:
 	"""Request for searching in database"""
 
-	# constants for search operators
-	AND = "AND"
-	OR = "OR"
-
-	EQ = "=="
-	REGEXP = "=~"
-	LT = "<"
-	GT = ">"
-	LTE = "<="
-	GTE = ">="
-
 	class Condition:
 		"""Class for main element of search request"""
 
-		def __init__(self, operand1, operator, operand2, invert=False):
-
-			comparisons = [SearchRequest.EQ, SearchRequest.REGEXP,
-				SearchRequest.GT, SearchRequest.GTE,
-				SearchRequest.LT, SearchRequest.LTE]
-			operators = [SearchRequest.AND, SearchRequest.OR]
-
-			if operator in comparisons:
-				# if node operator is a Comparison, it is a leaf of condition tree
-				if not isinstance(operand1, Field):
-					raise FormatError("First operand should be Field, but it is " +
-						operand1.__class__.__name__)
-
-				val_class = operand2.__class__
-
-				# check if value type is supported
-				if operand2 is not None and not val_class in [str, int, float, bytes]:
-					raise FormatError("Operand type is not supported: " +
-						val_class.__name__)
-
-				# Nones only support EQ
-				if operand2 is None and operator != SearchRequest.EQ:
-					raise FormatError("Null value can be only used in equality")
-
-				# regexp is valid only for strings and blobs
-				if operator == SearchRequest.REGEXP and not val_class in [str, bytes]:
-					raise FormatError("Values of type " + val_class.__name__ +
-						" do not support regexp condition")
-
-				self.leaf = True
-			elif operator in operators:
-				# if node operator is an Operator, both operands should be Conditions
-				if not isinstance(operand1, SearchRequest.Condition):
-					raise FormatError("Wrong condition type: " + operand1.__class__.__name__)
-				if not isinstance(operand2, SearchRequest.Condition):
-					raise FormatError("Wrong condition type: " + operand2.__class__.__name__)
-				self.leaf = False
-			else:
-				raise FormatError("Wrong operator: " + str(operator))
-
-			# Initialize fields
-			# Using deepcopy for reliability, because we do not know which part
-			# of complex condition is reusable; user can store and change conditions
-			# without creating SearchRequest
-			self.operand1 = copy.deepcopy(operand1)
-			self.operand2 = copy.deepcopy(operand2)
+		def __init__(self, operand1, operator, operand2, invert=False, leaf=False):
+			self.operand1 = operand1
+			self.operand2 = operand2
 			self.operator = operator
 			self.invert = invert
+			self.leaf = leaf
 
 		def __str__(self):
 			return "(" + str(self.operand1) + " " + \
