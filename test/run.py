@@ -8,7 +8,7 @@ import helpers
 
 def suite():
 	res = helpers.NamedTestSuite()
-	res.addTest(internal.interface.suite())
+#	res.addTest(internal.interface.suite())
 	res.addTest(internal.engine.suite())
 	res.addTest(internal.parser.suite())
 
