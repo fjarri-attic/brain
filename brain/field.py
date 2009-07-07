@@ -9,26 +9,6 @@ class Field:
 
 	def __init__(self, engine, name, value=None):
 		self._engine = engine
-
-		# check given name
-		if name is None or name == '':
-			raise brain.FormatError("Field name cannot be empty")
-
-		if not isinstance(name, list):
-			name = [name]
-
-		# check that list contains only strings, ints and Nones
-		for elem in name:
-			if not isinstance(elem, str) and \
-					not isinstance(elem, int) and \
-					elem is not None:
-				raise brain.FormatError("Field name list must contain only integers, strings or Nones")
-
-		# check value type
-		if value is not None and not value.__class__ in [int, float, str, bytes]:
-			raise brain.FormatError("Wrong value class: " + str(value.__class__))
-
-		# initialize fields
 		self.name = name[:]
 		self.value = value
 
