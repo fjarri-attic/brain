@@ -79,45 +79,7 @@ class Format(unittest.TestCase):
 		"""Test that request can be created without fields"""
 		r = ModifyRequest('1')
 
-	def testRequestOneField(self):
-		"""Test that request cannot be created if field is given as is"""
-		self.assertRaises(brain.FormatError, ModifyRequest,
-			'1', Field(None, ['test'], 1))
-
-	def testRequestListOfFields(self):
-		"""Test that request can be created from list of fields"""
-		r = ModifyRequest('1', [Field(None, ['test'], 1), Field(None, ['test'], 2)])
-
-	def testRequestListOfNonFields(self):
-		"""Test that request cannot be created if one of list elements is not Field"""
-		self.assertRaises(brain.FormatError, ModifyRequest,
-			'1', [Field(None, ['test'], 1), "aaa"])
-
-	def testRequestCopiesListOfFiels(self):
-		"""Test that request constructor copies given list of fields"""
-		f = Field(None, ['test'], 2)
-		l = [Field(None, ['test'], 1), f]
-		r = ModifyRequest('1', l)
-
-		f.value = 3
-
-		self.assertEqual(r.fields[1].value, 2)
-
 	# Additional checks for InsertRequest
-
-	def testInsertRequestTargetIsNotField(self):
-		"""Test that InsertRequest constructor fails if target is not Field"""
-		self.assertRaises(brain.FormatError, InsertRequest,
-			'1', "aaa", [Field(None, ['test'], 1)])
-
-	def testInsertRequestCopiesTarget(self):
-		"""Test that InsertRequest constructor clones target field object"""
-		f = Field(None, ['test', 1], 2)
-		r = InsertRequest('1', f, [Field(None, ['test'], 1)])
-
-		f.value = 3
-
-		self.assertEqual(r.target_field.value, 2)
 
 	def testInsertRequestNotDeterminedTarget(self):
 		"""Test that InsertRequest requires determined target"""
