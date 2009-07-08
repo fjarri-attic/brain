@@ -5,7 +5,7 @@ import re
 import copy
 
 from . import interface
-from .field import Field
+from .interface import Field
 from . import op
 
 class StructureLayer:

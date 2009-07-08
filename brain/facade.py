@@ -4,16 +4,9 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 from brain import interface, database, engine
 import brain.op as op
-from brain.field import Field
+from brain.interface import Field
 #import yaml
 import functools
-
-SIMPLE_TYPES = [
-	int,
-	str,
-	float,
-	bytes
-]
 
 DB_ENGINES = {
 	'sqlite3': engine.Sqlite3Engine
@@ -27,10 +20,8 @@ def flattenHierarchy(data, engine):
 		elif isinstance(node, list):
 			results = [flattenNode(x, list(prefix) + [i]) for i, x in enumerate(node)]
 			return functools.reduce(list.__add__, results, [])
-		elif node is None or node.__class__ in SIMPLE_TYPES:
-			return [(prefix, node)]
 		else:
-			raise interface.FacadeError("Unsupported type: " + node.__class__.__name__)
+			return [(prefix, node)]
 
 	return [Field(engine, path, value) for path, value in flattenNode(data)]
 
@@ -84,36 +75,10 @@ def _tupleToSearchCondition(*args, engine):
 	operand2 = args[2 + shift]
 	operator = args[shift + 1]
 
-	comparisons = [op.EQ, op.REGEXP, op.GT, op.GTE, op.LT, op.LTE]
-	operators = [op.AND, op.OR]
-
-	if operator in comparisons:
-		# if node operator is a comparison, it is a leaf of condition tree
-		val_class = operand2.__class__
-
-		# check if value type is supported
-		if operand2 is not None and val_class not in SIMPLE_TYPES:
-			raise interface.FormatError("Operand type is not supported: " +
-				val_class.__name__)
-
-		# Nones only support EQ
-		if operand2 is None and operator != op.EQ:
-			raise interface.FormatError("Null value can be only used in equality")
-
-		# regexp is valid only for strings and blobs
-		if operator == op.REGEXP and not val_class in [str, bytes]:
-			raise interface.FormatError("Values of type " + val_class.__name__ +
-				" do not support regexp condition")
-		leaf = True
-	elif operator in operators:
-		leaf = False
-	else:
-		raise interface.FormatError("Wrong operator: " + str(operator))
-
 	operand1 = (_tupleToSearchCondition(*operand1, engine=engine) if isinstance(operand1, tuple) else Field(engine, operand1))
 	operand2 = (_tupleToSearchCondition(*operand2, engine=engine) if isinstance(operand2, tuple) else operand2)
 
-	return interface.SearchRequest.Condition(operand1, args[1 + shift], operand2, invert, leaf)
+	return interface.SearchRequest.Condition(operand1, args[1 + shift], operand2, invert)
 
 def transacted(func):
 	def handler(obj, *args, **kwds):
