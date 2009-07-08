@@ -279,7 +279,7 @@ class CreateRequest:
 
 	def __init__(self, data):
 
-		if data is None:
+		if data is None or data == []:
 			raise FormatError("Cannot create empty object")
 
 		self.data = data
