@@ -229,13 +229,6 @@ class Modify(TestRequest):
 		res = self.conn.read(obj)
 		self.assertEqual(res, {'fld1': [1, 2]})
 
-	def testObjectCreation(self):
-		"""Check that passing None to modify() creates new element"""
-		data = {'fld1': [1]}
-		obj = self.conn.modify(None, data)
-		res = self.conn.read(obj)
-		self.assertEqual(res, data)
-
 
 def get_class():
 	return Modify

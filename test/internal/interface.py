@@ -73,11 +73,13 @@ class Format(unittest.TestCase):
 		self.assertRaises(brain.FormatError, Field, None, None, 1)
 		self.assertRaises(brain.FormatError, Field, None, "", 1)
 
-	# Tests for common part of field-oriented requests
-
-	def testRequestNoFields(self):
+	def testModifyRequestNoFields(self):
 		"""Test that request can be created without fields"""
 		r = ModifyRequest('1')
+
+	def testCreateRequestEmptyData(self):
+		"""Test that creation request will fail without data provided"""
+		self.assertRaises(FormatError, CreateRequest, None)
 
 	# Additional checks for InsertRequest
 
