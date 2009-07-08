@@ -217,11 +217,10 @@ class Connection:
 		))
 
 	@transacted
-	def _search(self, condition):
-		self.requests.append(interface.SearchRequest(condition))
-
 	def search(self, *args):
-		return self._search(_tupleToSearchCondition(*args, engine=self.db.engine))
+		self.requests.append(interface.SearchRequest(
+			_tupleToSearchCondition(*args, engine=self.db.engine)
+		))
 
 	@transacted
 	def create(self, data, path=None):
