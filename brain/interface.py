@@ -8,6 +8,15 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import brain.op as op
 
+
+SUPPORTED_TYPES = [
+	int,
+	str,
+	float,
+	bytes
+]
+
+
 #
 # Exceptions
 #
@@ -32,17 +41,10 @@ class FacadeError(BrainError):
 	"""Signals an error in facade layer"""
 	pass
 
+
 #
 # Classes
 #
-
-
-SUPPORTED_TYPES = [
-	int,
-	str,
-	float,
-	bytes
-]
 
 class Field:
 	"""Class for more convenient handling of Field objects"""
@@ -272,76 +274,111 @@ class Field:
 # Requests
 #
 
-class _BaseRequest:
-	"""Base class for request with common format checks"""
+class ModifyRequest:
+	"""Request for modification of existing objects"""
 
 	def __init__(self, id, fields=None):
-
-		if fields is not None and not isinstance(fields, list):
-			raise FormatError("Data should be a list")
-
-		if fields is not None:
-			for field in fields:
-				if not isinstance(field, Field):
-					raise FormatError("Data should be a list of Field objects")
-
-		# Initialize fields
 		self.id = id
-		self.fields = copy.deepcopy(fields)
+		self.fields = fields
 
 	def __str__(self):
-		return self.__class__.__name__ + " for object '" + self.id + "': " + str(self.fields)
+		return "{name} for object {id}{data}".format(
+			name=self.__class__.__name__,
+			id=self.id,
+			data=("" if self.fields is None else ": " + self.fields))
 
 
-class ModifyRequest(_BaseRequest):
-	"""Request for modification of existing objects or adding new ones"""
-	pass
+class DeleteRequest:
+	"""Request for deletion of existing object or its fields"""
+	def __init__(self, id, fields=None):
+		self.id = id
+		self.fields = fields
 
-class DeleteRequest(_BaseRequest):
-	"""Request for deletion of existing objects"""
-	pass
+	def __str__(self):
+		return "{name} for object {id}{data}".format(
+			name=self.__class__.__name__,
+			id=self.id,
+			data=("" if self.fields is None else ": " + self.fields))
 
-class ReadRequest(_BaseRequest):
-	"""Request for reading existing objects"""
-	pass
 
-class InsertRequest(_BaseRequest):
+class ReadRequest:
+	"""Request for reading existing object or its fields"""
+	def __init__(self, id, fields=None):
+		self.id = id
+		self.fields = fields
+
+	def __str__(self):
+		return "{name} for object {id}{data}".format(
+			name=self.__class__.__name__,
+			id=self.id,
+			data=("" if self.fields is None else ": " + self.fields))
+
+
+def _checkInsertRequestPath(path):
+	"""Check insert request path for validity"""
+
+	# path should be determined, except maybe for the last element
+	for elem in path.name[:-1]:
+		if elem is None:
+			raise FormatError("Target field should not have None parts in name, " +
+				"except for the last one")
+
+	# target field should point on list
+	if path.name[-1] is not None and not isinstance(path.name[-1], int):
+		raise FormatError("Last element of target field name should be None or integer")
+
+def _checkInsertRequestFields(fields):
+	"""Check list of fields to insert for validity"""
+
+	# all fields to insert should be fully determined
+	for field in fields:
+		for elem in field.name:
+			if elem is None:
+				raise FormatError("Each of fields to insert should be determined")
+
+
+class InsertRequest:
 	"""Request for insertion into list of fields"""
 
-	def __init__(self, id, target_field, fields):
+	def __init__(self, id, path, fields):
 
-		# target field should be an object of Field
-		if not isinstance(target_field, Field):
-			raise FormatError("Target field must have class Field")
-
-		# target field should be determined, except maybe for the last element
-		for elem in target_field.name[:-1]:
-			if elem is None:
-				raise FormatError("Target field should not have None parts in name, " +
-					"except for the last one")
-
-		# target field should point on list
-		if target_field.name[-1] is not None and not isinstance(target_field.name[-1], int):
-			raise FormatError("Last element of target field name should be None or integer")
-
-		# all fields to insert should be fully determined
-		for field in fields:
-			for elem in field.name:
-				if elem is None:
-					raise FormatError("Each of fields to insert should be determined")
+		_checkInsertRequestPath(path)
+		_checkInsertRequestFields(fields)
 
 		# Initialize fields
-		_BaseRequest.__init__(self, id, fields)
-		self.target_field = copy.deepcopy(target_field)
+		self.id = id
+		self.fields = fields
+		self.path = path
 
 	def __str__(self):
-		return _BaseRequest.__str__(self) + ", target: " + str(self.target_field)
+		return "{name} for object {id} and path {path}: {data}".format(
+			name=self.__class__.__name__,
+			id=self.id,
+			path=path,
+			data=self.fields)
+
 
 class InsertManyRequest:
-	def __init__(self, id, target_field, field_groups):
+	"""Request for insertion of several elements"""
+
+	def __init__(self, id, path, field_groups):
+
+		_checkInsertRequestPath(path)
+
+		for field_group in field_groups:
+			_checkInsertRequestFields(field_group)
+
 		self.id = id
-		self.target_field = target_field
+		self.path = path
 		self.field_groups = field_groups
+
+	def __str__(self):
+		return "{name} for object {id} and path {path}: {data}".format(
+			name=self.__class__.__name__,
+			id=self.id,
+			path=path,
+			data=self.field_groups)
+
 
 class SearchRequest:
 	"""Request for searching in database"""

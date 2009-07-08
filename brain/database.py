@@ -667,7 +667,7 @@ class LogicLayer:
 
 		return list_res
 
-	def processInsertRequest(self, id, target_field, fields, insert_many=False):
+	def processInsertRequest(self, id, path, fields, insert_many=False):
 
 		def enumerate(fields_list, col_num, starting_num, insert_many):
 			"""Enumerate given column in list of fields"""
@@ -682,9 +682,9 @@ class LogicLayer:
 					field.name[col_num] = counter
 
 		# FIXME: Hide .name usage in Field
-		target_col = len(target_field.name) - 1 # last column in name of target field
+		target_col = len(path.name) - 1 # last column in name of target field
 
-		max = self.structure.getMaxListIndex(id, target_field)
+		max = self.structure.getMaxListIndex(id, path)
 		if max is None:
 		# list does not exist yet
 			enumerate(fields, target_col, 0, insert_many)
@@ -694,7 +694,7 @@ class LogicLayer:
 					temp += flds
 				fields = temp
 		# FIXME: Hide .name usage in Field
-		elif target_field.name[target_col] is None:
+		elif path.name[target_col] is None:
 		# list exists and we are inserting elements to the end
 			starting_num = max + 1
 			enumerate(fields, target_col, starting_num, insert_many)
@@ -705,10 +705,10 @@ class LogicLayer:
 				fields = temp
 		else:
 		# list exists and we are inserting elements to the beginning or to the middle
-			self.renumber(id, target_field,
+			self.renumber(id, path,
 				(1 if not insert_many else len(fields)))
 			# FIXME: Hide .name usage in Field
-			enumerate(fields, target_col, target_field.name[target_col], insert_many)
+			enumerate(fields, target_col, path.name[target_col], insert_many)
 			if insert_many:
 				temp = []
 				for flds in fields:
@@ -763,18 +763,18 @@ class SimpleDatabase:
 
 			# fields to insert have relative names
 			for field in request.fields:
-				field.name = request.target_field.name + field.name
+				field.name = request.path.name + field.name
 
-			params = (request.id, request.target_field, request.fields)
+			params = (request.id, request.path, request.fields)
 			handler = self.logic.processInsertRequest
 		elif isinstance(request, interface.InsertManyRequest):
 
 			# fields to insert have relative names
 			for field in request.field_groups:
 				for fld in field:
-					fld.name = request.target_field.name + fld.name
+					fld.name = request.path.name + fld.name
 
-			params = (request.id, request.target_field, request.field_groups, True)
+			params = (request.id, request.path, request.field_groups, True)
 			handler = self.logic.processInsertRequest
 		elif isinstance(request, interface.DeleteRequest):
 			params = (request.id, request.fields)
