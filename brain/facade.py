@@ -225,9 +225,14 @@ class Connection:
 	@transacted
 	def create(self, data, path=None):
 		if path is None: path = []
-		fields = flattenHierarchy(data, self.db.engine)
+		if data is not None:
+			fields = flattenHierarchy(data, self.db.engine)
+		else:
+			fields = []
+
 		for field in fields:
 			field.name = path + field.name
+
 		self.requests.append(interface.CreateRequest(fields))
 
 
