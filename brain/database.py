@@ -718,12 +718,10 @@ class LogicLayer:
 		self.processModifyRequest(id, fields)
 
 
-class SimpleDatabase(interface.Database):
+class SimpleDatabase:
 	"""Class, representing DDB request handler"""
 
 	def __init__(self, engine_class, path=None, open_existing=None):
-		if not issubclass(engine_class, interface.Engine):
-			raise interface.LogicError("Engine class must be derived from Engine interface")
 		self.engine = engine_class(path, open_existing)
 		self.structure = StructureLayer(self.engine)
 		self.logic = LogicLayer(self.engine, self.structure)
