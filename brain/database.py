@@ -783,6 +783,9 @@ class SimpleDatabase:
 			propagateInversion(request.condition)
 			params = (request.condition,)
 			handler = self.logic.processSearchRequest
+		elif isinstance(request, interface.CreateRequest):
+			params = (None, request.data)
+			handler = self.logic.processModifyRequest
 		else:
 			raise interface.FormatError("Unknown request type: " + request.__class__.__name__)
 

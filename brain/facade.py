@@ -168,7 +168,7 @@ class Connection:
 			if isinstance(request, interface.ReadRequest):
 				res.append(fieldsToTree(result))
 			elif isinstance(request, interface.ModifyRequest):
-				res.append(result)
+				res.append(None)
 			elif isinstance(request, interface.InsertRequest):
 				res.append(None)
 			elif isinstance(request, interface.InsertManyRequest):
@@ -177,12 +177,13 @@ class Connection:
 				res.append(None)
 			elif isinstance(request, interface.SearchRequest):
 				res.append(result)
+			elif isinstance(request, interface.CreateRequest):
+				res.append(result)
 
 		return res
 
 	@transacted
 	def modify(self, id, value, path=None):
-		# FIXME: in case path and value are None, we should not poke the database at all
 		if path is None and value is None: value = {}
 		if path is None: path = []
 
@@ -222,8 +223,13 @@ class Connection:
 	def search(self, *args):
 		return self._search(_tupleToSearchCondition(*args, engine=self.db.engine))
 
-	def create(self, value, path=None):
-		return self.modify(None, value, path)
+	@transacted
+	def create(self, data, path=None):
+		if path is None: path = []
+		fields = flattenHierarchy(data, self.db.engine)
+		for field in fields:
+			field.name = path + field.name
+		self.requests.append(interface.CreateRequest(fields))
 
 
 class YamlFacade:

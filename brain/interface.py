@@ -274,10 +274,31 @@ class Field:
 # Requests
 #
 
+class CreateRequest:
+	"""Request for object creation"""
+
+	def __init__(self, data):
+
+		if data is None:
+			raise FormatError("Cannot create empty object")
+
+		self.data = data
+
+	def __str__(self):
+		return "{name} for object {id}{data}".format(
+			name=self.__class__.__name__,
+			id=self.id,
+			data=data)
+
+
 class ModifyRequest:
 	"""Request for modification of existing objects"""
 
 	def __init__(self, id, fields=None):
+
+		if id is None:
+			raise FormatError("Cannot modify undefined object")
+
 		self.id = id
 		self.fields = fields
 
