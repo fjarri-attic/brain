@@ -48,6 +48,23 @@ class Field:
 	"""Class for more convenient handling of Field objects"""
 
 	def __init__(self, engine, name, value=None):
+
+		# check given name
+		if name is None or name == '':
+			raise FormatError("Field name cannot be empty")
+
+		if not isinstance(name, list):
+			raise FormatError("Field name should be list")
+
+		# check that list contains only strings, ints and Nones
+		for elem in name:
+			if elem is not None and elem.__class__ not in [str, int]:
+				raise FormatError("Field name list must contain only integers, strings or Nones")
+
+		# check value type
+		if value is not None and not value.__class__ in SUPPORTED_TYPES:
+			raise FormatError("Wrong value class: " + str(value.__class__))
+
 		self._engine = engine
 		self.name = name[:]
 		self.value = value
@@ -338,6 +355,7 @@ class SearchRequest:
 			operators = [op.AND, op.OR]
 
 			if operator in comparisons:
+
 				# if node operator is a comparison, it is a leaf of condition tree
 				val_class = operand2.__class__
 
@@ -351,12 +369,16 @@ class SearchRequest:
 					raise FormatError("Null value can be only used in equality")
 
 				# regexp is valid only for strings and blobs
-				if operator == op.REGEXP and not val_class in [str, bytes]:
+				if operator == op.REGEXP and val_class not in [str, bytes]:
 					raise FormatError("Values of type " + val_class.__name__ +
 						" do not support regexp condition")
 				self.leaf = True
 			elif operator in operators:
 				self.leaf = False
+
+				if not isinstance(operand1, SearchRequest.Condition) or \
+					not isinstance(operand2, SearchRequest.Condition):
+					raise FormatError("Both operands should be conditions")
 			else:
 				raise FormatError("Wrong operator: " + str(operator))
 
