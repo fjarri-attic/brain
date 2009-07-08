@@ -19,7 +19,7 @@ DB_ENGINES = {
 	'sqlite3': engine.Sqlite3Engine
 }
 
-def flattenHierarchy(data):
+def flattenHierarchy(data, engine):
 	def flattenNode(node, prefix=[]):
 		if isinstance(node, dict):
 			results = [flattenNode(node[x], list(prefix) + [x]) for x in node.keys()]
@@ -32,7 +32,7 @@ def flattenHierarchy(data):
 		else:
 			raise interface.FacadeError("Unsupported type: " + node.__class__.__name__)
 
-	return [(path, value) for path, value in flattenNode(data)]
+	return [Field(engine, path, value) for path, value in flattenNode(data)]
 
 def fieldsToTree(fields):
 
@@ -221,9 +221,9 @@ class Connection:
 		if path is None and value is None: value = {}
 		if path is None: path = []
 
-		parsed = flattenHierarchy(value)
-		fields = [Field(self.db.engine, path + relative_path, val)
-			for relative_path, val in parsed]
+		fields = flattenHierarchy(value, self.db.engine)
+		for field in fields:
+			field.name = path + field.name
 		self.requests.append(interface.ModifyRequest(id, fields))
 
 	@transacted
@@ -234,8 +234,7 @@ class Connection:
 
 	@transacted
 	def insert(self, id, path, value):
-		parsed = flattenHierarchy(value)
-		fields = [Field(self.db.engine, relative_path, val) for relative_path, val in parsed]
+		fields = flattenHierarchy(value, self.db.engine)
 		self.requests.append(interface.InsertRequest(
 			id, Field(self.db.engine, path), fields))
 
@@ -243,8 +242,7 @@ class Connection:
 	def insert_many(self, id, path, values):
 		self.requests.append(interface.InsertManyRequest(
 			id, Field(self.db.engine, path),
-			[[Field(self.db.engine, relative_path, val) for relative_path, val in flattenHierarchy(value)]
-				for value in values]))
+			[flattenHierarchy(value, self.db.engine) for value in values]))
 
 	@transacted
 	def delete(self, id, path=None):
