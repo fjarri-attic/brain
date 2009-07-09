@@ -104,24 +104,6 @@ class Format(unittest.TestCase):
 
 	# Checks for SearchRequest
 
-	def testSearchRequestProperlyFormed(self):
-		"""Test that properly formed SearchRequest does not raise anything"""
-		SearchRequest(SearchRequest.Condition(
-			SearchRequest.Condition(
-				Field(None, ['phone']), op.EQ, '1111'
-			),
-			op.OR,
-			SearchRequest.Condition(
-				SearchRequest.Condition(
-					Field(None, ['phone']), op.EQ, '1111'
-				),
-				op.AND,
-				SearchRequest.Condition(
-					Field(None, ['blablabla']), op.REGEXP, '22', invert=True
-				)
-			)
-		))
-
 	def testSearchRequestFirstOperandIsNotCondition(self):
 		"""Test that condition raises error if first operand in node is not Condition"""
 		self.assertRaises(brain.FormatError, SearchRequest.Condition,
@@ -160,6 +142,12 @@ class Format(unittest.TestCase):
 			'phone', 'something', '1111'
 		)
 
+	def testSearchRequestWrongValueType(self):
+		"""Test that Condition raises exception if value type is not supported"""
+		self.assertRaises(brain.FormatError, SearchRequest.Condition,
+			'phone', op.EQ, [1]
+		)
+
 	def testSearchRequestConditionEqSupportedTypes(self):
 		"""Test that all necessary types are supported for equality check"""
 		classes = [str, int, float, bytes]
@@ -192,6 +180,7 @@ class Format(unittest.TestCase):
 		for operator in [op.REGEXP, op.LT, op.LTE, op.GT, op.GTE]:
 			self.assertRaises(brain.FormatError, SearchRequest.Condition,
 				Field(None, ['fld']), operator, None)
+
 
 def suite():
 	"""Generate test suite for this module"""
