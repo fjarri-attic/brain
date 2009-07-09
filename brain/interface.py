@@ -1,4 +1,4 @@
-"""Interface for database layer"""
+"""Internal interface classes"""
 
 import sys, os.path
 scriptdir, scriptfile = os.path.split(sys.argv[0])
