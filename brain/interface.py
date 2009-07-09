@@ -51,10 +51,6 @@ class Field:
 
 	def __init__(self, engine, name, value=None):
 
-		# check given name
-		if name is None or name == '':
-			raise FormatError("Field name cannot be empty")
-
 		if not isinstance(name, list):
 			raise FormatError("Field name should be list")
 
@@ -62,6 +58,11 @@ class Field:
 		for elem in name:
 			if elem is not None and elem.__class__ not in [str, int]:
 				raise FormatError("Field name list must contain only integers, strings or Nones")
+
+			# name element should not be an empty string so that
+			# it is not confused with list element
+			if elem == '':
+				raise FormatError("Field name element should not be an empty string")
 
 		# check value type
 		if value is not None and not value.__class__ in SUPPORTED_TYPES:
