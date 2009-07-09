@@ -1,4 +1,4 @@
-"""Unit-tests for database layer interface"""
+"""Functionality tests for constructors of internal request classes"""
 
 import unittest
 
