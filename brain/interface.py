@@ -1,7 +1,5 @@
 """Interface for database layer"""
 
-import copy
-
 import sys, os.path
 scriptdir, scriptfile = os.path.split(sys.argv[0])
 sys.path.append(os.path.join(scriptdir, ".."))
@@ -466,10 +464,7 @@ class SearchRequest:
 				" " + str(self.operand2) + ")"
 
 	def __init__(self, condition):
-		if not condition.__class__ == self.Condition:
-			raise FormatError("Wrong condition type: " + condition.__class__.__name__)
-
-		self.condition = copy.deepcopy(condition)
+		self.condition = condition
 
 	def __str__(self):
 		return "SearchRequest: " + str(self.condition)
