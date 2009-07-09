@@ -18,30 +18,18 @@ class Format(unittest.TestCase):
 
 	# Tests for Field class
 
-	def testFieldInitWithStr(self):
-		"""Test field creation with string name"""
-		f = Field(None, ['test'], '1')
-		self.assertEqual(f.name, ['test'])
-
-	def testFieldInitWithList(self):
+	def testFieldProperName(self):
 		"""Test field creation with list name"""
 		f = Field(None, ['test', 1, None], '1')
 
-	def testFieldInitWithMap(self):
-		"""Test field creation with map name"""
-		self.assertRaises(brain.FormatError, Field, None, {'test': 1}, '1')
+	def testFieldWrongName(self):
+		"""Test that Field constructor raises exceptions on wrong names"""
+		names = [
+			"fld", {'test': 1}, ['test', 1, [1, 2]], [''], None
+		]
 
-	def testFieldInitWithWrongList(self):
-		"""Test field creation with wrong element in name list"""
-		self.assertRaises(brain.FormatError, Field, None, ['test', 1, [1, 2]], '1')
-
-	def testFieldInitWithEmptyName(self):
-		"""Test field creation with empty string as a name"""
-		self.assertRaises(brain.FormatError, Field, None, '', '1')
-
-	def testFieldInitWithNoName(self):
-		"""Test field creation with None as a name"""
-		self.assertRaises(brain.FormatError, Field, None, None, '1')
+		for name in names:
+			self.assertRaises(brain.FormatError, Field, None, name, '1')
 
 	def testFieldCopiesList(self):
 		"""Regression for bug when Field did not copy initializing list"""
