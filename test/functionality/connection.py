@@ -166,6 +166,26 @@ class Connection(TestRequest):
 		res = self.conn.read(self.id2)
 		self.assertEqual(res, {'tracks': ['Track 2', 'Track 1']})
 
+	def testBeginDuringTransaction(self):
+		"""Check that begin() raises proper exception when transaction is in progress"""
+		self.conn.begin()
+		self.assertRaises(brain.FacadeError, self.conn.begin)
+		self.assertRaises(brain.FacadeError, self.conn.begin_sync)
+		self.conn.commit()
+
+		self.conn.begin_sync()
+		self.assertRaises(brain.FacadeError, self.conn.begin)
+		self.assertRaises(brain.FacadeError, self.conn.begin_sync)
+		self.conn.commit()
+
+	def testCommitOrRollbackWhenNoTransaction(self):
+		"""
+		Check that commit() and rollback() raise proper exception
+		when transaction is not in progress
+		"""
+		self.assertRaises(brain.FacadeError, self.conn.commit)
+		self.assertRaises(brain.FacadeError, self.conn.rollback)
+
 
 def get_class():
 	return Connection
