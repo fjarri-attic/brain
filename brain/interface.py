@@ -313,6 +313,10 @@ class ModifyRequest:
 class DeleteRequest:
 	"""Request for deletion of existing object or its fields"""
 	def __init__(self, id, fields=None):
+
+		if id is None:
+			raise FormatError("Cannot modify undefined object")
+
 		self.id = id
 		self.fields = fields
 
@@ -326,6 +330,10 @@ class DeleteRequest:
 class ReadRequest:
 	"""Request for reading existing object or its fields"""
 	def __init__(self, id, fields=None):
+
+		if id is None:
+			raise FormatError("Cannot modify undefined object")
+
 		self.id = id
 		self.fields = fields
 
@@ -367,6 +375,9 @@ class InsertRequest:
 		_checkInsertRequestPath(path)
 		_checkInsertRequestFields(fields)
 
+		if id is None:
+			raise FormatError("Cannot modify undefined object")
+
 		# Initialize fields
 		self.id = id
 		self.fields = fields
@@ -389,6 +400,9 @@ class InsertManyRequest:
 
 		for field_group in field_groups:
 			_checkInsertRequestFields(field_group)
+
+		if id is None:
+			raise FormatError("Cannot modify undefined object")
 
 		self.id = id
 		self.path = path
