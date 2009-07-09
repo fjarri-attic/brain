@@ -12,7 +12,7 @@ DB_ENGINES = {
 	'sqlite3': engine.Sqlite3Engine
 }
 
-def flattenHierarchy(data, engine):
+def _flattenHierarchy(data, engine):
 	def flattenNode(node, prefix=[]):
 		if isinstance(node, dict):
 			results = [flattenNode(node[x], list(prefix) + [x]) for x in node.keys()]
@@ -25,7 +25,7 @@ def flattenHierarchy(data, engine):
 
 	return [Field(engine, path, value) for path, value in flattenNode(data)]
 
-def fieldsToTree(fields):
+def _fieldsToTree(fields):
 
 	if len(fields) == 0: return []
 
@@ -80,22 +80,22 @@ def _tupleToSearchCondition(*args, engine):
 
 	return interface.SearchRequest.Condition(operand1, args[1 + shift], operand2, invert)
 
-def transacted(func):
+def _transacted(func):
 	def handler(obj, *args, **kwds):
 
-		if obj.sync:
+		if obj._sync:
 			func(obj, *args, **kwds)
 			try:
-				res = obj.db.processRequestSync(obj.requests[0])
-				processed = obj.transformResults(obj.requests, [res])
+				res = obj._db.processRequestSync(obj._requests[0])
+				processed = obj._transformResults(obj._requests, [res])
 			except:
 				obj.rollback()
 				raise
 			finally:
-				obj.requests = []
+				obj._requests = []
 			return processed[0]
 		else:
-			create_transaction = not obj.transaction
+			create_transaction = not obj._transaction
 			if create_transaction: obj.begin()
 			func(obj, *args, **kwds)
 			if create_transaction:
@@ -107,66 +107,66 @@ def transacted(func):
 class Connection:
 
 	def __init__(self, db):
-		self.db = db
-		self.transaction = False
-		self.sync = False
-		self.requests = []
+		self._db = db
+		self._transaction = False
+		self._sync = False
+		self._requests = []
 
 	def disconnect(self):
-		self.db.disconnect()
+		self._db.disconnect()
 
 	def begin(self):
-		if not self.transaction:
-			self.transaction = True
-			self.sync = False
+		if not self._transaction:
+			self._transaction = True
+			self._sync = False
 		else:
 			raise interface.FacadeError("Transaction is already in progress")
 
 	def begin_sync(self):
-		if not self.transaction:
-			self.db.begin()
-			self.transaction = True
-			self.sync = True
+		if not self._transaction:
+			self._db.begin()
+			self._transaction = True
+			self._sync = True
 		else:
 			raise interface.FacadeError("Transaction is already in progress")
 
 	def commit(self):
 
-		if not self.transaction:
+		if not self._transaction:
 			raise interface.FacadeError("Transaction is not in progress")
 
-		self.transaction = False
-		if self.sync:
+		self._transaction = False
+		if self._sync:
 			try:
-				self.db.commit()
+				self._db.commit()
 			except:
-				self.db.rollback()
+				self._db.rollback()
 				raise
 			finally:
-				self.sync = False
+				self._sync = False
 		else:
 			try:
-				res = self.db.processRequests(self.requests)
-				return self.transformResults(self.requests, res)
+				res = self._db.processRequests(self._requests)
+				return self._transformResults(self._requests, res)
 			finally:
-				self.requests = []
+				self._requests = []
 
 	def rollback(self):
 
-		if not self.transaction:
+		if not self._transaction:
 			raise interface.FacadeError("Transaction is not in progress")
 
-		self.transaction = False
-		if self.sync:
-			self.db.rollback()
+		self._transaction = False
+		if self._sync:
+			self._db.rollback()
 		else:
-			self.requests = []
+			self._requests = []
 
-	def transformResults(self, requests, results):
+	def _transformResults(self, requests, results):
 		res = []
 		for result, request in zip(results, requests):
 			if isinstance(request, interface.ReadRequest):
-				res.append(fieldsToTree(result))
+				res.append(_fieldsToTree(result))
 			elif isinstance(request, interface.ModifyRequest):
 				res.append(None)
 			elif isinstance(request, interface.InsertRequest):
@@ -182,58 +182,58 @@ class Connection:
 
 		return res
 
-	@transacted
+	@_transacted
 	def modify(self, id, value, path=None):
 		if path is None and value is None: value = {}
 		if path is None: path = []
 
-		fields = flattenHierarchy(value, self.db.engine)
+		fields = _flattenHierarchy(value, self._db.engine)
 		for field in fields:
 			field.name = path + field.name
-		self.requests.append(interface.ModifyRequest(id, fields))
+		self._requests.append(interface.ModifyRequest(id, fields))
 
-	@transacted
+	@_transacted
 	def read(self, id, path=None):
 		if path is not None:
-			path = [Field(self.db.engine, path)]
-		self.requests.append(interface.ReadRequest(id, path))
+			path = [Field(self._db.engine, path)]
+		self._requests.append(interface.ReadRequest(id, path))
 
-	@transacted
+	@_transacted
 	def insert(self, id, path, value):
-		fields = flattenHierarchy(value, self.db.engine)
-		self.requests.append(interface.InsertRequest(
-			id, Field(self.db.engine, path), fields))
+		fields = _flattenHierarchy(value, self._db.engine)
+		self._requests.append(interface.InsertRequest(
+			id, Field(self._db.engine, path), fields))
 
-	@transacted
+	@_transacted
 	def insert_many(self, id, path, values):
-		self.requests.append(interface.InsertManyRequest(
-			id, Field(self.db.engine, path),
-			[flattenHierarchy(value, self.db.engine) for value in values]))
+		self._requests.append(interface.InsertManyRequest(
+			id, Field(self._db.engine, path),
+			[_flattenHierarchy(value, self._db.engine) for value in values]))
 
-	@transacted
+	@_transacted
 	def delete(self, id, path=None):
-		self.requests.append(interface.DeleteRequest(id,
-			[Field(self.db.engine, path)] if path is not None else None
+		self._requests.append(interface.DeleteRequest(id,
+			[Field(self._db.engine, path)] if path is not None else None
 		))
 
-	@transacted
+	@_transacted
 	def search(self, *args):
-		self.requests.append(interface.SearchRequest(
-			_tupleToSearchCondition(*args, engine=self.db.engine)
+		self._requests.append(interface.SearchRequest(
+			_tupleToSearchCondition(*args, engine=self._db.engine)
 		))
 
-	@transacted
+	@_transacted
 	def create(self, data, path=None):
 		if path is None: path = []
 		if data is not None:
-			fields = flattenHierarchy(data, self.db.engine)
+			fields = _flattenHierarchy(data, self._db.engine)
 		else:
 			fields = []
 
 		for field in fields:
 			field.name = path + field.name
 
-		self.requests.append(interface.CreateRequest(fields))
+		self._requests.append(interface.CreateRequest(fields))
 
 
 class YamlFacade:
