@@ -48,13 +48,13 @@ class Format(unittest.TestCase):
 		"""Test == operator for fields with different names"""
 		f1 = Field(None, ['test1', 1, None], 1)
 		f2 = Field(None, ['test2', 2, None], 1)
-		self.failIfEqual(f1, f2)
+		self.assertNotEqual(f1, f2)
 
 	def testFieldNonEqValues(self):
 		"""Test == operator for fields with different values"""
 		f1 = Field(None, ['test1', 1, None], 1)
 		f2 = Field(None, ['test2', 1, None], 2)
-		self.failIfEqual(f1, f2)
+		self.assertNotEqual(f1, f2)
 
 	def testFieldEmptyName(self):
 		"""Check that field cannot have empty name"""
