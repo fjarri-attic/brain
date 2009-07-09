@@ -18,18 +18,19 @@ class Format(unittest.TestCase):
 
 	# Tests for Field class
 
-	def testFieldProperName(self):
-		"""Test field creation with list name"""
-		f = Field(None, ['test', 1, None], '1')
-
 	def testFieldWrongName(self):
 		"""Test that Field constructor raises exceptions on wrong names"""
-		names = [
-			"fld", {'test': 1}, ['test', 1, [1, 2]], [''], None
-		]
+		names = ["fld", {'test': 1}, ['test', 1, [1, 2]], [''], None]
 
 		for name in names:
 			self.assertRaises(brain.FormatError, Field, None, name, '1')
+
+	def testFieldWrongValue(self):
+		"""Test that Field constructor raises exceptions on wrong values"""
+		values = [[1], {'a': 1}, bytearray(b'aaaa')]
+
+		for value in values:
+			self.assertRaises(brain.FormatError, Field, None, ['fld'], value)
 
 	def testFieldCopiesList(self):
 		"""Regression for bug when Field did not copy initializing list"""
