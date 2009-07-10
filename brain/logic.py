@@ -503,17 +503,17 @@ class LogicLayer:
 		self._engine = engine
 		self._structure = _StructureLayer(engine)
 
-	def deleteField(self, id, field):
+	def _deleteField(self, id, field):
 		"""Delete given field(s)"""
 
 		if field.pointsToListElement():
 			# deletion of list element requires renumbering of other elements
-			self.renumber(id, field, -1)
+			self._renumber(id, field, -1)
 		else:
 			# otherwise just delete values using given field mask
 			self._structure.deleteValues(id, field)
 
-	def removeConflicts(self, id, field):
+	def _removeConflicts(self, id, field):
 		"""
 		Check that adding this field does not break the database structure, namely:
 		given field can either contain value, or list, or map, not several at once
@@ -527,14 +527,14 @@ class LogicLayer:
 			types = self._structure.getValueTypes(id, anc)
 			for type in types:
 				anc.type_str = type
-				self.deleteField(id, anc)
+				self._deleteField(id, anc)
 
-			self.checkForListAndMapConflicts(id, anc, last)
+			self._checkForListAndMapConflicts(id, anc, last)
 
 		# check separately for root level lists and maps
-		self.checkForListAndMapConflicts(id, None, field.name[0])
+		self._checkForListAndMapConflicts(id, None, field.name[0])
 
-	def checkForListAndMapConflicts(self, id, field, last):
+	def _checkForListAndMapConflicts(self, id, field, last):
 		"""
 		Check that adding this field will not mean adding list elements to map
 		or map keys to list. If field is None, root level is checked.
@@ -555,7 +555,7 @@ class LogicLayer:
 				raise interface.StructureError("Cannot modify list, when map already exists on this level")
 
 
-	def addFieldToSpecification(self, id, field):
+	def _addFieldToSpecification(self, id, field):
 		"""Check if field conforms to hierarchy and if yes, add it"""
 
 		# check if there are already field with this name in object
@@ -564,11 +564,11 @@ class LogicLayer:
 		# if adding a new field, ensure that there will be
 		# no conflicts in database structure
 		if len(types) == 0:
-			self.removeConflicts(id, field)
+			self._removeConflicts(id, field)
 
 		self._structure.increaseRefcount(id, field, new_type=(not field.type_str in types))
 
-	def setFieldValue(self, id, field):
+	def _setFieldValue(self, id, field):
 		"""Set value of given field"""
 
 		# Update maximum values cache
@@ -581,21 +581,21 @@ class LogicLayer:
 
 		# Create field table if it does not exist yet
 		self._structure.assureFieldTableExists(field)
-		self.addFieldToSpecification(id, field) # create object header
+		self._addFieldToSpecification(id, field) # create object header
 		self._structure.addValueRecord(id, field) # Insert new value
 
-	def deleteObject(self, id):
+	def _deleteObject(self, id):
 		"""Delete object with given ID"""
 
 		fields = self._structure.getFieldsList(id)
 
 		# for each field, remove it from tables
 		for field in fields:
-			self.deleteField(id, field)
+			self._deleteField(id, field)
 
 		self._structure.deleteSpecification(id)
 
-	def renumber(self, id, target_field, shift):
+	def _renumber(self, id, target_field, shift):
 		"""Renumber list elements before insertion or deletion"""
 
 		# Get all child field names
@@ -611,7 +611,7 @@ class LogicLayer:
 
 	def _modifyFields(self, id, fields):
 		for field in fields:
-			self.setFieldValue(id, field)
+			self._setFieldValue(id, field)
 
 	def processCreateRequest(self, request):
 		new_id = self._engine.getNewId()
@@ -626,11 +626,11 @@ class LogicLayer:
 		if request.fields is not None:
 			# remove specified fields
 			for field in request.fields:
-				self.deleteField(request.id, field)
+				self._deleteField(request.id, field)
 			return
 		else:
 			# delete whole object
-			self.deleteObject(request.id)
+			self._deleteObject(request.id)
 
 	def processReadRequest(self, request):
 
@@ -691,7 +691,7 @@ class LogicLayer:
 			enumerate(request.field_groups, target_col, starting_num)
 		else:
 		# list exists and we are inserting elements to the beginning or to the middle
-			self.renumber(request.id, request.path, len(request.field_groups))
+			self._renumber(request.id, request.path, len(request.field_groups))
 			# FIXME: Hide .name usage in Field
 			enumerate(request.field_groups, target_col, request.path.name[target_col])
 
