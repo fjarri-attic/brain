@@ -87,7 +87,8 @@ def _transacted(func):
 		if obj._sync:
 			func(obj, *args, **kwds)
 			try:
-				res = obj._processRequestSync(obj._requests[0])
+				handler, request = obj._prepareRequest(obj._requests[0])
+				res = handler(request)
 				processed = obj._transformResults(obj._requests, [res])
 			except:
 				obj.rollback()
@@ -177,14 +178,6 @@ class Connection:
 			raise
 		self._engine.commit()
 		return res
-
-	def _processRequest(self, request):
-		"""Process a single request"""
-		return self._processRequests([request])[0]
-
-	def _processRequestSync(self, request):
-		handler, request = self._prepareRequest(request)
-		return handler(request)
 
 	def disconnect(self):
 		self._engine.disconnect()
