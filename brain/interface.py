@@ -342,39 +342,28 @@ class ReadRequest:
 			data=("" if self.fields is None else ": " + self.fields))
 
 
-def _checkInsertRequestPath(path):
-	"""Check insert request path for validity"""
-
-	# path should be determined, except maybe for the last element
-	for elem in path.name[:-1]:
-		if elem is None:
-			raise FormatError("Target field should not have None parts in name, " +
-				"except for the last one")
-
-	# target field should point on list
-	if path.name[-1] is not None and not isinstance(path.name[-1], int):
-		raise FormatError("Last element of target field name should be None or integer")
-
-def _checkInsertRequestFields(fields):
-	"""Check list of fields to insert for validity"""
-
-	# all fields to insert should be fully determined
-	for field in fields:
-		for elem in field.name:
-			if elem is None:
-				raise FormatError("Each of fields to insert should be determined")
-
-
 class InsertRequest:
 	"""Request for insertion into list of fields"""
 
 	def __init__(self, id, path, field_groups):
 
-		_checkInsertRequestPath(path)
-		
+		# path should be determined, except maybe for the last element
+		for elem in path.name[:-1]:
+			if elem is None:
+				raise FormatError("Target field should not have None parts in name, " +
+					"except for the last one")
+
+		# target field should point on list
+		if path.name[-1] is not None and not isinstance(path.name[-1], int):
+			raise FormatError("Last element of target field name should be None or integer")
+
+		# all fields to insert should be fully determined
 		for field_group in field_groups:
-			_checkInsertRequestFields(field_group)
-		
+			for field in field_group:
+				for elem in field.name:
+					if elem is None:
+						raise FormatError("Each of fields to insert should be determined")
+
 		if id is None:
 			raise FormatError("Cannot modify undefined object")
 
