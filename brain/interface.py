@@ -276,12 +276,12 @@ class Field:
 class CreateRequest:
 	"""Request for object creation"""
 
-	def __init__(self, data):
+	def __init__(self, fields):
 
-		if data is None or data == []:
+		if fields is None or fields == []:
 			raise FormatError("Cannot create empty object")
 
-		self.data = data
+		self.fields = fields
 
 	def __str__(self):
 		return "{name} for object {id}{data}".format(
@@ -368,17 +368,19 @@ def _checkInsertRequestFields(fields):
 class InsertRequest:
 	"""Request for insertion into list of fields"""
 
-	def __init__(self, id, path, fields):
+	def __init__(self, id, path, field_groups):
 
 		_checkInsertRequestPath(path)
-		_checkInsertRequestFields(fields)
-
+		
+		for field_group in field_groups:
+			_checkInsertRequestFields(field_group)
+		
 		if id is None:
 			raise FormatError("Cannot modify undefined object")
 
 		# Initialize fields
 		self.id = id
-		self.fields = fields
+		self.field_groups = field_groups
 		self.path = path
 
 	def __str__(self):
@@ -387,31 +389,6 @@ class InsertRequest:
 			id=self.id,
 			path=path,
 			data=self.fields)
-
-
-class InsertManyRequest:
-	"""Request for insertion of several elements"""
-
-	def __init__(self, id, path, field_groups):
-
-		_checkInsertRequestPath(path)
-
-		for field_group in field_groups:
-			_checkInsertRequestFields(field_group)
-
-		if id is None:
-			raise FormatError("Cannot modify undefined object")
-
-		self.id = id
-		self.path = path
-		self.field_groups = field_groups
-
-	def __str__(self):
-		return "{name} for object {id} and path {path}: {data}".format(
-			name=self.__class__.__name__,
-			id=self.id,
-			path=path,
-			data=self.field_groups)
 
 
 class SearchRequest:

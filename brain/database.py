@@ -3,6 +3,7 @@
 import sqlite3
 import re
 import copy
+import functools
 
 from . import interface
 from .interface import Field
@@ -608,115 +609,94 @@ class LogicLayer:
 			# shift numbers of all elements in list
 			self.structure.renumberList(id, target_field, fld, shift)
 
-	def processModifyRequest(self, id, fields):
-
-		if id is None:
-			new_obj = True
-			id = self.engine.getNewId()
-		else:
-			new_obj = False
-
+	def _modifyFields(self, id, fields):
 		for field in fields:
 			self.setFieldValue(id, field)
 
-		if new_obj:
-			return id
+	def processCreateRequest(self, request):
+		new_id = self.engine.getNewId()
+		self._modifyFields(new_id, request.fields)
+		return new_id
 
-	def processDeleteRequest(self, id, fields):
+	def processModifyRequest(self, request):
+		self._modifyFields(request.id, request.fields)
 
-		if fields is not None:
+	def processDeleteRequest(self, request):
+
+		if request.fields is not None:
 			# remove specified fields
-			for field in fields:
-				self.deleteField(id, field)
+			for field in request.fields:
+				self.deleteField(request.id, field)
 			return
 		else:
 			# delete whole object
-			self.deleteObject(id)
+			self.deleteObject(request.id)
 
-	def processReadRequest(self, id, fields):
+	def processReadRequest(self, request):
 
 		# check if object exists first
-		if not self.structure.objectExists(id):
-			raise interface.LogicError("Object " + str(id) + " does not exist")
+		if not self.structure.objectExists(request.id):
+			raise interface.LogicError("Object " + str(request.id) + " does not exist")
 
 		# if list of fields was not given, read all object's fields
-		if fields is None:
-			fields = self.structure.getFieldsList(id)
+		if request.fields is None:
+			fields = self.structure.getFieldsList(request.id)
 		else:
 			res = []
-			for field in fields:
-				res += self.structure.getFieldsList(id, field)
+			for field in request.fields:
+				res += self.structure.getFieldsList(request.id, field)
 			fields = res
 
 		result_list = []
 		for field in fields:
-			for type in self.structure.getValueTypes(id, field):
+			for type in self.structure.getValueTypes(request.id, field):
 				field.type_str = type
-				res = self.structure.getFieldValue(id, field)
+				res = self.structure.getFieldValue(request.id, field)
 				if res is not None:
 					result_list += res
 
 		return result_list
 
-	def processSearchRequest(self, condition):
+	def processSearchRequest(self, request):
 		"""Search for all objects using given search condition"""
 
-		request = self.structure.buildSqlQuery(condition)
+		request = self.structure.buildSqlQuery(request.condition)
 		result = self.engine.execute(request)
 		list_res = [x[0] for x in result]
 
 		return list_res
 
-	def processInsertRequest(self, id, path, fields, insert_many=False):
+	def processInsertRequest(self, request):
 
-		def enumerate(fields_list, col_num, starting_num, insert_many):
+		def enumerate(field_groups, col_num, starting_num):
 			"""Enumerate given column in list of fields"""
 			counter = starting_num
-			for field in fields_list:
+			for field_group in field_groups:
 				# FIXME: Hide .name usage in Field
-				if insert_many:
-					for fld in field:
-						fld.name[col_num] = counter
-					counter += 1
-				else:
+				for field in field_group:
 					field.name[col_num] = counter
+				counter += 1
 
 		# FIXME: Hide .name usage in Field
-		target_col = len(path.name) - 1 # last column in name of target field
+		target_col = len(request.path.name) - 1 # last column in name of target field
 
-		max = self.structure.getMaxListIndex(id, path)
+		max = self.structure.getMaxListIndex(request.id, request.path)
 		if max is None:
 		# list does not exist yet
-			enumerate(fields, target_col, 0, insert_many)
-			if insert_many:
-				temp = []
-				for flds in fields:
-					temp += flds
-				fields = temp
+			enumerate(request.field_groups, target_col, 0)
 		# FIXME: Hide .name usage in Field
-		elif path.name[target_col] is None:
+		elif request.path.name[target_col] is None:
 		# list exists and we are inserting elements to the end
 			starting_num = max + 1
-			enumerate(fields, target_col, starting_num, insert_many)
-			if insert_many:
-				temp = []
-				for flds in fields:
-					temp += flds
-				fields = temp
+			enumerate(request.field_groups, target_col, starting_num)
 		else:
 		# list exists and we are inserting elements to the beginning or to the middle
-			self.renumber(id, path,
-				(1 if not insert_many else len(fields)))
+			self.renumber(request.id, request.path, len(request.field_groups))
 			# FIXME: Hide .name usage in Field
-			enumerate(fields, target_col, path.name[target_col], insert_many)
-			if insert_many:
-				temp = []
-				for flds in fields:
-					temp += flds
-				fields = temp
+			enumerate(request.field_groups, target_col, request.path.name[target_col])
 
-		self.processModifyRequest(id, fields)
-
+		fields = functools.reduce(list.__add__, request.field_groups, [])
+		self._modifyFields(request.id, fields)
 
 class SimpleDatabase:
 	"""Class, representing DDB request handler"""
@@ -751,45 +731,28 @@ class SimpleDatabase:
 				propagateInversion(condition.operand1)
 				propagateInversion(condition.operand2)
 
-		# Prepare handler function and parameters list
+		handlers = {
+			interface.ModifyRequest: self.logic.processModifyRequest,
+			interface.InsertRequest: self.logic.processInsertRequest,
+			interface.ReadRequest: self.logic.processReadRequest,
+			interface.DeleteRequest: self.logic.processDeleteRequest,
+			interface.SearchRequest: self.logic.processSearchRequest,
+			interface.CreateRequest: self.logic.processCreateRequest
+		}
+
+		# Prepare handler and request, if necessary
 		# (so that we do not have to do it inside a transaction)
-		if isinstance(request, interface.ModifyRequest):
-			params = (request.id, request.fields)
-			handler = self.logic.processModifyRequest
-		elif isinstance(request, interface.ReadRequest):
-			params = (request.id, request.fields)
-			handler = self.logic.processReadRequest
-		elif isinstance(request, interface.InsertRequest):
+		if isinstance(request, interface.InsertRequest):
 
 			# fields to insert have relative names
-			for field in request.fields:
-				field.name = request.path.name + field.name
+			for field_group in request.field_groups:
+				for field in field_group:
+					field.name = request.path.name + field.name
 
-			params = (request.id, request.path, request.fields)
-			handler = self.logic.processInsertRequest
-		elif isinstance(request, interface.InsertManyRequest):
-
-			# fields to insert have relative names
-			for field in request.field_groups:
-				for fld in field:
-					fld.name = request.path.name + fld.name
-
-			params = (request.id, request.path, request.field_groups, True)
-			handler = self.logic.processInsertRequest
-		elif isinstance(request, interface.DeleteRequest):
-			params = (request.id, request.fields)
-			handler = self.logic.processDeleteRequest
 		elif isinstance(request, interface.SearchRequest):
 			propagateInversion(request.condition)
-			params = (request.condition,)
-			handler = self.logic.processSearchRequest
-		elif isinstance(request, interface.CreateRequest):
-			params = (None, request.data)
-			handler = self.logic.processModifyRequest
-		else:
-			raise interface.FormatError("Unknown request type: " + request.__class__.__name__)
 
-		return handler, params
+		return handlers[request.__class__], request
 
 	def processRequests(self, requests):
 		"""Start/stop transaction, handle exceptions"""
@@ -800,8 +763,8 @@ class SimpleDatabase:
 		res = []
 		self.engine.begin()
 		try:
-			for handler, params in prepared_requests:
-				res.append(handler(*params))
+			for handler, request in prepared_requests:
+				res.append(handler(request))
 		except:
 			self.engine.rollback()
 			raise
@@ -813,8 +776,8 @@ class SimpleDatabase:
 		return self.processRequests([request])[0]
 
 	def processRequestSync(self, request):
-		handler, params = self.prepareRequest(request)
-		return handler(*params)
+		handler, request = self.prepareRequest(request)
+		return handler(request)
 
 	def begin(self):
 		self.engine.begin()

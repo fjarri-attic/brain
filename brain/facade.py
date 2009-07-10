@@ -171,8 +171,6 @@ class Connection:
 				res.append(None)
 			elif isinstance(request, interface.InsertRequest):
 				res.append(None)
-			elif isinstance(request, interface.InsertManyRequest):
-				res.append(None)
 			elif isinstance(request, interface.DeleteRequest):
 				res.append(None)
 			elif isinstance(request, interface.SearchRequest):
@@ -202,11 +200,11 @@ class Connection:
 	def insert(self, id, path, value):
 		fields = _flattenHierarchy(value, self._db.engine)
 		self._requests.append(interface.InsertRequest(
-			id, Field(self._db.engine, path), fields))
+			id, Field(self._db.engine, path), [fields]))
 
 	@_transacted
 	def insert_many(self, id, path, values):
-		self._requests.append(interface.InsertManyRequest(
+		self._requests.append(interface.InsertRequest(
 			id, Field(self._db.engine, path),
 			[_flattenHierarchy(value, self._db.engine) for value in values]))
 

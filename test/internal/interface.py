@@ -79,8 +79,7 @@ class Format(unittest.TestCase):
 		self.assertRaises(brain.FormatError, ModifyRequest, None, fields)
 		self.assertRaises(brain.FormatError, ReadRequest, None, field)
 		self.assertRaises(brain.FormatError, DeleteRequest, None, field)
-		self.assertRaises(brain.FormatError, InsertRequest, None, field, fields)
-		self.assertRaises(brain.FormatError, InsertManyRequest, None, field, fields)
+		self.assertRaises(brain.FormatError, InsertRequest, None, field, [fields])
 
 	# Additional checks for InsertRequest
 
