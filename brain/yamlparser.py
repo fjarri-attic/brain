@@ -124,3 +124,48 @@ r2_data = yaml.load(r2)
 for elem in r2_data['data']:
 	print("-" * 40)
 	print(repr(parseData(elem)))
+
+
+class YamlFacade:
+
+	def __init__(self, facade):
+		self.facade = facade
+		self.sessions = {}
+		self.session_counter = 0
+
+	def parseRequest(self, request):
+		request = yaml.load(request)
+
+		handlers = {
+			'connect': self.processConnectRequest,
+			'disconnect': self.processDisconnectRequest
+		}
+
+		if not 'type' in request:
+			raise interface.FacadeError("Request type is missing")
+
+		if not request['type'] in handlers:
+			raise interface.FacadeError("Unknown request type: " + str(request['type']))
+
+		return handlers[request['type']](request)
+
+	def processConnectRequest(self, request):
+		if not 'path' in request:
+			raise interface.FacadeError('Database path is missing')
+		path = request['path']
+
+		open_existing = request['connect'] if 'connect' in request else None
+
+		self.session_counter += 1
+		self.sessions[self.session_counter] = self.facade.connect(path, open_existing)
+
+		return self.session_counter
+
+	def processDisconnectRequest(self, request):
+		if not 'session' in request:
+			raise interface.FacadeError('Session ID is missing')
+		session = request['session']
+
+		self.sessions[session].close()
+		del self.sessions[session]
+
