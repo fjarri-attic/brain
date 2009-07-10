@@ -87,21 +87,21 @@ class Format(unittest.TestCase):
 		"""Test that InsertRequest requires determined target"""
 		self.assertRaises(brain.FormatError, InsertRequest,
 			'1', Field(None, ['test', None, 1]),
-			[Field(None, ['test'], 1)])
+			[[Field(None, ['test'], 1)]])
 
 	def testInsertRequestTargetPointsToMap(self):
 		"""Test that InsertRequest requires target pointing to list"""
 		self.assertRaises(brain.FormatError, InsertRequest,
 			'1', Field(None, ['test', 1, 'aaa']),
-			[Field(None, ['test'], 1)])
+			[[Field(None, ['test'], 1)]])
 
 	def testInsertRequestNotDeterminedField(self):
 		"""Test that InsertRequest requires determined fields to insert"""
 		self.assertRaises(brain.FormatError, InsertRequest,
-			'1', Field(None, ['test', 1, 'aaa']),
-			[Field(None, ['test'], None)])
+			'1', Field(None, ['test', 1, 2]),
+			[[Field(None, ['test', None])]])
 
-	# Checks for SearchRequest
+	# Additional checks for SearchRequest
 
 	def testSearchRequestFirstOperandIsNotCondition(self):
 		"""Test that condition raises error if first operand in node is not Condition"""
