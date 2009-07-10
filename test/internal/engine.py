@@ -287,10 +287,10 @@ class EngineTest(unittest.TestCase):
 def suite():
 	"""Generate test suite for this module"""
 	res = helpers.NamedTestSuite()
+	engine_tags = getEngineTags()
 
-	parameters = [
-		('memory.sqlite3', Sqlite3Engine, ':memory:'),
-	]
+	parameters = [('memory.' + tag, getEngineByTag(tag), ':memory:')
+		for tag in engine_tags]
 
 	classes = [EngineTest]
 

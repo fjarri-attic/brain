@@ -1,16 +1,11 @@
-import sys, os.path
-scriptdir, scriptfile = os.path.split(sys.argv[0])
-sys.path.append(os.path.join(scriptdir, ".."))
+"""
+Facade for database - contains connect() and Connection class
+"""
 
-from brain import interface, database, engine
-import brain.op as op
-from brain.interface import Field
-#import yaml
 import functools
 
-DB_ENGINES = {
-	'sqlite3': engine.Sqlite3Engine
-}
+from . import interface, database, engine, op
+from .interface import Field
 
 def _flattenHierarchy(data, engine):
 	def flattenNode(node, prefix=[]):
@@ -56,13 +51,14 @@ def _fieldsToTree(fields):
 
 def connect(path, open_existing=None, engine_tag=None):
 
-	if engine_tag is None: engine_tag = 'sqlite3'
-	if engine_tag not in DB_ENGINES:
+	tags = engine.getEngineTags()
+	if engine_tag is None: engine_tag = tags[0]
+	if engine_tag not in tags:
 		raise interface.FacadeError("Unknown DB engine: " + str(engine_tag))
 
-	engine = DB_ENGINES[engine_tag](path, open_existing)
+	engine_obj = engine.getEngineByTag(engine_tag)(path, open_existing)
 
-	return Connection(engine)
+	return Connection(engine_obj)
 
 def _tupleToSearchCondition(*args, engine):
 	if len(args) == 4:

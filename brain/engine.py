@@ -7,8 +7,14 @@ import os.path
 
 from . import interface
 
+def getEngineTags():
+	return _DB_ENGINES.keys()
 
-class Engine:
+def getEngineByTag(tag):
+	return _DB_ENGINES[tag]
+
+
+class _Engine:
 	"""Engine layer class interface"""
 
 	def close(self):
@@ -79,7 +85,7 @@ class Engine:
 		raise NotImplementedError
 
 
-class Sqlite3Engine(Engine):
+class _Sqlite3Engine(_Engine):
 	"""Wrapper for Sqlite 3 db engine"""
 
 	__FIELD_SEP = '.' # separator for field elements in table name
@@ -212,3 +218,7 @@ class Sqlite3Engine(Engine):
 	def rollback(self):
 		"""Rollback current transaction"""
 		self.__conn.rollback()
+
+_DB_ENGINES = {
+	'sqlite3': _Sqlite3Engine
+}
