@@ -54,14 +54,15 @@ def _fieldsToTree(fields):
 
 	return res[0]
 
-def connect(path, open_existing=None, engine=None):
+def connect(path, open_existing=None, engine_tag=None):
 
-	if engine is None: engine = 'sqlite3'
-	if engine not in DB_ENGINES:
-		raise interface.FacadeError("Unknown DB engine: " + str(engine))
+	if engine_tag is None: engine_tag = 'sqlite3'
+	if engine_tag not in DB_ENGINES:
+		raise interface.FacadeError("Unknown DB engine: " + str(engine_tag))
 
-	return Connection(database.SimpleDatabase(
-		DB_ENGINES[engine], path, open_existing))
+	engine = DB_ENGINES[engine_tag](path, open_existing)
+
+	return Connection(engine)
 
 def _tupleToSearchCondition(*args, engine):
 	if len(args) == 4:
@@ -86,7 +87,7 @@ def _transacted(func):
 		if obj._sync:
 			func(obj, *args, **kwds)
 			try:
-				res = obj._db.processRequestSync(obj._requests[0])
+				res = obj._processRequestSync(obj._requests[0])
 				processed = obj._transformResults(obj._requests, [res])
 			except:
 				obj.rollback()
@@ -103,17 +104,90 @@ def _transacted(func):
 
 	return handler
 
+def _propagateInversion(condition):
+	"""Propagate inversion flags to the leafs of condition tree"""
+
+	if not condition.leaf:
+		if condition.invert:
+
+			condition.invert = False
+
+			condition.operand1.invert = not condition.operand1.invert
+			condition.operand2.invert = not condition.operand2.invert
+
+			if condition.operator == op.AND:
+				condition.operator = op.OR
+			elif condition.operator == op.OR:
+				condition.operator = op.AND
+
+		_propagateInversion(condition.operand1)
+		_propagateInversion(condition.operand2)
+
 
 class Connection:
 
-	def __init__(self, db):
-		self._db = db
+	def __init__(self, engine):
+		self._engine = engine
+		structure = database.StructureLayer(self._engine)
+		self._logic = database.LogicLayer(self._engine, structure)
+
 		self._transaction = False
 		self._sync = False
 		self._requests = []
 
+	def _prepareRequest(self, request):
+		"""Prepare request for processing"""
+
+		handlers = {
+			interface.ModifyRequest: self._logic.processModifyRequest,
+			interface.InsertRequest: self._logic.processInsertRequest,
+			interface.ReadRequest: self._logic.processReadRequest,
+			interface.DeleteRequest: self._logic.processDeleteRequest,
+			interface.SearchRequest: self._logic.processSearchRequest,
+			interface.CreateRequest: self._logic.processCreateRequest
+		}
+
+		# Prepare handler and request, if necessary
+		# (so that we do not have to do it inside a transaction)
+		if isinstance(request, interface.InsertRequest):
+
+			# fields to insert have relative names
+			for field_group in request.field_groups:
+				for field in field_group:
+					field.name = request.path.name + field.name
+
+		elif isinstance(request, interface.SearchRequest):
+			_propagateInversion(request.condition)
+
+		return handlers[request.__class__], request
+
+	def _processRequests(self, requests):
+		"""Start/stop transaction, handle exceptions"""
+
+		prepared_requests = [self._prepareRequest(x) for x in requests]
+
+		# Handle request inside a transaction
+		res = []
+		self._engine.begin()
+		try:
+			for handler, request in prepared_requests:
+				res.append(handler(request))
+		except:
+			self._engine.rollback()
+			raise
+		self._engine.commit()
+		return res
+
+	def _processRequest(self, request):
+		"""Process a single request"""
+		return self._processRequests([request])[0]
+
+	def _processRequestSync(self, request):
+		handler, request = self._prepareRequest(request)
+		return handler(request)
+
 	def disconnect(self):
-		self._db.disconnect()
+		self._engine.disconnect()
 
 	def begin(self):
 		if not self._transaction:
@@ -124,7 +198,7 @@ class Connection:
 
 	def begin_sync(self):
 		if not self._transaction:
-			self._db.begin()
+			self._engine.begin()
 			self._transaction = True
 			self._sync = True
 		else:
@@ -138,15 +212,15 @@ class Connection:
 		self._transaction = False
 		if self._sync:
 			try:
-				self._db.commit()
+				self._engine.commit()
 			except:
-				self._db.rollback()
+				self._engine.rollback()
 				raise
 			finally:
 				self._sync = False
 		else:
 			try:
-				res = self._db.processRequests(self._requests)
+				res = self._processRequests(self._requests)
 				return self._transformResults(self._requests, res)
 			finally:
 				self._requests = []
@@ -158,7 +232,7 @@ class Connection:
 
 		self._transaction = False
 		if self._sync:
-			self._db.rollback()
+			self._engine.rollback()
 		else:
 			self._requests = []
 
@@ -185,7 +259,7 @@ class Connection:
 		if path is None and value is None: value = {}
 		if path is None: path = []
 
-		fields = _flattenHierarchy(value, self._db.engine)
+		fields = _flattenHierarchy(value, self._engine)
 		for field in fields:
 			field.name = path + field.name
 		self._requests.append(interface.ModifyRequest(id, fields))
@@ -193,38 +267,38 @@ class Connection:
 	@_transacted
 	def read(self, id, path=None):
 		if path is not None:
-			path = [Field(self._db.engine, path)]
+			path = [Field(self._engine, path)]
 		self._requests.append(interface.ReadRequest(id, path))
 
 	@_transacted
 	def insert(self, id, path, value):
-		fields = _flattenHierarchy(value, self._db.engine)
+		fields = _flattenHierarchy(value, self._engine)
 		self._requests.append(interface.InsertRequest(
-			id, Field(self._db.engine, path), [fields]))
+			id, Field(self._engine, path), [fields]))
 
 	@_transacted
 	def insert_many(self, id, path, values):
 		self._requests.append(interface.InsertRequest(
-			id, Field(self._db.engine, path),
-			[_flattenHierarchy(value, self._db.engine) for value in values]))
+			id, Field(self._engine, path),
+			[_flattenHierarchy(value, self._engine) for value in values]))
 
 	@_transacted
 	def delete(self, id, path=None):
 		self._requests.append(interface.DeleteRequest(id,
-			[Field(self._db.engine, path)] if path is not None else None
+			[Field(self._engine, path)] if path is not None else None
 		))
 
 	@_transacted
 	def search(self, *args):
 		self._requests.append(interface.SearchRequest(
-			_tupleToSearchCondition(*args, engine=self._db.engine)
+			_tupleToSearchCondition(*args, engine=self._engine)
 		))
 
 	@_transacted
 	def create(self, data, path=None):
 		if path is None: path = []
 		if data is not None:
-			fields = _flattenHierarchy(data, self._db.engine)
+			fields = _flattenHierarchy(data, self._engine)
 		else:
 			fields = []
 
