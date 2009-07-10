@@ -179,8 +179,8 @@ class Connection:
 		self._engine.commit()
 		return res
 
-	def disconnect(self):
-		self._engine.disconnect()
+	def close(self):
+		self._engine.close()
 
 	def begin(self):
 		if not self._transaction:
@@ -310,7 +310,7 @@ class YamlFacade:
 
 		handlers = {
 			'connect': self.processConnectRequest,
-			'disconnect': self.processDisonnectRequest
+			'disconnect': self.processDisconnectRequest
 		}
 
 		if not 'type' in request:
@@ -333,11 +333,11 @@ class YamlFacade:
 
 		return self.session_counter
 
-	def processDisonnectRequest(self, request):
+	def processDisconnectRequest(self, request):
 		if not 'session' in request:
 			raise interface.FacadeError('Session ID is missing')
 		session = request['session']
 
-		self.sessions[session].disconnect()
+		self.sessions[session].close()
 		del self.sessions[session]
 

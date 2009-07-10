@@ -11,7 +11,7 @@ from . import interface
 class Engine:
 	"""Engine layer class interface"""
 
-	def disconnect(self):
+	def close(self):
 		raise NotImplementedError
 
 	def dump(self):
@@ -107,7 +107,7 @@ class Sqlite3Engine(Engine):
 
 		self.cur = self.__conn.cursor()
 
-	def disconnect(self):
+	def close(self):
 		self.__conn.close()
 
 	def getNewId(self):

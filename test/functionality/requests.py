@@ -17,7 +17,7 @@ def getParameterized(base_class, name_prefix, *params):
 			self.conn = brain.connect(*params)
 
 		def tearDown(self):
-			self.conn.disconnect()
+			self.conn.close()
 
 	Derived.__name__ = name_prefix + "." + base_class.__name__
 
