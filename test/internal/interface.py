@@ -10,7 +10,6 @@ import brain
 import brain.op as op
 import helpers
 from brain.interface import *
-from brain.database import Field
 
 
 class Format(unittest.TestCase):

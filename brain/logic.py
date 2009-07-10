@@ -9,7 +9,7 @@ from . import interface
 from .interface import Field
 from . import op
 
-class StructureLayer:
+class _StructureLayer:
 	"""Class which is connected to DB engine and incapsulates all SQL queries"""
 
 	_ID_COLUMN = 'id' # name of column with object id in all tables
@@ -499,9 +499,9 @@ class StructureLayer:
 class LogicLayer:
 	"""Class, representing DDB logic"""
 
-	def __init__(self, engine, structure):
+	def __init__(self, engine):
 		self._engine = engine
-		self.structure = structure
+		self._structure = _StructureLayer(engine)
 
 	def deleteField(self, id, field):
 		"""Delete given field(s)"""
@@ -511,7 +511,7 @@ class LogicLayer:
 			self.renumber(id, field, -1)
 		else:
 			# otherwise just delete values using given field mask
-			self.structure.deleteValues(id, field)
+			self._structure.deleteValues(id, field)
 
 	def removeConflicts(self, id, field):
 		"""
@@ -524,7 +524,7 @@ class LogicLayer:
 
 			# delete all values whose names are a part of the name of field to add
 			# in other words, no named maps or lists
-			types = self.structure.getValueTypes(id, anc)
+			types = self._structure.getValueTypes(id, anc)
 			for type in types:
 				anc.type_str = type
 				self.deleteField(id, anc)
@@ -542,7 +542,7 @@ class LogicLayer:
 
 		# Get all fields with names, starting from name_copy, excluding
 		# the one whose name equals name_copy
-		relatives = self.structure.getFieldsList(id, field, exclude_self=True)
+		relatives = self._structure.getFieldsList(id, field, exclude_self=True)
 
 		# we have to check only first field in list
 		# if there are no conflicts, other fields do not conflict too
@@ -559,14 +559,14 @@ class LogicLayer:
 		"""Check if field conforms to hierarchy and if yes, add it"""
 
 		# check if there are already field with this name in object
-		types = self.structure.getValueTypes(id, field)
+		types = self._structure.getValueTypes(id, field)
 
 		# if adding a new field, ensure that there will be
 		# no conflicts in database structure
 		if len(types) == 0:
 			self.removeConflicts(id, field)
 
-		self.structure.increaseRefcount(id, field, new_type=(not field.type_str in types))
+		self._structure.increaseRefcount(id, field, new_type=(not field.type_str in types))
 
 	def setFieldValue(self, id, field):
 		"""Set value of given field"""
@@ -574,40 +574,40 @@ class LogicLayer:
 		# Update maximum values cache
 		for anc, last in field.ancestors(include_self=True):
 			if anc.pointsToListElement():
-				self.structure.updateListSize(id, anc)
+				self._structure.updateListSize(id, anc)
 
 		# Delete old value (checking all tables because type could be different)
-		self.structure.deleteValues(id, field)
+		self._structure.deleteValues(id, field)
 
 		# Create field table if it does not exist yet
-		self.structure.assureFieldTableExists(field)
+		self._structure.assureFieldTableExists(field)
 		self.addFieldToSpecification(id, field) # create object header
-		self.structure.addValueRecord(id, field) # Insert new value
+		self._structure.addValueRecord(id, field) # Insert new value
 
 	def deleteObject(self, id):
 		"""Delete object with given ID"""
 
-		fields = self.structure.getFieldsList(id)
+		fields = self._structure.getFieldsList(id)
 
 		# for each field, remove it from tables
 		for field in fields:
 			self.deleteField(id, field)
 
-		self.structure.deleteSpecification(id)
+		self._structure.deleteSpecification(id)
 
 	def renumber(self, id, target_field, shift):
 		"""Renumber list elements before insertion or deletion"""
 
 		# Get all child field names
-		fields_to_reenum = self.structure.getFieldsList(id, target_field)
+		fields_to_reenum = self._structure.getFieldsList(id, target_field)
 		for fld in fields_to_reenum:
 
 			# if shift is negative, we should delete elements first
 			if shift < 0:
-				self.structure.deleteValues(id, fld, target_field.columns_condition)
+				self._structure.deleteValues(id, fld, target_field.columns_condition)
 
 			# shift numbers of all elements in list
-			self.structure.renumberList(id, target_field, fld, shift)
+			self._structure.renumberList(id, target_field, fld, shift)
 
 	def _modifyFields(self, id, fields):
 		for field in fields:
@@ -635,23 +635,23 @@ class LogicLayer:
 	def processReadRequest(self, request):
 
 		# check if object exists first
-		if not self.structure.objectExists(request.id):
+		if not self._structure.objectExists(request.id):
 			raise interface.LogicError("Object " + str(request.id) + " does not exist")
 
 		# if list of fields was not given, read all object's fields
 		if request.fields is None:
-			fields = self.structure.getFieldsList(request.id)
+			fields = self._structure.getFieldsList(request.id)
 		else:
 			res = []
 			for field in request.fields:
-				res += self.structure.getFieldsList(request.id, field)
+				res += self._structure.getFieldsList(request.id, field)
 			fields = res
 
 		result_list = []
 		for field in fields:
-			for type in self.structure.getValueTypes(request.id, field):
+			for type in self._structure.getValueTypes(request.id, field):
 				field.type_str = type
-				res = self.structure.getFieldValue(request.id, field)
+				res = self._structure.getFieldValue(request.id, field)
 				if res is not None:
 					result_list += res
 
@@ -660,7 +660,7 @@ class LogicLayer:
 	def processSearchRequest(self, request):
 		"""Search for all objects using given search condition"""
 
-		request = self.structure.buildSqlQuery(request.condition)
+		request = self._structure.buildSqlQuery(request.condition)
 		result = self._engine.execute(request)
 		list_res = [x[0] for x in result]
 
@@ -680,7 +680,7 @@ class LogicLayer:
 		# FIXME: Hide .name usage in Field
 		target_col = len(request.path.name) - 1 # last column in name of target field
 
-		max = self.structure.getMaxListIndex(request.id, request.path)
+		max = self._structure.getMaxListIndex(request.id, request.path)
 		if max is None:
 		# list does not exist yet
 			enumerate(request.field_groups, target_col, 0)

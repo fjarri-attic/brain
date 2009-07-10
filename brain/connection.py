@@ -4,7 +4,7 @@ Facade for database - contains connect() and Connection class
 
 import functools
 
-from . import interface, database, engine, op
+from . import interface, logic, engine, op
 from .interface import Field
 
 def _flattenHierarchy(data, engine):
@@ -125,8 +125,7 @@ class Connection:
 
 	def __init__(self, engine):
 		self._engine = engine
-		structure = database.StructureLayer(self._engine)
-		self._logic = database.LogicLayer(self._engine, structure)
+		self._logic = logic.LogicLayer(self._engine)
 
 		self._transaction = False
 		self._sync = False
