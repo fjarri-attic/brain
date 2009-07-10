@@ -2,7 +2,7 @@
 
 from . import op
 
-SUPPORTED_TYPES = [
+_SUPPORTED_TYPES = [
 	int,
 	str,
 	float,
@@ -58,7 +58,7 @@ class Field:
 				raise FormatError("Field name element should not be an empty string")
 
 		# check value type
-		if value is not None and not value.__class__ in SUPPORTED_TYPES:
+		if value is not None and not value.__class__ in _SUPPORTED_TYPES:
 			raise FormatError("Wrong value class: " + str(value.__class__))
 
 		self._engine = engine
@@ -392,7 +392,7 @@ class SearchRequest:
 				val_class = operand2.__class__
 
 				# check if value type is supported
-				if operand2 is not None and val_class not in SUPPORTED_TYPES:
+				if operand2 is not None and val_class not in _SUPPORTED_TYPES:
 					raise FormatError("Operand type is not supported: " +
 						val_class.__name__)
 
