@@ -20,7 +20,7 @@ class Format(unittest.TestCase):
 
 	def testFieldWrongName(self):
 		"""Test that Field constructor raises exceptions on wrong names"""
-		names = ["fld", {'test': 1}, ['test', 1, [1, 2]], [''], None]
+		names = ["fld", {'test': 1}, ['test', 1, [1, 2]], [''], None, '']
 
 		for name in names:
 			self.assertRaises(brain.FormatError, Field, None, name, '1')
@@ -56,11 +56,6 @@ class Format(unittest.TestCase):
 		f1 = Field(None, ['test1', 1, None], 1)
 		f2 = Field(None, ['test2', 1, None], 2)
 		self.assertNotEqual(f1, f2)
-
-	def testFieldEmptyName(self):
-		"""Check that field cannot have empty name"""
-		self.assertRaises(brain.FormatError, Field, None, None, 1)
-		self.assertRaises(brain.FormatError, Field, None, "", 1)
 
 	# Tests for request constructors
 
