@@ -206,9 +206,6 @@ class Connection:
 		if self._sync:
 			try:
 				self._engine.commit()
-			except:
-				self._engine.rollback()
-				raise
 			finally:
 				self._sync = False
 		else:
