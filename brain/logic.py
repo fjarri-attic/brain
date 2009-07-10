@@ -672,19 +672,16 @@ class LogicLayer:
 			"""Enumerate given column in list of fields"""
 			counter = starting_num
 			for field_group in field_groups:
-				# FIXME: Hide .name usage in Field
 				for field in field_group:
 					field.name[col_num] = counter
 				counter += 1
 
-		# FIXME: Hide .name usage in Field
 		target_col = len(request.path.name) - 1 # last column in name of target field
 
 		max = self._structure.getMaxListIndex(request.id, request.path)
 		if max is None:
 		# list does not exist yet
 			enumerate(request.field_groups, target_col, 0)
-		# FIXME: Hide .name usage in Field
 		elif request.path.name[target_col] is None:
 		# list exists and we are inserting elements to the end
 			starting_num = max + 1
@@ -692,7 +689,6 @@ class LogicLayer:
 		else:
 		# list exists and we are inserting elements to the beginning or to the middle
 			self._renumber(request.id, request.path, len(request.field_groups))
-			# FIXME: Hide .name usage in Field
 			enumerate(request.field_groups, target_col, request.path.name[target_col])
 
 		fields = functools.reduce(list.__add__, request.field_groups, [])
