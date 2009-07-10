@@ -1,11 +1,6 @@
 """Internal interface classes"""
 
-import sys, os.path
-scriptdir, scriptfile = os.path.split(sys.argv[0])
-sys.path.append(os.path.join(scriptdir, ".."))
-
-import brain.op as op
-
+from . import op
 
 SUPPORTED_TYPES = [
 	int,
