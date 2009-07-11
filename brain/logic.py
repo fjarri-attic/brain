@@ -413,8 +413,8 @@ class _StructureLayer:
 		# if we need to invert results, we have to add all objects that do
 		# not have this field explicitly, because they won't be caught by previous query
 		if condition.invert:
-			result += ("SELECT * FROM (SELECT {id_column} FROM {id_table} " +
-				"EXCEPT SELECT {id_column} FROM {field_name})").format(
+			result += ("SELECT {id_column} FROM (SELECT DISTINCT {id_column} FROM {id_table} " +
+				"EXCEPT SELECT DISTINCT {id_column} FROM {field_name})").format(
 				field_name=safe_name,
 				id_column=self._ID_COLUMN,
 				id_table=self._ID_TABLE)
