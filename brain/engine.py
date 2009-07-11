@@ -8,7 +8,7 @@ import os.path
 from . import interface
 
 def getEngineTags():
-	return _DB_ENGINES.keys()
+	return list(_DB_ENGINES.keys())
 
 def getEngineByTag(tag):
 	return _DB_ENGINES[tag]
