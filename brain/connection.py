@@ -294,12 +294,9 @@ class Connection:
 			path = [Field(self._engine, path)]
 		self._requests.append(interface.ReadRequest(id, path))
 
-	@_transacted
 	def insert(self, id, path, value):
 		"""Create insertion request and add it to queue"""
-		fields = _flattenHierarchy(value, self._engine)
-		self._requests.append(interface.InsertRequest(
-			id, Field(self._engine, path), [fields]))
+		return self.insert_many(id, path, [value])
 
 	@_transacted
 	def insert_many(self, id, path, values):
