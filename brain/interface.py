@@ -429,3 +429,18 @@ class SearchRequest:
 
 	def __str__(self):
 		return "SearchRequest: " + str(self.condition)
+
+
+class ObjectExistsRequest:
+	"""Request for searching for object in database"""
+
+	def __init__(self, id):
+		if id is None:
+			raise FormatError("Cannot modify undefined object")
+
+		self.id = id
+
+	def __str__(self):
+		return "{name} for object {id}{data}".format(
+			name=self.__class__.__name__,
+			id=self.id)

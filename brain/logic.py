@@ -693,3 +693,7 @@ class LogicLayer:
 
 		fields = functools.reduce(list.__add__, request.field_groups, [])
 		self._modifyFields(request.id, fields)
+
+	def processObjectExistsRequest(self, request):
+
+		return self._structure.objectExists(request.id)

@@ -186,6 +186,16 @@ class Connection(TestRequest):
 		self.assertRaises(brain.FacadeError, self.conn.commit)
 		self.assertRaises(brain.FacadeError, self.conn.rollback)
 
+	def testObjectExistsRequest(self):
+		"""
+		Check that object_exists() returns True for existing objects
+		and None for non-existent
+		"""
+		self.prepareStandNoList()
+		self.conn.delete(self.id1)
+		self.assertEqual(self.conn.object_exists(self.id1), False)
+		self.assertEqual(self.conn.object_exists(self.id2), True)
+
 
 def get_class():
 	return Connection

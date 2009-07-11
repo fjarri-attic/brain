@@ -174,6 +174,10 @@ class Format(unittest.TestCase):
 			self.assertRaises(brain.FormatError, SearchRequest.Condition,
 				Field(None, ['fld']), operator, None)
 
+	def testObjectExistsCreation(self):
+		"""Simple test for ObjectExistsRequest constructor"""
+		self.assertRaises(brain.FormatError, ObjectExistsRequest, None)
+
 
 def suite():
 	"""Generate test suite for this module"""

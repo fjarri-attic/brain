@@ -168,6 +168,8 @@ def _transformResults(requests, results):
 			res.append(result)
 		elif isinstance(request, interface.CreateRequest):
 			res.append(result)
+		elif isinstance(request, interface.ObjectExistsRequest):
+			res.append(result)
 
 	return res
 
@@ -192,7 +194,8 @@ class Connection:
 			interface.ReadRequest: self._logic.processReadRequest,
 			interface.DeleteRequest: self._logic.processDeleteRequest,
 			interface.SearchRequest: self._logic.processSearchRequest,
-			interface.CreateRequest: self._logic.processCreateRequest
+			interface.CreateRequest: self._logic.processCreateRequest,
+			interface.ObjectExistsRequest: self._logic.processObjectExistsRequest
 		}
 
 		# Prepare handler and request, if necessary
@@ -340,3 +343,8 @@ class Connection:
 			field.name = path + field.name
 
 		self._requests.append(interface.CreateRequest(fields))
+
+	@_transacted
+	def object_exists(self, id):
+		"""Create request which returns True if object with given ID exists"""
+		self._requests.append(interface.ObjectExistsRequest(id))
