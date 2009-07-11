@@ -225,5 +225,17 @@ class Search(TestRequest):
 
 		self.assertEqual(res, [self.id3])
 
+	def testWrongCondition(self):
+		"""Test that exception is raised when condition is ill-formed"""
+		self.assertRaises(brain.FormatError, self.conn.search,
+			(['tracks', None, 'Length'], op.EQ))
+
+	def testGetAllIDs(self):
+		"""Check that empty search condition returns list of all IDs in database"""
+		self.prepareStandNoList()
+		res = self.conn.search()
+		self.assertSameElements(res, [self.id1, self.id2, self.id3, self.id4, self.id5])
+
+
 def get_class():
 	return Search

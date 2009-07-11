@@ -78,12 +78,16 @@ def _tupleToSearchCondition(*args, engine):
 	"""Transform tuple (path, operator, value) to Condition object"""
 
 	# do not check whether the first argument is really NOT
-	if len(args) == 4:
-		invert = True
-		shift = 1
-	else:
+	if len(args) == 3:
 		invert = False
 		shift = 0
+	elif len(args) == 4:
+		invert = True
+		shift = 1
+	elif len(args) == 0:
+		return None
+	else:
+		raise interface.FormatError("Wrong number of elements in search condition")
 
 	operand1 = args[shift]
 	operand2 = args[2 + shift]
@@ -207,7 +211,8 @@ class Connection:
 				for field in field_group:
 					field.name = request.path.name + field.name
 
-		elif isinstance(request, interface.SearchRequest):
+		elif isinstance(request, interface.SearchRequest) and \
+				request.condition is not None:
 			_propagateInversion(request.condition)
 
 		return handlers[request.__class__], request
@@ -326,9 +331,8 @@ class Connection:
 	@_transacted
 	def search(self, *args):
 		"""Create search request and add it to queue"""
-		self._requests.append(interface.SearchRequest(
-			_tupleToSearchCondition(*args, engine=self._engine)
-		))
+		condition = _tupleToSearchCondition(*args, engine=self._engine)
+		self._requests.append(interface.SearchRequest(condition))
 
 	@_transacted
 	def create(self, data, path=None):

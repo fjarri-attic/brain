@@ -340,6 +340,11 @@ class _StructureLayer:
 	def buildSqlQuery(self, condition):
 		"""Recursive function to transform condition into SQL query"""
 
+		if condition is None:
+			return ("SELECT DISTINCT {id_column} FROM {id_table}").format(
+				id_column=self._ID_COLUMN,
+				id_table=self._ID_TABLE)
+
 		if not condition.leaf:
 			# child conditions
 			cond1 = self.buildSqlQuery(condition.operand1)

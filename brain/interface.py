@@ -424,7 +424,7 @@ class SearchRequest:
 				("!" if self.invert else "") + str(self.operator) + \
 				" " + str(self.operand2) + ")"
 
-	def __init__(self, condition):
+	def __init__(self, condition=None):
 		self.condition = condition
 
 	def __str__(self):
