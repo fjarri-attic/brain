@@ -287,12 +287,16 @@ class Connection:
 			field.name = path + field.name
 		self._requests.append(interface.ModifyRequest(id, fields))
 
-	@_transacted
 	def read(self, id, path=None):
 		"""Create read request and add it to queue"""
-		if path is not None:
-			path = [Field(self._engine, path)]
-		self._requests.append(interface.ReadRequest(id, path))
+		return self.read_many(id, [path] if path is not None else None)
+
+	@_transacted
+	def read_many(self, id, paths=None):
+		"""Create multiple read request and add it to queue"""
+		if paths is not None:
+			paths = [Field(self._engine, path) for path in paths]
+		self._requests.append(interface.ReadRequest(id, paths))
 
 	def insert(self, id, path, value):
 		"""Create insertion request and add it to queue"""
