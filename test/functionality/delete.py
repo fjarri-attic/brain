@@ -31,8 +31,7 @@ class Delete(TestRequest):
 		"""Check that deletion of existent fields preserves other object fields"""
 		self.prepareStandNoList()
 
-		self.conn.delete(self.id3, ['age'])
-		self.conn.delete(self.id3, ['phone'])
+		self.conn.delete_many(self.id3, [['age'], ['phone']])
 
 		# Check that other fields are intact
 		res = self.conn.search(['name'], op.EQ, 'Carl')
@@ -49,8 +48,7 @@ class Delete(TestRequest):
 		"""Check deletion of non-existent fields"""
 		self.prepareStandNoList()
 
-		self.conn.delete(self.id2, ['name'])
-		self.conn.delete(self.id2, ['blablabla'])
+		self.conn.delete_many(self.id2, [['name'], ['blablabla']])
 
 		# Check that existent field was deleted
 		res = self.conn.search(['name'], op.EQ, 'Bob')

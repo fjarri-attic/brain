@@ -308,11 +308,15 @@ class Connection:
 			id, Field(self._engine, path),
 			[_flattenHierarchy(value, self._engine) for value in values]))
 
-	@_transacted
 	def delete(self, id, path=None):
 		"""Create deletion request and add it to queue"""
+		return self.delete_many(id, [path] if path is not None else None)
+
+	@_transacted
+	def delete_many(self, id, paths=None):
+		"""Create many fields deletion request and add it to queue"""
 		self._requests.append(interface.DeleteRequest(id,
-			[Field(self._engine, path)] if path is not None else None
+			[Field(self._engine, path) for path in paths] if paths is not None else None
 		))
 
 	@_transacted
