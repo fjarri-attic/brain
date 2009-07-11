@@ -7,8 +7,12 @@ import functools
 from . import interface, logic, engine, op
 from .interface import Field
 
+
 def _flattenHierarchy(data, engine):
+	"""Transform nested dictionaries and lists to a flat list of Field objects"""
+
 	def flattenNode(node, prefix=[]):
+		"""Transform current list/dictionary to a list of field name elements"""
 		if isinstance(node, dict):
 			results = [flattenNode(node[x], list(prefix) + [x]) for x in node.keys()]
 			return functools.reduce(list.__add__, results, [])
@@ -21,21 +25,26 @@ def _flattenHierarchy(data, engine):
 	return [Field(engine, path, value) for path, value in flattenNode(data)]
 
 def _fieldsToTree(fields):
+	"""Transform list of Field objects to nested dictionaries and lists"""
 
 	if len(fields) == 0: return []
 
-	res = []
-
 	def saveTo(obj, ptr, path, value):
+		"""Save given value to a place in hierarchy, defined by pointer"""
 
+		# ensure that there is a place in obj where ptr points
 		if isinstance(obj, list) and len(obj) < ptr + 1:
+			# extend the list to corresponding index
 			obj.extend([None] * (ptr + 1 - len(obj)))
 		elif isinstance(obj, dict) and ptr not in obj:
+			# create dictionary key
 			obj[ptr] = None
 
 		if len(path) == 0:
+		# if we are in leaf now, store value
 			obj[ptr] = value
 		else:
+		# if not, create required structure and call this function recursively
 			if obj[ptr] is None:
 				if isinstance(path[0], str):
 					obj[ptr] = {}
@@ -44,12 +53,17 @@ def _fieldsToTree(fields):
 
 			saveTo(obj[ptr], path[0], path[1:], value)
 
+	# we need some starting object, whose pointer we can pass to recursive saveTo()
+	res = []
+
 	for field in fields:
 		saveTo(res, 0, field.name, field.value)
 
+	# get rid of temporary root object and return only its first element
 	return res[0]
 
 def connect(path, open_existing=None, engine_tag=None):
+	"""Connect to database and return Connection object"""
 
 	tags = engine.getEngineTags()
 	if engine_tag is None: engine_tag = tags[0]
@@ -61,6 +75,9 @@ def connect(path, open_existing=None, engine_tag=None):
 	return Connection(engine_obj)
 
 def _tupleToSearchCondition(*args, engine):
+	"""Transform tuple (path, operator, value) to Condition object"""
+
+	# do not check whether the first argument is really NOT
 	if len(args) == 4:
 		invert = True
 		shift = 1
@@ -72,34 +89,47 @@ def _tupleToSearchCondition(*args, engine):
 	operand2 = args[2 + shift]
 	operator = args[shift + 1]
 
-	operand1 = (_tupleToSearchCondition(*operand1, engine=engine) if isinstance(operand1, tuple) else Field(engine, operand1))
-	operand2 = (_tupleToSearchCondition(*operand2, engine=engine) if isinstance(operand2, tuple) else operand2)
+	operand1 = (_tupleToSearchCondition(*operand1, engine=engine)
+		if isinstance(operand1, tuple) else Field(engine, operand1))
+	operand2 = (_tupleToSearchCondition(*operand2, engine=engine)
+		if isinstance(operand2, tuple) else operand2)
 
 	return interface.SearchRequest.Condition(operand1, args[1 + shift], operand2, invert)
 
 def _transacted(func):
-	def handler(obj, *args, **kwds):
+	"""Decorator for transacted methods of Connection"""
+
+	def wrapper(obj, *args, **kwds):
+		"""Function, which handles the transacted method"""
 
 		if obj._sync:
-			func(obj, *args, **kwds)
+		# synchronous transaction is currently in progress
+
+			func(obj, *args, **kwds) # add request to list
+
+			# try to process request, rollback on error
 			try:
 				handler, request = obj._prepareRequest(obj._requests[0])
 				res = handler(request)
-				processed = obj._transformResults(obj._requests, [res])
+				processed = _transformResults(obj._requests, [res])
 			except:
 				obj.rollback()
 				raise
 			finally:
 				obj._requests = []
+
 			return processed[0]
 		else:
+		# no transaction or asynchronous transaction
+
+			# if no transaction, create a new one
 			create_transaction = not obj._transaction
+
 			if create_transaction: obj.begin()
 			func(obj, *args, **kwds)
-			if create_transaction:
-				return obj.commit()[0]
+			if create_transaction: return obj.commit()[0]
 
-	return handler
+	return wrapper
 
 def _propagateInversion(condition):
 	"""Propagate inversion flags to the leafs of condition tree"""
@@ -109,9 +139,11 @@ def _propagateInversion(condition):
 
 			condition.invert = False
 
+			# invert operands
 			condition.operand1.invert = not condition.operand1.invert
 			condition.operand2.invert = not condition.operand2.invert
 
+			# invert operator
 			if condition.operator == op.AND:
 				condition.operator = op.OR
 			elif condition.operator == op.OR:
@@ -120,8 +152,28 @@ def _propagateInversion(condition):
 		_propagateInversion(condition.operand1)
 		_propagateInversion(condition.operand2)
 
+def _transformResults(requests, results):
+	"""Transform request results to a user-readable form"""
+	res = []
+	for result, request in zip(results, requests):
+		if isinstance(request, interface.ReadRequest):
+			res.append(_fieldsToTree(result))
+		elif isinstance(request, interface.ModifyRequest):
+			res.append(None)
+		elif isinstance(request, interface.InsertRequest):
+			res.append(None)
+		elif isinstance(request, interface.DeleteRequest):
+			res.append(None)
+		elif isinstance(request, interface.SearchRequest):
+			res.append(result)
+		elif isinstance(request, interface.CreateRequest):
+			res.append(result)
+
+	return res
+
 
 class Connection:
+	"""Main control class of the database"""
 
 	def __init__(self, engine):
 		self._engine = engine
@@ -175,9 +227,11 @@ class Connection:
 		return res
 
 	def close(self):
+		"""Disconnect from database. All uncommitted changes can be lost."""
 		self._engine.close()
 
 	def begin(self):
+		"""Begin asynchronous transaction"""
 		if not self._transaction:
 			self._transaction = True
 			self._sync = False
@@ -185,6 +239,7 @@ class Connection:
 			raise interface.FacadeError("Transaction is already in progress")
 
 	def begin_sync(self):
+		"""Begin synchronous transaction"""
 		if not self._transaction:
 			self._engine.begin()
 			self._transaction = True
@@ -193,7 +248,7 @@ class Connection:
 			raise interface.FacadeError("Transaction is already in progress")
 
 	def commit(self):
-
+		"""Commit current transaction. Returns results in case of asynchronous transaction"""
 		if not self._transaction:
 			raise interface.FacadeError("Transaction is not in progress")
 
@@ -206,12 +261,12 @@ class Connection:
 		else:
 			try:
 				res = self._processRequests(self._requests)
-				return self._transformResults(self._requests, res)
+				return _transformResults(self._requests, res)
 			finally:
 				self._requests = []
 
 	def rollback(self):
-
+		"""Rollback current transaction"""
 		if not self._transaction:
 			raise interface.FacadeError("Transaction is not in progress")
 
@@ -221,26 +276,9 @@ class Connection:
 		else:
 			self._requests = []
 
-	def _transformResults(self, requests, results):
-		res = []
-		for result, request in zip(results, requests):
-			if isinstance(request, interface.ReadRequest):
-				res.append(_fieldsToTree(result))
-			elif isinstance(request, interface.ModifyRequest):
-				res.append(None)
-			elif isinstance(request, interface.InsertRequest):
-				res.append(None)
-			elif isinstance(request, interface.DeleteRequest):
-				res.append(None)
-			elif isinstance(request, interface.SearchRequest):
-				res.append(result)
-			elif isinstance(request, interface.CreateRequest):
-				res.append(result)
-
-		return res
-
 	@_transacted
 	def modify(self, id, value, path=None):
+		"""Create modification request and add it to queue"""
 		if path is None and value is None: value = {}
 		if path is None: path = []
 
@@ -251,36 +289,42 @@ class Connection:
 
 	@_transacted
 	def read(self, id, path=None):
+		"""Create read request and add it to queue"""
 		if path is not None:
 			path = [Field(self._engine, path)]
 		self._requests.append(interface.ReadRequest(id, path))
 
 	@_transacted
 	def insert(self, id, path, value):
+		"""Create insertion request and add it to queue"""
 		fields = _flattenHierarchy(value, self._engine)
 		self._requests.append(interface.InsertRequest(
 			id, Field(self._engine, path), [fields]))
 
 	@_transacted
 	def insert_many(self, id, path, values):
+		"""Create several values insertion request and add it to queue"""
 		self._requests.append(interface.InsertRequest(
 			id, Field(self._engine, path),
 			[_flattenHierarchy(value, self._engine) for value in values]))
 
 	@_transacted
 	def delete(self, id, path=None):
+		"""Create deletion request and add it to queue"""
 		self._requests.append(interface.DeleteRequest(id,
 			[Field(self._engine, path)] if path is not None else None
 		))
 
 	@_transacted
 	def search(self, *args):
+		"""Create search request and add it to queue"""
 		self._requests.append(interface.SearchRequest(
 			_tupleToSearchCondition(*args, engine=self._engine)
 		))
 
 	@_transacted
 	def create(self, data, path=None):
+		"""Create creation request and add it to queue"""
 		if path is None: path = []
 		if data is not None:
 			fields = _flattenHierarchy(data, self._engine)
