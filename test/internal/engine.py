@@ -8,16 +8,6 @@ import unittest
 import helpers
 from brain.engine import *
 
-def getParameterized(base_class, name_prefix, db_class, db_file_name):
-	"""Get named test suite with predefined setUp()"""
-	class Derived(base_class):
-		def setUp(self):
-			self.engine = db_class(db_file_name)
-			self.str_type = self.engine.getColumnType(str())
-
-	Derived.__name__ = name_prefix
-
-	return Derived
 
 class EngineTest(unittest.TestCase):
 	"""Test for DB engines using base interface"""
@@ -284,19 +274,19 @@ class EngineTest(unittest.TestCase):
 			self.engine.getIdType(),
 			self.engine.getColumnType(id1))
 
-def suite():
-	"""Generate test suite for this module"""
+
+def suite(name, engine_tag, path, open_existing):
+
+	class Derived(EngineTest):
+		def setUp(self):
+			self.engine = getEngineByTag(engine_tag)(path, open_existing)
+			self.str_type = self.engine.getColumnType(str())
+
+		def tearDown(self):
+			self.engine.close()
+
+	Derived.__name__ = name
 	res = helpers.NamedTestSuite()
-	engine_tags = getEngineTags()
-
-	parameters = [('memory.' + tag, getEngineByTag(tag), ':memory:')
-		for tag in engine_tags]
-
-	classes = [EngineTest]
-
-	for parameter in parameters:
-		for c in classes:
-			res.addTest(unittest.TestLoader().loadTestsFromTestCase(
-				getParameterized(c, *parameter)))
-
-	return res
+	res.addTest(unittest.TestLoader().loadTestsFromTestCase(Derived))
+	return res	
+	

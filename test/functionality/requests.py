@@ -6,23 +6,6 @@ import sys, os.path
 scriptdir, scriptfile = os.path.split(sys.argv[0])
 sys.path.append(os.path.join(scriptdir, ".."))
 
-import brain
-
-
-def getParameterized(base_class, name_prefix, *params):
-	"""Get named test suite with predefined setUp()"""
-	class Derived(base_class):
-		def setUp(self):
-			self.db = params[0]
-			self.conn = brain.connect(*params)
-
-		def tearDown(self):
-			self.conn.close()
-
-	Derived.__name__ = name_prefix + "." + base_class.__name__
-
-	return Derived
-
 
 class TestRequest(unittest.TestCase):
 	"""Base class for database requests testing"""
