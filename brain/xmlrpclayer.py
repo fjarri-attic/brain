@@ -11,15 +11,40 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import brain
 
+class BrainXMLRPCError(brain.BrainError):
+	pass
+
 _CONNECTION_METHODS = ['create', 'modify', 'read', 'delete', 'insert',
 	'read_many', 'insert_many', 'delete_many', 'object_exists', 'search',
 	'begin', 'begin_sync', 'commit', 'rollback']
 
-def _error(error_msg, error_data=None):
-	return {'error': error_msg, 'error_data': error_data, 'result': None}
+_EXCEPTION_MAP = {
+	'FormatError': brain.FormatError,
+	'FacadeError': brain.FacadeError,
+	'StructureError': brain.StructureError,
+	'LogicError': brain.LogicError,
+	'BrainXMLRPCError': BrainXMLRPCError
+}
+
+_EXCEPTION_NAMES = {_EXCEPTION_MAP[exc_name]: exc_name for exc_name in _EXCEPTION_MAP.keys()}
 
 def _result(data):
-	return {'error': None, 'result': data}
+	return {'result': data}
+
+def _exception(exc_class, exc_msg, exc_data=None):
+	res = {'exception': _EXCEPTION_NAMES[exc_class], 'exception_msg': exc_msg}
+	if exc_data is not None:
+		res['exception_data'] = exc_data
+	return res
+
+def _error(msg):
+	return _exception(BrainXMLRPCError, msg)
+
+def _parse_result(res):
+	if 'result' in res.keys():
+		return res['result']
+	else:
+		raise _EXCEPTION_MAP[res['exception']](res['exception_msg'])
 
 def _catch(func, *args, **kwds):
 	res = None
@@ -28,7 +53,8 @@ def _catch(func, *args, **kwds):
 	except:
 		exc_type, exc_val, exc_tb = sys.exc_info()
 		exc_data = ''.join(traceback.format_exception(exc_type, exc_val, exc_tb))
-		return _error(exc_val, exc_data)
+		print(exc_type)
+		return _exception(exc_type, str(exc_val))
 	return _result(res)
 
 
@@ -40,7 +66,7 @@ class _Dispatcher:
 
 	def _dispatch(self, method, params):
 
-		if method in _CONNECTION_METHODS	:
+		if method in _CONNECTION_METHODS:
 			return self._dispatch_connection_method(method, *params)
 
 		try:
@@ -57,7 +83,8 @@ class _Dispatcher:
 		if session_id not in self._sessions.keys():
 			return _error("Session " + str(session_id) + " does not exist")
 
-		return getattr(self._sessions[session_id], method)(*args, **kwds)
+		func = getattr(self._sessions[session_id], method)
+		return _catch(func, *args, **kwds)
 
 	def export_connect(self, path, open_existing, engine_tag):
 		session_id = "".join(random.sample(string.ascii_letters + string.digits, 8))
@@ -91,12 +118,6 @@ class BrainServer:
 		self._server_thread.join()
 
 
-def _parse_result(res):
-	if res['error'] is None:
-		return res['result']
-	else:
-		raise Exception(res['error'])
-
 class BrainClient:
 	def __init__(self, addr):
 		self._client = ServerProxy(addr, allow_none=True)
@@ -118,7 +139,7 @@ class RemoteConnection:
 
 		method = getattr(self._client, name)
 		def wrapper(*args, **kwds):
-			return method(self._session_id, *args, **kwds)
+			return _parse_result(method(self._session_id, *args, **kwds))
 
 		return wrapper
 
@@ -130,9 +151,11 @@ s.start()
 print("main: creating client")
 c = BrainClient('http://localhost:8000')
 print(c.getEngineTags())
-conn = c.connect(None, None, 'sqlite3')
-print(conn.create({'name': 'Alex'}))
 
-print("main: shutting server down")
-s.stop()
-print("main: shutdown complete")
+try:
+	conn = c.connect(None, None, 'sqlite3')
+	print(conn.create(None))
+finally:
+	print("main: shutting server down")
+	s.stop()
+	print("main: shutdown complete")
