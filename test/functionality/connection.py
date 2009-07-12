@@ -26,6 +26,7 @@ class Connection(TestRequest):
 		# changes were really made
 		conn2 = brain.connect(self.db)
 		res = conn2.read(obj)
+		conn2.close()
 		self.assertEqual(res, data)
 
 	def testAutocommitRollsBackOnError(self):
