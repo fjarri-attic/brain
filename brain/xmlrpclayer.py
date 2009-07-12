@@ -11,6 +11,10 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import brain
 
+_CONNECTION_METHODS = ['create', 'modify', 'read', 'delete', 'insert',
+	'read_many', 'insert_many', 'delete_many', 'object_exists', 'search',
+	'begin', 'begin_sync', 'commit', 'rollback']
+
 def _error(error_msg, error_data=None):
 	return {'error': error_msg, 'error_data': error_data, 'result': None}
 
@@ -36,10 +40,7 @@ class _Dispatcher:
 
 	def _dispatch(self, method, params):
 
-		connection_methods = ['create', 'modify', 'read', 'delete', 'insert',
-			'read_many', 'insert_many', 'delete_many', 'object_exists', 'search']
-
-		if method in connection_methods	:
+		if method in _CONNECTION_METHODS	:
 			return self._dispatch_connection_method(method, *params)
 
 		try:
@@ -90,16 +91,47 @@ class BrainServer:
 		self._server_thread.join()
 
 
+def _parse_result(res):
+	if res['error'] is None:
+		return res['result']
+	else:
+		raise Exception(res['error'])
+
+class BrainClient:
+	def __init__(self, addr):
+		self._client = ServerProxy(addr, allow_none=True)
+
+	def getEngineTags(self):
+		return _parse_result(self._client.getEngineTags())
+
+	def connect(self, path, open_existing, engine_tag):
+		return RemoteConnection(self._client, path, open_existing, engine_tag)
+
+class RemoteConnection:
+	def __init__(self, client, path, open_existing, engine_tag):
+		self._client = client
+		self._session_id = _parse_result(client.connect(path, open_existing, engine_tag))
+
+	def __getattr__(self, name):
+		if name not in _CONNECTION_METHODS:
+			raise AttributeError()
+
+		method = getattr(self._client, name)
+		def wrapper(*args, **kwds):
+			return method(self._session_id, *args, **kwds)
+
+		return wrapper
+
 print("main: creating server")
 s = BrainServer()
 print("main: starting server")
 s.start()
 
 print("main: creating client")
-c = ServerProxy('http://localhost:8000', allow_none=True)
-res = c.getEngineTags()
-ses = c.connect(None, None, res['result'][0])
-print(c.create(ses['result'], {'name': 'Alex'}))
+c = BrainClient('http://localhost:8000')
+print(c.getEngineTags())
+conn = c.connect(None, None, 'sqlite3')
+print(conn.create({'name': 'Alex'}))
 
 print("main: shutting server down")
 s.stop()
