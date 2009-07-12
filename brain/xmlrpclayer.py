@@ -11,12 +11,13 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import brain
 
+
 class BrainXMLRPCError(brain.BrainError):
 	pass
 
 _CONNECTION_METHODS = ['create', 'modify', 'read', 'delete', 'insert',
 	'read_many', 'insert_many', 'delete_many', 'object_exists', 'search',
-	'begin', 'begin_sync', 'commit', 'rollback']
+	'begin', 'begin_sync', 'commit', 'rollback', 'close']
 
 _EXCEPTION_MAP = {
 	'FormatError': brain.FormatError,
@@ -26,7 +27,7 @@ _EXCEPTION_MAP = {
 	'BrainXMLRPCError': BrainXMLRPCError
 }
 
-_EXCEPTION_NAMES = {_EXCEPTION_MAP[exc_name]: exc_name for exc_name in _EXCEPTION_MAP.keys()}
+_EXCEPTION_NAMES = {_EXCEPTION_MAP[exc_name]: exc_name for exc_name in _EXCEPTION_MAP}
 
 def _result(data):
 	return {'result': data}
@@ -41,7 +42,7 @@ def _error(msg):
 	return _exception(BrainXMLRPCError, msg)
 
 def _parse_result(res):
-	if 'result' in res.keys():
+	if 'result' in res:
 		return res['result']
 	else:
 		raise _EXCEPTION_MAP[res['exception']](res['exception_msg'])
@@ -53,7 +54,6 @@ def _catch(func, *args, **kwds):
 	except:
 		exc_type, exc_val, exc_tb = sys.exc_info()
 		exc_data = ''.join(traceback.format_exception(exc_type, exc_val, exc_tb))
-		print(exc_type)
 		return _exception(exc_type, str(exc_val))
 	return _result(res)
 
@@ -80,7 +80,7 @@ class _Dispatcher:
 		if not isinstance(session_id, str):
 			return _error("Session ID must be string")
 
-		if session_id not in self._sessions.keys():
+		if session_id not in self._sessions:
 			return _error("Session " + str(session_id) + " does not exist")
 
 		func = getattr(self._sessions[session_id], method)
@@ -105,7 +105,9 @@ class BrainServer:
 		if name is None:
 			name = "Brain XML RPC server on port " + str(port)
 
-		self._server = SimpleXMLRPCServer(("localhost", port), allow_none=True)
+		self._server = SimpleXMLRPCServer(("localhost", port), allow_none=True,
+			logRequests=False)
+		self._server.allow_reuse_address = True
 		self._server.register_instance(_Dispatcher())
 		self._server_thread = threading.Thread(name=name,
 			target=self._server.serve_forever)
@@ -126,9 +128,9 @@ class BrainClient:
 		return _parse_result(self._client.getEngineTags())
 
 	def connect(self, path, open_existing, engine_tag):
-		return RemoteConnection(self._client, path, open_existing, engine_tag)
+		return _RemoteConnection(self._client, path, open_existing, engine_tag)
 
-class RemoteConnection:
+class _RemoteConnection:
 	def __init__(self, client, path, open_existing, engine_tag):
 		self._client = client
 		self._session_id = _parse_result(client.connect(path, open_existing, engine_tag))
@@ -142,20 +144,3 @@ class RemoteConnection:
 			return _parse_result(method(self._session_id, *args, **kwds))
 
 		return wrapper
-
-print("main: creating server")
-s = BrainServer()
-print("main: starting server")
-s.start()
-
-print("main: creating client")
-c = BrainClient('http://localhost:8000')
-print(c.getEngineTags())
-
-try:
-	conn = c.connect(None, None, 'sqlite3')
-	print(conn.create(None))
-finally:
-	print("main: shutting server down")
-	s.stop()
-	print("main: shutdown complete")
