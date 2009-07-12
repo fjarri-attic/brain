@@ -11,7 +11,10 @@ def getEngineTags():
 	return list(_DB_ENGINES.keys())
 
 def getEngineByTag(tag):
-	return _DB_ENGINES[tag]
+	if tag is None:
+		return _DB_ENGINES[getEngineTags()[0]]
+	else:
+		return _DB_ENGINES[tag]
 
 
 class _Engine:
