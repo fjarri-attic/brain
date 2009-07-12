@@ -35,12 +35,28 @@ class _Dispatcher:
 		random.seed()
 
 	def _dispatch(self, method, params):
+
+		connection_methods = ['create', 'modify', 'read', 'delete', 'insert',
+			'read_many', 'insert_many', 'delete_many', 'object_exists', 'search']
+
+		if method in connection_methods	:
+			return self._dispatch_connection_method(method, *params)
+
 		try:
 			func = getattr(self, 'export_' + method)
 		except AttributeError:
 			return _error('method ' + method + ' is not supported')
 		else:
 			return _catch(func, *params)
+
+	def _dispatch_connection_method(self, method, session_id, *args, **kwds):
+		if not isinstance(session_id, str):
+			return _error("Session ID must be string")
+
+		if session_id not in self._sessions.keys():
+			return _error("Session " + str(session_id) + " does not exist")
+
+		return getattr(self._sessions[session_id], method)(*args, **kwds)
 
 	def export_connect(self, path, open_existing, engine_tag):
 		session_id = "".join(random.sample(string.ascii_letters + string.digits, 8))
@@ -49,6 +65,7 @@ class _Dispatcher:
 
 	def export_close(self, session_id):
 		self._sessions[session_id].close()
+		del self._sessions[session_id]
 
 	def export_getEngineTags(self):
 		return brain.getEngineTags()
@@ -81,7 +98,8 @@ s.start()
 print("main: creating client")
 c = ServerProxy('http://localhost:8000', allow_none=True)
 res = c.getEngineTags()
-print(c.connect(None, None, res['result'][0]))
+ses = c.connect(None, None, res['result'][0])
+print(c.create(ses['result'], {'name': 'Alex'}))
 
 print("main: shutting server down")
 s.stop()
