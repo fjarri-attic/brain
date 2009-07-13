@@ -16,9 +16,6 @@ class Modify(TestRequest):
 	def testBlankObjectAddition(self):
 		"""Check that object without fields cannot be created"""
 
-		# Value is the mandatory paramter to this function
-		self.assertRaises(TypeError, self.conn.create)
-
 		self.assertRaises(brain.FormatError, self.conn.create, {})
 		self.assertRaises(brain.FormatError, self.conn.create, [])
 		self.assertRaises(brain.FormatError, self.conn.create, None)
