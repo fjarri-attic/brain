@@ -1,6 +1,7 @@
 import threading
 from xmlrpc.server import SimpleXMLRPCServer
-from xmlrpc.client import ServerProxy
+from xmlrpc.client import ServerProxy, Binary, Marshaller, Unmarshaller, Transport
+import xmlrpc.client
 import traceback
 import random
 import string
@@ -11,6 +12,37 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import brain
 
+def dump_bytes(self, value, write):
+	self.dump_instance(Binary(value), write)
+
+def dump_tuple(self, value, write):
+	i = id(value)
+	if i in self.memo:
+		raise TypeError("cannot marshal recursive sequences")
+	self.memo[i] = None
+	dump = self._Marshaller__dump
+	write("<value><tuple><data>\n")
+	for v in value:
+		dump(v, write)
+	write("</data></tuple></value>\n")
+	del self.memo[i]
+
+def end_base64(self, data):
+	value = Binary()
+	value.decode(data.encode("ascii"))
+	self.append(value.data)
+	self._value = 0
+
+def end_tuple(self, data):
+	mark = self._marks.pop()
+	# map tuples to Python tuples
+	self._stack[mark:] = [tuple(self._stack[mark:])]
+	self._value = 0
+
+xmlrpc.client.Marshaller.dispatch[tuple] = dump_tuple
+xmlrpc.client.Marshaller.dispatch[bytes] = dump_bytes
+xmlrpc.client.Unmarshaller.dispatch["tuple"] = end_tuple
+xmlrpc.client.Unmarshaller.dispatch["base64"] = end_base64
 
 class BrainXMLRPCError(brain.BrainError):
 	pass
