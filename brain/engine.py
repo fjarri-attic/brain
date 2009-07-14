@@ -10,9 +10,12 @@ from . import interface
 def getEngineTags():
 	return list(_DB_ENGINES.keys())
 
+def getDefaultEngineTag():
+	return getEngineTags()[0]
+
 def getEngineByTag(tag):
 	if tag is None:
-		return _DB_ENGINES[getEngineTags()[0]]
+		return _DB_ENGINES[getDefaultEngineTag()]
 	else:
 		return _DB_ENGINES[tag]
 
