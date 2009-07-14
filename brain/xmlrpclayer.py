@@ -5,12 +5,14 @@ import xmlrpc.client
 import traceback
 import random
 import string
+import re
 
 import sys, os.path
 scriptdir, scriptfile = os.path.split(sys.argv[0])
 sys.path.append(os.path.join(scriptdir, ".."))
 
 import brain
+from brain import FacadeError, FormatError, LogicError, StructureError
 
 def dump_bytes(self, value, write):
 	self.dump_instance(Binary(value), write)
@@ -27,6 +29,13 @@ def dump_tuple(self, value, write):
 	write("</data></tuple></value>\n")
 	del self.memo[i]
 
+def start(self, tag, attrs):
+	# prepare to handle this element
+	if tag == "array" or tag == "struct" or tag == "tuple":
+	    self._marks.append(len(self._stack))
+	self._data = []
+	self._value = (tag == "value")
+
 def end_base64(self, data):
 	value = Binary()
 	value.decode(data.encode("ascii"))
@@ -41,6 +50,7 @@ def end_tuple(self, data):
 
 xmlrpc.client.Marshaller.dispatch[tuple] = dump_tuple
 xmlrpc.client.Marshaller.dispatch[bytes] = dump_bytes
+xmlrpc.client.Unmarshaller.start = start
 xmlrpc.client.Unmarshaller.dispatch["tuple"] = end_tuple
 xmlrpc.client.Unmarshaller.dispatch["base64"] = end_base64
 
@@ -68,43 +78,40 @@ _CONNECTION_METHODS = ['create', 'modify', 'read', 'delete', 'insert',
 	'readMany', 'insertMany', 'deleteMany', 'objectExists', 'search',
 	'begin', 'begin_sync', 'commit', 'rollback', 'close']
 
-_EXCEPTION_MAP = {
-	'FormatError': brain.FormatError,
-	'FacadeError': brain.FacadeError,
-	'StructureError': brain.StructureError,
-	'LogicError': brain.LogicError,
-	'BrainXMLRPCError': BrainXMLRPCError
-}
-
-_EXCEPTION_NAMES = {_EXCEPTION_MAP[exc_name]: exc_name for exc_name in _EXCEPTION_MAP}
-
-def _result(data):
-	return {'result': data}
-
-def _exception(exc_class, exc_msg, exc_data=None):
-	res = {'exception': _EXCEPTION_NAMES[exc_class], 'exception_msg': exc_msg}
-	if exc_data is not None:
-		res['exception_data'] = exc_data
+def _parse_result(res):
 	return res
 
-def _error(msg):
-	return _exception(BrainXMLRPCError, msg)
+allowed_errors = [FacadeError, FormatError, LogicError, StructureError, BrainXMLRPCError]
 
-def _parse_result(res):
-	if 'result' in res:
-		return res['result']
-	else:
-		raise _EXCEPTION_MAP[res['exception']](res['exception_msg'])
+error_pat = re.compile('(?P<exception>[^:]*):(?P<rest>.*$)')
 
-def _catch(func, *args, **kwds):
-	res = None
-	try:
-		res = func(*args, **kwds)
-	except:
-		exc_type, exc_val, exc_tb = sys.exc_info()
-		exc_data = ''.join(traceback.format_exception(exc_type, exc_val, exc_tb))
-		return _exception(exc_type, str(exc_val))
-	return _result(res)
+class ExceptionUnmarshaller(xmlrpc.client.Unmarshaller):
+	def close(self):
+		# return response tuple and target method
+		if self._type is None or self._marks:
+			raise xmlrpc.client.ResponseError()
+		if self._type == "fault":
+			d = self._stack[0]
+			m = error_pat.match(d['faultString'])
+			if m:
+				exception_name = m.group('exception')
+				rest = m.group('rest')
+				for exc in allowed_errors:
+					if repr(exc) == exception_name:
+						raise exc(rest)
+
+			# Fall through and just raise the fault
+			raise xmlrpc.client.Fault(**d)
+		return tuple(self._stack)
+
+class ExceptionTransport(xmlrpc.client.Transport):
+	# Override user-agent if desired
+	#user_agent = "xmlrpc-exceptions/0.0.1"
+
+	def getparser(self, *args, **kwds):
+		target = ExceptionUnmarshaller()
+		parser = xmlrpc.client.ExpatParser(target)
+		return parser, target
 
 
 class _Dispatcher:
@@ -125,19 +132,19 @@ class _Dispatcher:
 		try:
 			func = getattr(self, 'export_' + method)
 		except AttributeError:
-			return _error('method ' + method + ' is not supported')
+			raise BrainXMLRPCError('method ' + method + ' is not supported')
 		else:
-			return _catch(func, *args, **kwds)
+			return func(*args, **kwds)
 
 	def _dispatch_connection_method(self, method, session_id, *args, **kwds):
 		if not isinstance(session_id, str):
-			return _error("Session ID must be string")
+			raise BrainXMLRPCError("Session ID must be string")
 
 		if session_id not in self._sessions:
-			return _error("Session " + str(session_id) + " does not exist")
+			raise BrainXMLRPCError("Session " + str(session_id) + " does not exist")
 
 		func = getattr(self._sessions[session_id], method)
-		return _catch(func, *args, **kwds)
+		return func(*args, **kwds)
 
 	def export_connect(self, path, open_existing, engine_tag):
 		session_id = "".join(random.sample(string.ascii_letters + string.digits, 8))
@@ -178,7 +185,7 @@ class BrainServer:
 
 class BrainClient:
 	def __init__(self, addr):
-		self._client = ServerProxyPy(addr, allow_none=True)
+		self._client = ServerProxyPy(addr, allow_none=True, transport=ExceptionTransport())
 
 	def getEngineTags(self):
 		return _parse_result(self._client.getEngineTags())
