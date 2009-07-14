@@ -60,9 +60,11 @@ for tag in connection_params:
 # add functionality tests
 
 class XMLRPCGenerator:
-	def connect(self, engine_tag, path, open_existing):
-		c = brain.BrainClient('http://localhost:8000')
-		return c.connect(engine_tag, path, open_existing)
+	def __init__(self):
+		self._client = brain.BrainClient('http://localhost:8000')
+
+	def __getattr__(self, name):
+		return getattr(self._client, name)
 
 if opts.all_connections:
 	connection_generators = {'local': brain, 'xmlrpc': XMLRPCGenerator()}
@@ -92,7 +94,7 @@ for gen in connection_generators:
 if opts.all_connections:
 	xmlrpc_srv = brain.BrainServer()
 	xmlrpc_srv.start()
-	
+
 helpers.TextTestRunner(verbosity=opts.verbosity).run(suite)
 
 if opts.all_connections:
