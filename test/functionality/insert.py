@@ -16,7 +16,7 @@ class Insert(TestRequest):
 	def testToTheMiddleSimpleList(self):
 		"""Check insertion to the middle of simple list"""
 		self.prepareStandSimpleList()
-		self.conn.insert_many(self.id1, ['tracks', 1], ['Track 4', 'Track 5'])
+		self.conn.insertMany(self.id1, ['tracks', 1], ['Track 4', 'Track 5'])
 		res = self.conn.read(self.id1, ['tracks', None])
 		self.assertEqual(res, {'tracks': [
 			'Track 1', 'Track 4', 'Track 5', 'Track 2', 'Track 3'
@@ -25,7 +25,7 @@ class Insert(TestRequest):
 	def testToTheBeginningSimpleList(self):
 		"""Check insertion to the beginning of simple list"""
 		self.prepareStandSimpleList()
-		self.conn.insert_many(self.id1, ['tracks', 0], ['Track 4', 'Track 5'])
+		self.conn.insertMany(self.id1, ['tracks', 0], ['Track 4', 'Track 5'])
 		res = self.conn.read(self.id1, ['tracks', None])
 		self.assertEqual(res, {'tracks': [
 			'Track 4', 'Track 5', 'Track 1', 'Track 2', 'Track 3'
@@ -34,7 +34,7 @@ class Insert(TestRequest):
 	def testToTheEndSimpleList(self):
 		"""Check insertion to the end of simple list"""
 		self.prepareStandSimpleList()
-		self.conn.insert_many(self.id1, ['tracks', None], ['Track 4', 'Track 5'])
+		self.conn.insertMany(self.id1, ['tracks', None], ['Track 4', 'Track 5'])
 		res = self.conn.read(self.id1, ['tracks', None])
 		self.assertEqual(res, {'tracks': [
 			'Track 1', 'Track 2', 'Track 3', 'Track 4', 'Track 5'
@@ -43,7 +43,7 @@ class Insert(TestRequest):
 	def testToTheMiddleNestedList(self):
 		"""Test insertion to the middle of nested list"""
 		self.prepareStandNestedList()
-		self.conn.insert_many(self.id2, ['tracks', 1], [
+		self.conn.insertMany(self.id2, ['tracks', 1], [
 			{'Name': 'Track 4 name'}, {'Name': 'Track 5 name'}
 		])
 
@@ -68,7 +68,7 @@ class Insert(TestRequest):
 	def testToTheBeginningNestedList(self):
 		"""Test insertion to the beginning of nested list"""
 		self.prepareStandNestedList()
-		self.conn.insert_many(self.id2, ['tracks', 0], [
+		self.conn.insertMany(self.id2, ['tracks', 0], [
 			{'Name': 'Track 4 name'}, {'Name': 'Track 5 name'}
 		])
 
@@ -93,7 +93,7 @@ class Insert(TestRequest):
 	def testToTheEndNestedList(self):
 		"""Test insertion to the end of nested list"""
 		self.prepareStandNestedList()
-		self.conn.insert_many(self.id2, ['tracks', None], [
+		self.conn.insertMany(self.id2, ['tracks', None], [
 			{'Name': 'Track 4 name'}, {'Name': 'Track 5 name'}
 		])
 
@@ -156,7 +156,7 @@ class Insert(TestRequest):
 		"""Test insertion to the end of list when there are other lists on the same level"""
 		self.prepareStandNestedList()
 
-		res = self.conn.insert_many(self.id2,
+		res = self.conn.insertMany(self.id2,
 			['tracks', 1, 'Authors', None],
 			['Yngwie', 'Zack'])
 
@@ -171,7 +171,7 @@ class Insert(TestRequest):
 		"""Check that insertion to non-existing list creates this list"""
 		self.prepareStandSimpleList()
 
-		self.conn.insert_many(self.id2,
+		self.conn.insertMany(self.id2,
 			['tracks', 2, 'Authors', None],
 			['Earl', 'Fred'])
 
@@ -188,7 +188,7 @@ class Insert(TestRequest):
 		to list which already has values of several types
 		"""
 		self.prepareStandDifferentTypes()
-		self.conn.insert_many(self.id1, ['meta', 2], ['Monk', 2, 10.0])
+		self.conn.insertMany(self.id1, ['meta', 2], ['Monk', 2, 10.0])
 		res = self.conn.read(self.id1, ['meta', None])
 		self.assertEqual(res, {'meta': [
 			'Pikeman', 'Archer','Monk', 2,

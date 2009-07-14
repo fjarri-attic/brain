@@ -297,10 +297,10 @@ class Connection:
 
 	def read(self, id, path=None):
 		"""Create read request and add it to queue"""
-		return self.read_many(id, [path] if path is not None else None)
+		return self.readMany(id, [path] if path is not None else None)
 
 	@_transacted
-	def read_many(self, id, paths=None):
+	def readMany(self, id, paths=None):
 		"""Create multiple read request and add it to queue"""
 		if paths is not None:
 			paths = [Field(self._engine, path) for path in paths]
@@ -308,10 +308,10 @@ class Connection:
 
 	def insert(self, id, path, value):
 		"""Create insertion request and add it to queue"""
-		return self.insert_many(id, path, [value])
+		return self.insertMany(id, path, [value])
 
 	@_transacted
-	def insert_many(self, id, path, values):
+	def insertMany(self, id, path, values):
 		"""Create several values insertion request and add it to queue"""
 		self._requests.append(interface.InsertRequest(
 			id, Field(self._engine, path),
@@ -319,10 +319,10 @@ class Connection:
 
 	def delete(self, id, path=None):
 		"""Create deletion request and add it to queue"""
-		return self.delete_many(id, [path] if path is not None else None)
+		return self.deleteMany(id, [path] if path is not None else None)
 
 	@_transacted
-	def delete_many(self, id, paths=None):
+	def deleteMany(self, id, paths=None):
 		"""Create many fields deletion request and add it to queue"""
 		self._requests.append(interface.DeleteRequest(id,
 			[Field(self._engine, path) for path in paths] if paths is not None else None
@@ -349,6 +349,6 @@ class Connection:
 		self._requests.append(interface.CreateRequest(fields))
 
 	@_transacted
-	def object_exists(self, id):
+	def objectExists(self, id):
 		"""Create request which returns True if object with given ID exists"""
 		self._requests.append(interface.ObjectExistsRequest(id))

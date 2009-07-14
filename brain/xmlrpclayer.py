@@ -65,7 +65,7 @@ class BrainXMLRPCError(brain.BrainError):
 	pass
 
 _CONNECTION_METHODS = ['create', 'modify', 'read', 'delete', 'insert',
-	'read_many', 'insert_many', 'delete_many', 'object_exists', 'search',
+	'readMany', 'insertMany', 'deleteMany', 'objectExists', 'search',
 	'begin', 'begin_sync', 'commit', 'rollback', 'close']
 
 _EXCEPTION_MAP = {

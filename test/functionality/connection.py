@@ -99,7 +99,7 @@ class Connection(TestRequest):
 		self.conn.read(self.id2)
 		self.conn.search(['name'], op.EQ, 'Zed')
 		self.conn.insert(self.id1, ['tracks', None], 'Track 4')
-		self.conn.insert_many(self.id2, ['tracks', None], ['Track 3', 'Track 4'])
+		self.conn.insertMany(self.id2, ['tracks', None], ['Track 3', 'Track 4'])
 		results = self.conn.commit()
 
 		# check that results list has expected contents
@@ -117,7 +117,7 @@ class Connection(TestRequest):
 		# search() should have returned object 1 ID (we added name Zed to it earlier)
 		self.assertEqual(results[3], [self.id1])
 
-		# insert() and insert_many() should have returned None
+		# insert() and insertMany() should have returned None
 		self.assertEqual(results[4], None)
 		self.assertEqual(results[5], None)
 
@@ -189,13 +189,13 @@ class Connection(TestRequest):
 
 	def testObjectExistsRequest(self):
 		"""
-		Check that object_exists() returns True for existing objects
+		Check that objectExists() returns True for existing objects
 		and None for non-existent
 		"""
 		self.prepareStandNoList()
 		self.conn.delete(self.id1)
-		self.assertEqual(self.conn.object_exists(self.id1), False)
-		self.assertEqual(self.conn.object_exists(self.id2), True)
+		self.assertEqual(self.conn.objectExists(self.id1), False)
+		self.assertEqual(self.conn.objectExists(self.id2), True)
 
 	def testKeywordArgumentsInRequest(self):
 		"""

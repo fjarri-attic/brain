@@ -101,7 +101,7 @@ class Read(TestRequest):
 	def testSeveralComplexStructures(self):
 		"""Check that several complex structures can be read at once"""
 		self.prepareStandDifferentTypes()
-		res = self.conn.read_many(self.id1, [['tracks', None, 'Name'],
+		res = self.conn.readMany(self.id1, [['tracks', None, 'Name'],
 			['tracks', None, 'Authors', None]])
 		self.assertEqual(res, {'tracks': [
 			{'Name': 'Track 1 name', 'Authors': ['Alex', 'Bob']},
