@@ -197,6 +197,23 @@ class Connection(TestRequest):
 		self.assertEqual(self.conn.object_exists(self.id1), False)
 		self.assertEqual(self.conn.object_exists(self.id2), True)
 
+	def testKeywordArgumentsInRequest(self):
+		"""
+		Check that requests with keyword arguments can pass through
+		remote connections like XML RPC
+		"""
+		obj = self.conn.create(1, path=['fld'])
+		res = self.conn.read(obj)
+		self.assertEqual(res, {'fld': 1})
+
+	def testKeywordArgumentsInMethod(self):
+		"""
+		Check that method calls with keyword arguments can pass through
+		remote connections, like XML RPC
+		"""
+		conn2 = self.gen.connect(None, engine_tag=self.gen.getDefaultEngineTag())
+		conn2.close()
+
 
 def get_class():
 	return Connection

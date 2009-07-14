@@ -44,6 +44,23 @@ xmlrpc.client.Marshaller.dispatch[bytes] = dump_bytes
 xmlrpc.client.Unmarshaller.dispatch["tuple"] = end_tuple
 xmlrpc.client.Unmarshaller.dispatch["base64"] = end_base64
 
+class _MethodPy:
+	def __init__(self, send, name):
+		self.__send = send
+		self.__name = name
+	def __call__(self, *args, **kwargs):
+		l = list(args)
+		l.append(kwargs)
+		args=tuple(l)
+		return self.__send.__getattr__(self.__name)(*args)
+
+class ServerProxyPy:
+	def __init__(self, *args, **kwargs):
+		self.s = ServerProxy(*args, **kwargs)
+	def __getattr__(self, name):
+		return _MethodPy(self.s, name)
+
+
 class BrainXMLRPCError(brain.BrainError):
 	pass
 
@@ -98,15 +115,19 @@ class _Dispatcher:
 
 	def _dispatch(self, method, params):
 
+		args=list(params)
+		kwds=args.pop()
+		args=tuple(args)
+
 		if method in _CONNECTION_METHODS:
-			return self._dispatch_connection_method(method, *params)
+			return self._dispatch_connection_method(method, *args, **kwds)
 
 		try:
 			func = getattr(self, 'export_' + method)
 		except AttributeError:
 			return _error('method ' + method + ' is not supported')
 		else:
-			return _catch(func, *params)
+			return _catch(func, *args, **kwds)
 
 	def _dispatch_connection_method(self, method, session_id, *args, **kwds):
 		if not isinstance(session_id, str):
@@ -129,6 +150,9 @@ class _Dispatcher:
 
 	def export_getEngineTags(self):
 		return brain.getEngineTags()
+
+	def export_getDefaultEngineTag(self):
+		return brain.getDefaultEngineTag()
 
 
 class BrainServer:
@@ -154,13 +178,17 @@ class BrainServer:
 
 class BrainClient:
 	def __init__(self, addr):
-		self._client = ServerProxy(addr, allow_none=True)
+		self._client = ServerProxyPy(addr, allow_none=True)
 
 	def getEngineTags(self):
 		return _parse_result(self._client.getEngineTags())
 
-	def connect(self, path, open_existing, engine_tag):
+	def getDefaultEngineTag(self):
+		return _parse_result(self._client.getDefaultEngineTag())
+
+	def connect(self, path, open_existing=None, engine_tag=None):
 		return _RemoteConnection(self._client, path, open_existing, engine_tag)
+
 
 class _RemoteConnection:
 	def __init__(self, client, path, open_existing, engine_tag):
