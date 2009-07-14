@@ -76,7 +76,7 @@ class BrainXMLRPCError(brain.BrainError):
 
 _CONNECTION_METHODS = ['create', 'modify', 'read', 'delete', 'insert',
 	'readMany', 'insertMany', 'deleteMany', 'objectExists', 'search',
-	'begin', 'begin_sync', 'commit', 'rollback', 'close']
+	'begin', 'beginSync', 'commit', 'rollback', 'close']
 
 def _parse_result(res):
 	return res

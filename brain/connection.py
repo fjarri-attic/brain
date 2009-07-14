@@ -246,7 +246,7 @@ class Connection:
 		else:
 			raise interface.FacadeError("Transaction is already in progress")
 
-	def begin_sync(self):
+	def beginSync(self):
 		"""Begin synchronous transaction"""
 		if not self._transaction:
 			self._engine.begin()

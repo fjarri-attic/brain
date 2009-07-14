@@ -127,7 +127,7 @@ class Connection(TestRequest):
 		data1 = {'name': 'Alex', 'friends': ['Bob', 'Carl']}
 		data2 = {'name': 'Roy', 'friends': ['Ned', 'Mark']}
 
-		self.conn.begin_sync()
+		self.conn.beginSync()
 		obj1 = self.conn.create(data1)
 		obj2 = self.conn.create(data2)
 		obj1_data = self.conn.read(obj1)
@@ -141,7 +141,7 @@ class Connection(TestRequest):
 		"""Check that synchronous transaction operation can be rolled back"""
 		self.prepareStandNoList()
 
-		self.conn.begin_sync()
+		self.conn.beginSync()
 		self.conn.modify(self.id1, {'name': 'Zack'})
 		self.conn.rollback()
 
@@ -153,7 +153,7 @@ class Connection(TestRequest):
 		"""Check that sync transaction automatically rolls back on error"""
 		self.prepareStandSimpleList()
 
-		self.conn.begin_sync()
+		self.conn.beginSync()
 		self.conn.modify(self.id2, {'name': 'Alex'})
 
 		# this will raise an exception
@@ -171,12 +171,12 @@ class Connection(TestRequest):
 		"""Check that begin() raises proper exception when transaction is in progress"""
 		self.conn.begin()
 		self.assertRaises(brain.FacadeError, self.conn.begin)
-		self.assertRaises(brain.FacadeError, self.conn.begin_sync)
+		self.assertRaises(brain.FacadeError, self.conn.beginSync)
 		self.conn.commit()
 
-		self.conn.begin_sync()
+		self.conn.beginSync()
 		self.assertRaises(brain.FacadeError, self.conn.begin)
-		self.assertRaises(brain.FacadeError, self.conn.begin_sync)
+		self.assertRaises(brain.FacadeError, self.conn.beginSync)
 		self.conn.commit()
 
 	def testCommitOrRollbackWhenNoTransaction(self):
