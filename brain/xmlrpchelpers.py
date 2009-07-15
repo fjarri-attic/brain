@@ -111,8 +111,24 @@ class MyServerProxy:
 	def __getattr__(self, name):
 		return _MethodPy(self.s, name)
 
+class _InstWrapper:
+	def __init__(self, inst):
+		self._inst = inst
+
+	def _dispatch(self, method, params):
+
+		args=list(params)
+		kwds=args.pop()
+		args=tuple(args)
+
+		return self._inst._dispatch(method, *args, **kwds)
+
 class MyXMLRPCServer(SimpleXMLRPCServer):
 	def __init__(self, *args, **kwds):
 		kwds['allow_none'] = True
 		kwds['logRequests'] = False
 		SimpleXMLRPCServer.__init__(self, *args, **kwds)
+
+	def register_instance(self, inst):
+		SimpleXMLRPCServer.register_instance(self, _InstWrapper(inst))
+

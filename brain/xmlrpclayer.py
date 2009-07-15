@@ -24,11 +24,7 @@ class _Dispatcher:
 		self._sessions = {}
 		random.seed()
 
-	def _dispatch(self, method, params):
-
-		args=list(params)
-		kwds=args.pop()
-		args=tuple(args)
+	def _dispatch(self, method, *args, **kwds):
 
 		if method in _CONNECTION_METHODS:
 			return self._dispatch_connection_method(method, *args, **kwds)
