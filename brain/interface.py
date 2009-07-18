@@ -444,3 +444,10 @@ class ObjectExistsRequest:
 		return "{name} for object {id}{data}".format(
 			name=self.__class__.__name__,
 			id=self.id)
+
+
+class DumpRequest:
+	"""Request for dumping database contents"""
+
+	def __str__(self):
+		return self.__class__.__name__

@@ -214,6 +214,18 @@ class Connection(TestRequest):
 		conn2 = self.gen.connect(None, engine_tag=self.gen.getDefaultEngineTag())
 		conn2.close()
 
+	def testDump(self):
+		"""Check dumping to Python structures"""
+		self.prepareStandNoList()
+		res = self.conn.dump()
+		self.assertEqual(res, {
+	 		self.id1: {'name': 'Alex', 'phone': '1111'},
+			self.id2: {'name': 'Bob', 'phone': '2222'},
+			self.id3: {'name': 'Carl', 'phone': '3333', 'age': '27'},
+			self.id4: {'name': 'Don', 'phone': '4444', 'age': '20'},
+			self.id5: {'name': 'Alex', 'phone': '1111', 'age': '22'}
+		})
+
 
 def get_class():
 	return Connection

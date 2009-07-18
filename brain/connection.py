@@ -174,6 +174,10 @@ def _transformResults(requests, results):
 			res.append(result)
 		elif isinstance(request, interface.ObjectExistsRequest):
 			res.append(result)
+		elif isinstance(request, interface.DumpRequest):
+			for obj_id in result:
+				result[obj_id] = _fieldsToTree(result[obj_id])
+			res.append(result)
 
 	return res
 
@@ -199,7 +203,8 @@ class Connection:
 			interface.DeleteRequest: self._logic.processDeleteRequest,
 			interface.SearchRequest: self._logic.processSearchRequest,
 			interface.CreateRequest: self._logic.processCreateRequest,
-			interface.ObjectExistsRequest: self._logic.processObjectExistsRequest
+			interface.ObjectExistsRequest: self._logic.processObjectExistsRequest,
+			interface.DumpRequest: self._logic.processDumpRequest
 		}
 
 		# Prepare handler and request, if necessary
@@ -352,3 +357,8 @@ class Connection:
 	def objectExists(self, id):
 		"""Create request which returns True if object with given ID exists"""
 		self._requests.append(interface.ObjectExistsRequest(id))
+
+	@_transacted
+	def dump(self):
+		"""Dump the whole database contents"""
+		self._requests.append(interface.DumpRequest())

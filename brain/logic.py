@@ -700,5 +700,9 @@ class LogicLayer:
 		self._modifyFields(request.id, fields)
 
 	def processObjectExistsRequest(self, request):
-
 		return self._structure.objectExists(request.id)
+
+	def processDumpRequest(self, request):
+		ids = self.processSearchRequest(interface.SearchRequest())
+		return {obj_id: self.processReadRequest(interface.ReadRequest(obj_id))
+			for obj_id in ids}
