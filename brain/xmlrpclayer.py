@@ -23,7 +23,7 @@ class BrainXMLRPCError(brain.BrainError):
 # methods, calls to which will be forwared to connection object
 _CONNECTION_METHODS = ['create', 'modify', 'read', 'delete', 'insert',
 	'readMany', 'insertMany', 'deleteMany', 'objectExists', 'search',
-	'begin', 'beginSync', 'commit', 'rollback']
+	'begin', 'beginSync', 'commit', 'rollback', 'dump']
 
 
 class _Dispatcher:

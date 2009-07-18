@@ -37,6 +37,25 @@ def _dump_tuple(self, value, write):
 	write("</data></tuple></value>\n")
 	del self.memo[i]
 
+def _dump_struct(self, value, write, escape=xmlrpc.client.escape):
+	i = id(value)
+	if i in self.memo:
+		raise TypeError("cannot marshal recursive dictionaries")
+	self.memo[i] = None
+	dump = self._Marshaller__dump
+	write("<value><struct>\n")
+	for k, v in value.items():
+		write("<member>\n")
+		if isinstance(k, str):
+			self.dispatch[k.__class__](self, k, write, escape)
+		else:
+			self.dispatch[k.__class__](self, k, write)
+		dump(v, write)
+		write("</member>\n")
+	write("</struct></value>\n")
+	del self.memo[i]
+
+
 # Additional unmarshalling functions
 
 def _start(self, tag, attrs):
@@ -61,6 +80,7 @@ def _end_tuple(self, data):
 # Alter the behaviour of loaded Marshaller and Unmarshaller
 xmlrpc.client.Marshaller.dispatch[tuple] = _dump_tuple
 xmlrpc.client.Marshaller.dispatch[bytes] = _dump_bytes
+xmlrpc.client.Marshaller.dispatch[dict] = _dump_struct
 xmlrpc.client.Unmarshaller.start = _start
 xmlrpc.client.Unmarshaller.dispatch["tuple"] = _end_tuple
 xmlrpc.client.Unmarshaller.dispatch["base64"] = _end_base64
