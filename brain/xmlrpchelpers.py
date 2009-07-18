@@ -16,7 +16,7 @@ will be possibly done in the future
 """
 
 from xmlrpc.server import SimpleXMLRPCServer
-from xmlrpc.client import ServerProxy, Binary, Marshaller, Unmarshaller, Transport
+from xmlrpc.client import ServerProxy, Binary, Marshaller, Unmarshaller, Transport, MultiCall, MultiCallIterator
 import xmlrpc.client
 import re
 
@@ -65,6 +65,19 @@ xmlrpc.client.Unmarshaller.start = _start
 xmlrpc.client.Unmarshaller.dispatch["tuple"] = _end_tuple
 xmlrpc.client.Unmarshaller.dispatch["base64"] = _end_base64
 
+def _parseFault(fault_code, fault_string, exceptions):
+	_error_pat = re.compile('(?P<exception>[^:]*):(?P<rest>.*$)')
+	m = _error_pat.match(fault_string)
+	if m:
+		exception_name = m.group('exception')
+		rest = m.group('rest')
+		for exc in exceptions:
+			if repr(exc) == exception_name:
+				raise exc(rest)
+
+	# Fall through and just raise the fault
+	raise xmlrpc.client.Fault(fault_code, fault_string)
+
 
 class _ExceptionUnmarshaller(xmlrpc.client.Unmarshaller):
 	"""Extension for Unmarshaller which will raise known exceptions on client side"""
@@ -85,16 +98,7 @@ class _ExceptionUnmarshaller(xmlrpc.client.Unmarshaller):
 			raise xmlrpc.client.ResponseError()
 		if self._type == "fault":
 			d = self._stack[0]
-			m = self._error_pat.match(d['faultString'])
-			if m:
-				exception_name = m.group('exception')
-				rest = m.group('rest')
-				for exc in self._exceptions:
-					if repr(exc) == exception_name:
-						raise exc(rest)
-
-			# Fall through and just raise the fault
-			raise xmlrpc.client.Fault(**d)
+			_parseFault(d['faultCode'], d['faultString'], self._exceptions)
 		return tuple(self._stack)
 
 
@@ -127,6 +131,9 @@ class _KeywordMarshaller:
 		args=tuple(l)
 		return self.__send.__getattr__(self.__name)(*args)
 
+	def __getattr__(self, name):
+		return _KeywordMarshaller(self.__send, self.__name + '.' + name)
+
 
 class MyServerProxy:
 	"""Wrapper for XML RPC client, used for DB"""
@@ -137,6 +144,7 @@ class MyServerProxy:
 			del kwds['exceptions']
 		else:
 			exceptions = []
+		self._exceptions = exceptions
 
 		kwds['transport'] = _ExceptionTransport(exceptions)
 		kwds['allow_none'] = True
@@ -147,19 +155,29 @@ class MyServerProxy:
 		return _KeywordMarshaller(self.s, name)
 
 
-class _KeywordUnmarshaller:
-	"""Wrapper for method calls with keyword arguments, server side"""
+class _KeywordInstance:
+	"""Wrapper for object method calls with keyword arguments, server side"""
 
 	def __init__(self, inst):
 		self._inst = inst
 
 	def _dispatch(self, method, params):
-
 		args=list(params)
 		kwds=args.pop()
 		args=tuple(args)
-
 		return self._inst._dispatch(method, *args, **kwds)
+
+class _KeywordFunction:
+	"""Wrapper for function calls with keyword arguments, server side"""
+
+	def __init__(self, func):
+		self._func = func
+
+	def __call__(self, *args):
+		args=list(args)
+		kwds=args.pop()
+		args=tuple(args)
+		return self._func(*args, **kwds)
 
 
 class MyXMLRPCServer(SimpleXMLRPCServer):
@@ -170,5 +188,60 @@ class MyXMLRPCServer(SimpleXMLRPCServer):
 		kwds['logRequests'] = False
 		SimpleXMLRPCServer.__init__(self, *args, **kwds)
 
+		# registering multicall function manually, because we should
+		# remove keyword argument before calling it
+		self.register_function(_KeywordFunction(self.system_multicall), 'system.multicall')
+
 	def register_instance(self, inst):
-		SimpleXMLRPCServer.register_instance(self, _KeywordUnmarshaller(inst))
+		SimpleXMLRPCServer.register_instance(self, _KeywordInstance(inst))
+
+class _MyMultiCallMethod:
+	def __init__(self, call_list, name):
+		self.__call_list = call_list
+		self.__name = name
+	def __getattr__(self, name):
+		return _MyMultiCallMethod(self.__call_list, "%s.%s" % (self.__name, name))
+	def __call__(self, *args, **kwds):
+		args = tuple(list(args) + [kwds])
+		self.__call_list.append((self.__name, args))
+
+
+class _MyMultiCallIterator:
+	def __init__(self, results, exceptions):
+		self._results = results
+		self._exceptions = exceptions
+
+	def __getitem__(self, i):
+		item = self._results[i]
+		if type(item) == type({}):
+			_parseFault(item['faultCode'], item['faultString'], self._exceptions)
+		elif type(item) == type([]):
+			return item[0]
+		else:
+			raise ValueError("unexpected type in multicall result")
+
+
+class MyMultiCall(MultiCall):
+
+	def __init__(self, server, session_id):
+		self.__server = server
+		self.__call_list = []
+		self._session_id = session_id
+		self._exceptions = self.__server._exceptions
+
+	def __repr__(self):
+		return "<MultiCall at %x>" % id(self)
+
+	__str__ = __repr__
+
+	def __getattr__(self, name):
+		return _MyMultiCallMethod(self.__call_list, name)
+
+	def __call__(self):
+		marshalled_list = []
+		for name, args in self.__call_list:
+			args = tuple([self._session_id] + list(args))
+			marshalled_list.append({'methodName' : name, 'params' : args})
+
+		return _MyMultiCallIterator(self.__server.system.multicall(marshalled_list),
+			self._exceptions)

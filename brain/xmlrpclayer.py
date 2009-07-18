@@ -14,7 +14,7 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import brain
 from brain import FacadeError, FormatError, LogicError, StructureError
-from brain.xmlrpchelpers import MyXMLRPCServer, MyServerProxy
+from brain.xmlrpchelpers import MyXMLRPCServer, MyServerProxy, MyMultiCall
 
 class BrainXMLRPCError(brain.BrainError):
 	"""Signals an error in XML RPC layer"""
@@ -122,6 +122,8 @@ class _RemoteConnection:
 	def __init__(self, client, path, open_existing, engine_tag):
 		self._client = client
 		self._session_id = client.connect(path, open_existing, engine_tag)
+		self._multicall = None
+		self._transaction = False
 
 	def __getattr__(self, name):
 		# close() will be called for connection object, but it should be passed to
@@ -131,8 +133,52 @@ class _RemoteConnection:
 			raise AttributeError("Cannot find method " + str(name))
 
 		# Pass method call to server, adding session ID to it
-		method = getattr(self._client, name)
-		def wrapper(*args, **kwds):
+		def wrapper_session(*args, **kwds):
 			return method(self._session_id, *args, **kwds)
 
-		return wrapper
+		if self._multicall is not None:
+			method = getattr(self._multicall, name)
+			return method
+		else:
+			method = getattr(self._client, name)
+			return wrapper_session
+
+	def beginSync(self):
+		if self._transaction:
+			raise FacadeError("Transaction is already in progress")
+
+		self.__getattr__('beginSync')()
+		self._transaction = True
+
+	def begin(self):
+		if self._transaction:
+			raise FacadeError("Transaction is already in progress")
+
+		self._multicall = MyMultiCall(self._client, self._session_id)
+		self._multicall.begin()
+		self._transaction = True
+
+	def rollback(self):
+		if not self._transaction:
+			raise FacadeError("Transaction is not in progress")
+
+		self._transaction = False
+		if self._multicall is None:
+			self.__getattr__('rollback')()
+		else:
+			self._multicall = None
+
+	def commit(self):
+		if not self._transaction:
+			raise FacadeError("Transaction is not in progress")
+		self._transaction = False
+
+		if self._multicall is None:
+			return self.__getattr__('commit')()
+		else:
+			try:
+				self._multicall.commit()
+				res = list(self._multicall())
+				return res[-1]
+			finally:
+				self._multicall = None
