@@ -266,6 +266,7 @@ class _StructureLayer:
 
 		# Convert results to list of Fields
 		res = []
+		l = [tuple(x) for x in l]
 		for elem in l:
 			if field.isNull():
 			# in NULL table there is no values, all columns are list indexes
