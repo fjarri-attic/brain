@@ -128,32 +128,6 @@ class EngineTest(unittest.TestCase):
 			.format(type=self.str_type))
 		self.engine.deleteTable('aaa')
 
-	def testEmptyCondition(self):
-		"""Test that empty condition really returns empty table"""
-		self.engine.begin()
-		res = self.engine.execute(self.engine.getEmptyCondition())
-		self.failUnlessEqual(res, [])
-
-	def testEmptyConditionIntersect(self):
-		"""Test that empty condition can be used with INTERSECT"""
-		self.engine.begin()
-		self.engine.execute("CREATE TABLE ttt (col1 {type}, col2 {type})"
-			.format(type=self.str_type))
-		self.engine.execute("INSERT INTO ttt VALUES ('a', 'b')")
-		res = self.engine.execute("SELECT * FROM (SELECT col1 FROM ttt) INTERSECT " +
-			"SELECT * FROM (" + self.engine.getEmptyCondition() + ")")
-		self.failUnlessEqual(res, [])
-
-	def testEmptyConditionUnion(self):
-		"""Test that empty condition can be used with UNION"""
-		self.engine.begin()
-		self.engine.execute("CREATE TABLE ttt (col1 {type}, col2 {type})"
-			.format(type=self.str_type))
-		self.engine.execute("INSERT INTO ttt VALUES ('a', 'b')")
-		res = self.engine.execute("SELECT * FROM (SELECT col1 FROM ttt) UNION " +
-			"SELECT * FROM (" + self.engine.getEmptyCondition() + ")")
-		self.failUnlessEqual(res, [('a',)])
-
 	def testRollbackTableModifications(self):
 		"""Test that rollback rolls back table modifying actions"""
 		self.engine.begin()
@@ -169,8 +143,7 @@ class EngineTest(unittest.TestCase):
 		self.engine.rollback()
 
 		self.engine.begin()
-		res = self.engine.execute("SELECT * FROM (SELECT col1 FROM ttt) UNION " +
-			"SELECT * FROM (" + self.engine.getEmptyCondition() + ")")
+		res = self.engine.execute("SELECT col1 FROM ttt")
 		self.failUnlessEqual(res, [('a',)])
 
 	def testRollbackTableCreation(self):
@@ -203,7 +176,8 @@ class EngineTest(unittest.TestCase):
 		self.engine.execute("INSERT INTO ttt VALUES ('abc', 'e')")
 		self.engine.execute("INSERT INTO ttt VALUES ('bac', 'f')")
 		self.engine.execute("INSERT INTO ttt VALUES ('cba', 'g')")
-		res = self.engine.execute("SELECT col1 FROM ttt WHERE col1 REGEXP 'a\w+'")
+		res = self.engine.execute("SELECT col1 FROM ttt WHERE col1 {regexp} 'a\w+'"
+			.format(regexp=self.engine.getRegexpOp()))
 		self.failUnlessEqual(res, [('abc',), ('bac',)])
 
 	def testRegexpSupportInBlob(self):
@@ -214,8 +188,9 @@ class EngineTest(unittest.TestCase):
 		for val in [b'\x00\x01\x02', b'\x01\x00\x02', b'\x01\x02\x00']:
 			self.engine.execute("INSERT INTO ttt VALUES ({val})"
 				.format(val=self.engine.getSafeValue(val)))
-		res = self.engine.execute("SELECT col1 FROM ttt WHERE col1 REGEXP {val}"
-			.format(val=self.engine.getSafeValue(b'\x00.+')))
+		res = self.engine.execute("SELECT col1 FROM ttt WHERE col1 {regexp} {val}"
+			.format(val=self.engine.getSafeValue(b'\x00.+'),
+			regexp=self.engine.getRegexpOp()))
 		self.failUnlessEqual(res, [(b'\x00\x01\x02',), (b'\x01\x00\x02',)])
 
 	def testUnicodeSupport(self):
@@ -234,8 +209,8 @@ class EngineTest(unittest.TestCase):
 
 		# check that regexp works for unicode
 		self.engine.execute("INSERT INTO ttt VALUES ('aaa', 'bbb')")
-		res = self.engine.execute("SELECT col2 FROM ttt WHERE col2 REGEXP '{val}'"
-			.format(val=AUSTRIA[:3]))
+		res = self.engine.execute("SELECT col2 FROM ttt WHERE col2 {regexp} '{val}'"
+			.format(val=AUSTRIA[:3], regexp=self.engine.getRegexpOp()))
 		self.failUnlessEqual(res, [(AUSTRIA,)])
 
 	def testTypeMapping(self):
@@ -288,5 +263,4 @@ def suite(name, engine_tag, path, open_existing):
 	Derived.__name__ = name
 	res = helpers.NamedTestSuite()
 	res.addTest(unittest.TestLoader().loadTestsFromTestCase(Derived))
-	return res	
-	
+	return res
