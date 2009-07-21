@@ -377,7 +377,7 @@ class _StructureLayer:
 				if condition.operator == op.OR:
 					return cond1
 
-			return ("SELECT * FROM ({cond1}) {operation} SELECT * FROM ({cond2})"
+			return ("SELECT * FROM ({cond1}) as temp {operation} SELECT * FROM ({cond2}) as temp"
 				.format(cond1=cond1, cond2=cond2,
 				operation=operations[condition.operator]))
 
@@ -440,7 +440,7 @@ class _StructureLayer:
 		# not have this field explicitly, because they won't be caught by previous query
 		if condition.invert:
 			result += ("SELECT {id_column} FROM (SELECT DISTINCT {id_column} FROM {id_table} " +
-				"EXCEPT SELECT DISTINCT {id_column} FROM {field_name})").format(
+				"EXCEPT SELECT DISTINCT {id_column} FROM {field_name}) as temp").format(
 				field_name=safe_name,
 				id_column=self._ID_COLUMN,
 				id_table=self._ID_TABLE)
