@@ -303,7 +303,8 @@ class _PostgreEngine(_Engine):
 		return self.cur.prepare("SELECT COUNT(*) FROM " + self.getSafeName(name))()[0][0] == 0
 
 	def deleteTable(self, name):
-		self.cur.prepare("DROP TABLE IF EXISTS " + self.getSafeName(name))()
+		if self.tableExists(name):
+			self.cur.prepare("DROP TABLE " + self.getSafeName(name))()
 
 	def getSafeValue(self, val):
 		"""Transform value so that it could be safely used in queries"""
