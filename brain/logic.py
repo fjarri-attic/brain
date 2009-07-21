@@ -49,31 +49,33 @@ class _StructureLayer:
 
 		# create specification table, which holds field names, their types
 		# and number of records of each type for all database objects
-		self._engine.execute(("CREATE table IF NOT EXISTS {id_table} " +
-			"({id_column} {id_type}, {field_column} {text_type}, " +
-			"{type_column} {text_type}, " +
-			"{refcount_column} {refcount_type})").format(
-			field_column=self._FIELD_COLUMN,
-			id_column=self._ID_COLUMN,
-			id_table=self._ID_TABLE,
-			id_type=self._ID_TYPE,
-			refcount_column=self._REFCOUNT_COLUMN,
-			refcount_type=self._INT_TYPE,
-			text_type=self._TEXT_TYPE,
-			type_column=self._TYPE_COLUMN))
+		if not self._engine.tableExists(self._ID_TABLE):
+			self._engine.execute(("CREATE table {id_table} " +
+				"({id_column} {id_type}, {field_column} {text_type}, " +
+				"{type_column} {text_type}, " +
+				"{refcount_column} {refcount_type})").format(
+				field_column=self._FIELD_COLUMN,
+				id_column=self._ID_COLUMN,
+				id_table=self._ID_TABLE,
+				id_type=self._ID_TYPE,
+				refcount_column=self._REFCOUNT_COLUMN,
+				refcount_type=self._INT_TYPE,
+				text_type=self._TEXT_TYPE,
+				type_column=self._TYPE_COLUMN))
 
 		# create support table which holds maximum list index for each list
 		# existing in database
-		self._engine.execute(("CREATE table IF NOT EXISTS {listsizes_table} " +
-			"({id_column} {id_type}, {field_column} {text_type}, " +
-			"{max_column} {list_index_type})").format(
-			field_column=self._FIELD_COLUMN,
-			id_column=self._ID_COLUMN,
-			id_type=self._ID_TYPE,
-			listsizes_table=self._LISTSIZES_TABLE,
-			list_index_type=self._INT_TYPE,
-			max_column=self._MAX_COLUMN,
-			text_type=self._TEXT_TYPE))
+		if not self._engine.tableExists(self._LISTSIZES_TABLE):
+			self._engine.execute(("CREATE table {listsizes_table} " +
+				"({id_column} {id_type}, {field_column} {text_type}, " +
+				"{max_column} {list_index_type})").format(
+				field_column=self._FIELD_COLUMN,
+				id_column=self._ID_COLUMN,
+				id_type=self._ID_TYPE,
+				listsizes_table=self._LISTSIZES_TABLE,
+				list_index_type=self._INT_TYPE,
+				max_column=self._MAX_COLUMN,
+				text_type=self._TEXT_TYPE))
 
 	def deleteSpecification(self, id):
 		"""Delete all information about object from specification table"""
@@ -192,14 +194,16 @@ class _StructureLayer:
 
 		if field is not None:
 		# If field is given, return only fields, which contain its name in the beginning
-			regexp_cond = " AND {field_column} REGEXP {regexp}"
+			regexp_cond = " AND {field_column} {regexp_op} {regexp}"
 			regexp_val = self._engine.getSafeValue("^" + field.name_str_no_type +
 				("." if exclude_self else ""))
 			type = field.type_str_as_value
+			regexp_op = self._engine.getRegexpOp()
 		else:
 			regexp_cond = ""
 			regexp_val = None
 			type = None
+			regexp_op = None
 
 		# Get list of fields
 		l = self._engine.execute(("SELECT DISTINCT {field_column} FROM {id_table} " +
@@ -209,6 +213,7 @@ class _StructureLayer:
 			id_column=self._ID_COLUMN,
 			id_table=self._ID_TABLE,
 			regexp=regexp_val,
+			regexp_op=regexp_op,
 			type=type,
 			type_column=self._TYPE_COLUMN))
 
@@ -228,7 +233,7 @@ class _StructureLayer:
 
 		# We need just check if there is at least one row with its id
 		# in specification table
-		l = self._engine.execute("SELECT COUNT() FROM {id_table} WHERE {id_column}={id}".format(
+		l = self._engine.execute("SELECT COUNT(*) FROM {id_table} WHERE {id_column}={id}".format(
 			field_column=self._FIELD_COLUMN,
 			id=id,
 			id_column=self._ID_COLUMN,
@@ -314,11 +319,11 @@ class _StructureLayer:
 		field should have definite type
 		"""
 
-		# Create table
-		self._engine.execute("CREATE TABLE IF NOT EXISTS {field_name} ({values_str})"
-			.format(field_name=field.name_as_table,
-			values_str=field.getCreationStr(self._ID_COLUMN,
-				self._VALUE_COLUMN, self._ID_TYPE, self._INT_TYPE)))
+		if not self._engine.tableExists(field.name_str):
+			self._engine.execute("CREATE TABLE {field_name} ({values_str})"
+				.format(field_name=field.name_as_table,
+				values_str=field.getCreationStr(self._ID_COLUMN,
+					self._VALUE_COLUMN, self._ID_TYPE, self._INT_TYPE)))
 
 	def getMaxListIndex(self, id, field):
 		"""Get maximum value of list index for the undefined column of the field"""
@@ -356,6 +361,21 @@ class _StructureLayer:
 				op.OR: 'UNION'
 			}
 
+			if cond1 == None and cond2 == None:
+				return None
+
+			if cond1 == None:
+				if condition.operator == op.AND:
+					return None
+				if condition.operator == op.OR:
+					return cond2
+
+			if cond2 == None:
+				if condition.operator == op.AND:
+					return None
+				if condition.operator == op.OR:
+					return cond1
+
 			return ("SELECT * FROM ({cond1}) {operation} SELECT * FROM ({cond2})"
 				.format(cond1=cond1, cond2=cond2,
 				operation=operations[condition.operator]))
@@ -372,7 +392,7 @@ class _StructureLayer:
 
 		# If table with given field does not exist, just return empty query
 		if not self._engine.tableExists(op1.name_str):
-			return self._engine.getEmptyCondition()
+			return None
 
 		safe_name = condition.operand1.name_as_table
 		not_str = " NOT " if condition.invert else " "
@@ -380,7 +400,7 @@ class _StructureLayer:
 		# mapping to SQL comparisons
 		comparisons = {
 			op.EQ: '=',
-			op.REGEXP: 'REGEXP',
+			op.REGEXP: self._engine.getRegexpOp(),
 			op.LT: '<',
 			op.GT: '>',
 			op.LTE: '<=',
@@ -473,7 +493,7 @@ class _StructureLayer:
 				id_column=self._ID_COLUMN)
 
 			# get number of records to be deleted
-			res = self._engine.execute("SELECT COUNT() " + query_str)
+			res = self._engine.execute("SELECT COUNT(*) " + query_str)
 			del_num = res[0][0]
 
 			# if there are any, delete them
@@ -666,6 +686,8 @@ class LogicLayer:
 		"""Search for all objects using given search condition"""
 
 		request = self._structure.buildSqlQuery(request.condition)
+		if request is None:
+			return []
 		result = self._engine.execute(request)
 		list_res = [x[0] for x in result]
 
