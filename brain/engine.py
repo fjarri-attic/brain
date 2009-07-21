@@ -5,7 +5,6 @@ import sqlite3
 postgresql_available = False
 try:
 	import postgresql
-	import postgresql.driver as pg_driver
 	postgresql_available = True
 except:
 	pass
