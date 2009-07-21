@@ -1,6 +1,15 @@
 """Module, containing wrappers for different DB engines"""
 
 import sqlite3
+
+postgresql_available = False
+try:
+	import postgresql
+	import postgresql.driver as pg_driver
+	postgresql_available = True
+except:
+	pass
+
 import re
 import os
 import os.path
@@ -45,10 +54,6 @@ class _Engine:
 	def tableExists(self, name): raise NotImplementedError
 	def tableIsEmpty(self, name): raise NotImplementedError
 	def deleteTable(self, name): raise NotImplementedError
-
-	def getEmptyCondition(self):
-		"""Returns condition for compound SELECT which evaluates to empty table"""
-		raise NotImplementedError
 
 	def getSafeValue(self, s):
 		"""Transform string value so that it could be safely used in queries"""
@@ -96,23 +101,23 @@ class _Sqlite3Engine(_Engine):
 
 	__FIELD_SEP = '.' # separator for field elements in table name
 
-	def __init__(self, path=None, open_existing=None):
+	def __init__(self, name=None, open_existing=None):
 
-		if path is None:
-			path = ':memory:'
+		if name is None:
+			name = ':memory:'
 		else:
 			if open_existing == 1:
 			# do not create DB if it does not exist
-				if not os.path.exists(path):
-					raise Exception(path + " was not found")
+				if not os.path.exists(name):
+					raise Exception(name + " was not found")
 			elif open_existing == 0:
 			# recreate DB even if such file already exists
-				if os.path.exists(path):
-					os.remove(path)
+				if os.path.exists(name):
+					os.remove(name)
 
 		# isolation_level=None disables autocommit, giving us the
 		# possibility to manage transactions manually
-		self.__conn = sqlite3.connect(path, isolation_level=None)
+		self.__conn = sqlite3.connect(name, isolation_level=None)
 
 		# Add external regexp handling function
 		self.__conn.create_function("regexp", 2, self.__regexp)
@@ -159,14 +164,10 @@ class _Sqlite3Engine(_Engine):
 		return len(res) > 0
 
 	def tableIsEmpty(self, name):
-		return len(list(self.cur.execute("SELECT * FROM " + self.getSafeName(name)))) == 0
+		return list(self.cur.execute("SELECT COUNT(*) FROM " + self.getSafeName(name)))[0][0] == 0
 
 	def deleteTable(self, name):
 		self.cur.execute("DROP TABLE IF EXISTS " + self.getSafeName(name))
-
-	def getEmptyCondition(self):
-		"""Returns condition for compound SELECT which evaluates to empty table"""
-		return "SELECT 0 limit 0"
 
 	def getSafeValue(self, val):
 		"""Transform value so that it could be safely used in queries"""
@@ -225,6 +226,156 @@ class _Sqlite3Engine(_Engine):
 		"""Rollback current transaction"""
 		self.__conn.rollback()
 
+	def getRegexpOp(self):
+		return "REGEXP"
+
+
+class _PostgreEngine(_Engine):
+	"""Wrapper for PostgreSQL db engine"""
+
+	__FIELD_SEP = '.' # separator for field elements in table name
+
+	def __init__(self, name=None, open_existing=None, host='localhost',
+		port=5432, user='postgres', password='1q2w3e'):
+
+		if name is None:
+			name = 'temp'
+			open_existing = 0
+
+		conn = postgresql.open(user=user,
+			password=password, host=host, port=port)
+
+		query = conn.prepare("SELECT datname FROM pg_catalog.pg_database")
+		db_list = [x[0] for x in query()]
+		db_exists = name in db_list
+
+		if open_existing == 1:
+		# do not create DB if it does not exist
+			if not db_exists:
+				raise Exception(name + " was not found")
+		elif open_existing == 0:
+		# recreate DB even if such file already exists
+			if db_exists:
+				conn.execute("DROP DATABASE " + self.getSafeName(name))
+			conn.execute("CREATE DATABASE " + self.getSafeName(name))
+
+		conn.close()
+
+		self.cur = postgresql.open(user=user,
+			password=password, host=host, port=port, database=name)
+
+		self.transaction = None
+
+	def close(self):
+		self.cur.close()
+
+	def getNewId(self):
+		if not self.tableExists('max_uuid'):
+			self.execute("CREATE TABLE max_uuid (uuid {type})".format(
+				type=self.getIdType()))
+			self.execute("INSERT INTO max_uuid VALUES (0)")
+
+		self.execute("UPDATE max_uuid SET uuid=uuid+1")
+		res = self.execute("SELECT uuid FROM max_uuid")
+
+		return res[0][0]
+
+	def getIdType(self):
+		return self.getColumnType(int())
+
+	def dump(self):
+		"""Dump the whole database to string; used for debug purposes"""
+		print("Dump:")
+		for str in self.__conn.iterdump():
+			print(str)
+		print("--------")
+
+	def execute(self, sql_str):
+		"""Execute given SQL query"""
+		return self.cur.prepare(sql_str)()
+
+	def tableExists(self, name):
+		res = self.cur.prepare("SELECT * FROM pg_tables WHERE tablename={name}"
+			.format(name=self.getSafeValue(name)))()
+		return len(res) > 0
+
+	def tableIsEmpty(self, name):
+		return self.cur.prepare("SELECT COUNT(*) FROM " + self.getSafeName(name))()[0][0] == 0
+
+	def deleteTable(self, name):
+		self.cur.prepare("DROP TABLE IF EXISTS " + self.getSafeName(name))()
+
+	def getSafeValue(self, val):
+		"""Transform value so that it could be safely used in queries"""
+		transformations = {
+			str: lambda x: "'" + x.replace("'", "''") + "'",
+			int: lambda x: str(x),
+			float: lambda x: str(x),
+			# FIXME: seems that now .decode() is broken, so we have to do this ugly thing
+			bytes: lambda x: "E'" + ''.join(['\\\\{0:03o}'.format(c) for c in x]) + "'"
+		}
+		return transformations[val.__class__](val)
+
+	def getColumnType(self, val):
+		"""Return SQL type for storing given value"""
+		types = {
+			str: "TEXT", int: "INT8", float: "FLOAT8", bytes: "BYTEA"
+		}
+		return types[val.__class__]
+
+	def getValueClass(self, type_str):
+		"""Return Python class for the given SQL type"""
+		classes = {
+			"TEXT": str, "INT8": int, "FLOAT8": float, "BYTEA": bytes
+		}
+		return classes[type_str]
+
+	def getNameString(self, l):
+		"""Get field name from list"""
+		sep = self.__FIELD_SEP
+		temp_list = [(x.replace('\\', '\\\\').replace(sep, '\\' + sep)
+			if isinstance(x, str) else '') for x in l]
+		return (sep + sep).join(temp_list)
+
+	def getNameList(self, s):
+		"""Get field name list from string"""
+		sep = self.__FIELD_SEP
+		l = s.split(sep + sep)
+		return [(x.replace('\\' + sep, sep).replace('\\\\', '\\') if x != '' else None) for x in l]
+
+	def getSafeName(self, s):
+		"""Transform string value so that it could be safely used as table name"""
+		return '"' + s.replace('"', '""') + '"'
+
+	def getNullValue(self):
+		return 'NULL'
+
+	def begin(self):
+		"""Begin transaction"""
+		self.transaction = self.cur.xact()
+		self.transaction.start()
+
+	def commit(self):
+		"""Commit current transaction"""
+		try:
+			self.transaction.commit()
+		finally:
+			self.transaction = None
+
+	def rollback(self):
+		"""Rollback current transaction"""
+		try:
+			self.transaction.rollback()
+		finally:
+			self.transaction = None
+
+	def getRegexpOp(self):
+		return "~"
+
+
 _DB_ENGINES = {
 	'sqlite3': _Sqlite3Engine
 }
+
+if postgresql_available:
+	_DB_ENGINES['postgre'] = _PostgreEngine
