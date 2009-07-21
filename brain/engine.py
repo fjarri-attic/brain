@@ -117,15 +117,15 @@ class _Sqlite3Engine(_Engine):
 
 		# isolation_level=None disables autocommit, giving us the
 		# possibility to manage transactions manually
-		self.__conn = sqlite3.connect(name, isolation_level=None)
+		self._conn = sqlite3.connect(name, isolation_level=None)
 
 		# Add external regexp handling function
-		self.__conn.create_function("regexp", 2, self.__regexp)
+		self._conn.create_function("regexp", 2, self.__regexp)
 
-		self.cur = self.__conn.cursor()
+		self._cur = self._conn.cursor()
 
 	def close(self):
-		self.__conn.close()
+		self._conn.close()
 
 	def getNewId(self):
 		if not self.tableExists('max_uuid'):
@@ -144,7 +144,7 @@ class _Sqlite3Engine(_Engine):
 	def dump(self):
 		"""Dump the whole database to string; used for debug purposes"""
 		print("Dump:")
-		for str in self.__conn.iterdump():
+		for str in self._conn.iterdump():
 			print(str)
 		print("--------")
 
@@ -155,19 +155,19 @@ class _Sqlite3Engine(_Engine):
 
 	def execute(self, sql_str):
 		"""Execute given SQL query"""
-		cur = self.cur.execute(sql_str)
+		cur = self._cur.execute(sql_str)
 		return cur.fetchall()
 
 	def tableExists(self, name):
-		res = list(self.cur.execute("SELECT * FROM sqlite_master WHERE type='table' AND name={name}"
+		res = list(self._cur.execute("SELECT * FROM sqlite_master WHERE type='table' AND name={name}"
 			.format(name=self.getSafeValue(name))))
 		return len(res) > 0
 
 	def tableIsEmpty(self, name):
-		return list(self.cur.execute("SELECT COUNT(*) FROM " + self.getSafeName(name)))[0][0] == 0
+		return list(self._cur.execute("SELECT COUNT(*) FROM " + self.getSafeName(name)))[0][0] == 0
 
 	def deleteTable(self, name):
-		self.cur.execute("DROP TABLE IF EXISTS " + self.getSafeName(name))
+		self._cur.execute("DROP TABLE IF EXISTS " + self.getSafeName(name))
 
 	def getSafeValue(self, val):
 		"""Transform value so that it could be safely used in queries"""
@@ -216,15 +216,15 @@ class _Sqlite3Engine(_Engine):
 
 	def begin(self):
 		"""Begin transaction"""
-		self.cur.execute("BEGIN TRANSACTION")
+		self._cur.execute("BEGIN TRANSACTION")
 
 	def commit(self):
 		"""Commit current transaction"""
-		self.__conn.commit()
+		self._conn.commit()
 
 	def rollback(self):
 		"""Rollback current transaction"""
-		self.__conn.rollback()
+		self._conn.rollback()
 
 	def getRegexpOp(self):
 		return "REGEXP"
@@ -261,13 +261,13 @@ class _PostgreEngine(_Engine):
 
 		conn.close()
 
-		self.cur = postgresql.open(user=user,
+		self._conn = postgresql.open(user=user,
 			password=password, host=host, port=port, database=name)
 
-		self.transaction = None
+		self._transaction = None
 
 	def close(self):
-		self.cur.close()
+		self._conn.close()
 
 	def getNewId(self):
 		if not self.tableExists('max_uuid'):
@@ -286,25 +286,25 @@ class _PostgreEngine(_Engine):
 	def dump(self):
 		"""Dump the whole database to string; used for debug purposes"""
 		print("Dump:")
-		for str in self.__conn.iterdump():
+		for str in self._conn.iterdump():
 			print(str)
 		print("--------")
 
 	def execute(self, sql_str):
 		"""Execute given SQL query"""
-		return self.cur.prepare(sql_str)()
+		return self._conn.prepare(sql_str)()
 
 	def tableExists(self, name):
-		res = self.cur.prepare("SELECT * FROM pg_tables WHERE tablename={name}"
+		res = self._conn.prepare("SELECT * FROM pg_tables WHERE tablename={name}"
 			.format(name=self.getSafeValue(name)))()
 		return len(res) > 0
 
 	def tableIsEmpty(self, name):
-		return self.cur.prepare("SELECT COUNT(*) FROM " + self.getSafeName(name))()[0][0] == 0
+		return self._conn.prepare("SELECT COUNT(*) FROM " + self.getSafeName(name))()[0][0] == 0
 
 	def deleteTable(self, name):
 		if self.tableExists(name):
-			self.cur.prepare("DROP TABLE " + self.getSafeName(name))()
+			self._conn.prepare("DROP TABLE " + self.getSafeName(name))()
 
 	def getSafeValue(self, val):
 		"""Transform value so that it could be safely used in queries"""
@@ -353,22 +353,22 @@ class _PostgreEngine(_Engine):
 
 	def begin(self):
 		"""Begin transaction"""
-		self.transaction = self.cur.xact()
-		self.transaction.start()
+		self._transaction = self._conn.xact()
+		self._transaction.start()
 
 	def commit(self):
 		"""Commit current transaction"""
 		try:
-			self.transaction.commit()
+			self._transaction.commit()
 		finally:
-			self.transaction = None
+			self._transaction = None
 
 	def rollback(self):
 		"""Rollback current transaction"""
 		try:
-			self.transaction.rollback()
+			self._transaction.rollback()
 		finally:
-			self.transaction = None
+			self._transaction = None
 
 	def getRegexpOp(self):
 		return "~"
