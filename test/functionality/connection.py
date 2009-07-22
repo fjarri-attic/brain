@@ -226,6 +226,19 @@ class Connection(TestRequest):
 			self.id5: {'name': 'Alex', 'phone': '1111', 'age': '22'}
 		})
 
+	def testReferences(self):
+		"""Check that object IDs can be saved in database"""
+		obj = self.conn.create({'test': 'val'})
+		obj2 = self.conn.create({'ref': obj})
+
+		# try to read reference
+		data2 = self.conn.read(obj2)
+		self.assertEqual(data2, {'ref': obj})
+
+		# try to use reference
+		data = self.conn.read(data2['ref'])
+		self.assertEqual(data, {'test': 'val'})
+
 
 def get_class():
 	return Connection
