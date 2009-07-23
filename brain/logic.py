@@ -27,11 +27,8 @@ class _StructureLayer:
 		self._engine = engine
 
 		# memorize strings with support table names
-		self._ID_TABLE = self._engine.getSafeName(
-			self._engine.getNameString(["id"]))
-
-		self._LISTSIZES_TABLE = self._engine.getSafeName(
-			self._engine.getNameString(["listsizes"]))
+		self._ID_TABLE = self._engine.getNameString(["id"])
+		self._LISTSIZES_TABLE = self._engine.getNameString(["listsizes"])
 
 		# types for support tables
 		self._ID_TYPE = self._engine.getIdType()
@@ -50,39 +47,37 @@ class _StructureLayer:
 		# create specification table, which holds field names, their types
 		# and number of records of each type for all database objects
 		if not self._engine.tableExists(self._ID_TABLE):
-			self._engine.execute(("CREATE table {id_table} " +
+			self._engine.execute("CREATE table {} " +
 				"({id_column} {id_type}, {field_column} {text_type}, " +
 				"{type_column} {text_type}, " +
-				"{refcount_column} {refcount_type})").format(
-				field_column=self._FIELD_COLUMN,
-				id_column=self._ID_COLUMN,
-				id_table=self._ID_TABLE,
-				id_type=self._ID_TYPE,
-				refcount_column=self._REFCOUNT_COLUMN,
-				refcount_type=self._INT_TYPE,
-				text_type=self._TEXT_TYPE,
-				type_column=self._TYPE_COLUMN))
+				"{refcount_column} {refcount_type})",
+				[self._ID_TABLE],
+				{'field_column': self._FIELD_COLUMN,
+				'id_column': self._ID_COLUMN,
+				'id_type': self._ID_TYPE,
+				'refcount_column': self._REFCOUNT_COLUMN,
+				'refcount_type': self._INT_TYPE,
+				'text_type': self._TEXT_TYPE,
+				'type_column': self._TYPE_COLUMN})
 
 		# create support table which holds maximum list index for each list
 		# existing in database
 		if not self._engine.tableExists(self._LISTSIZES_TABLE):
-			self._engine.execute(("CREATE table {listsizes_table} " +
+			self._engine.execute("CREATE table {} " +
 				"({id_column} {id_type}, {field_column} {text_type}, " +
-				"{max_column} {list_index_type})").format(
-				field_column=self._FIELD_COLUMN,
-				id_column=self._ID_COLUMN,
-				id_type=self._ID_TYPE,
-				listsizes_table=self._LISTSIZES_TABLE,
-				list_index_type=self._INT_TYPE,
-				max_column=self._MAX_COLUMN,
-				text_type=self._TEXT_TYPE))
+				"{max_column} {list_index_type})",
+				[self._LISTSIZES_TABLE],
+				{'field_column' :self._FIELD_COLUMN,
+				'id_column': self._ID_COLUMN,
+				'id_type': self._ID_TYPE,
+				'list_index_type': self._INT_TYPE,
+				'max_column': self._MAX_COLUMN,
+				'text_type': self._TEXT_TYPE})
 
 	def deleteSpecification(self, id):
 		"""Delete all information about object from specification table"""
-		self._engine.execute("DELETE FROM {id_table} WHERE {id_column}={id}".format(
-			id=id,
-			id_table=self._ID_TABLE,
-			id_column=self._ID_COLUMN))
+		self._engine.execute("DELETE FROM {} WHERE {id_column}=?",
+			[self._ID_TABLE], {'id_column': self._ID_COLUMN}, [id])
 
 	def increaseRefcount(self, id, field, new_type):
 		"""
@@ -97,24 +92,21 @@ class _StructureLayer:
 		if new_type:
 		# if adding a value of new type to existing field,
 		# add a reference counter for this field and this type
-			self._engine.execute("INSERT INTO {id_table} VALUES ({id}, {field_name}, {type}, 1)".format(
-				field_name=field.name_as_value_no_type,
-				id=id,
-				id_table=self._ID_TABLE,
-				type=field.type_str_as_value))
+			self._engine.execute("INSERT INTO {} VALUES (?, ?, ?, 1)",
+				[self._ID_TABLE], None, [id, field.name_str_no_type,
+				field.type_str])
 		else:
 		# otherwise increase the existing reference counter
-			self._engine.execute(("UPDATE {id_table} SET {refcount_column}={refcount_column}+1 " +
-				"WHERE {id_column}={id} AND {field_column}={field_name} " +
-				"AND {type_column}={type}").format(
-				field_column=self._FIELD_COLUMN,
-				field_name=field.name_as_value_no_type,
-				id=id,
-				id_column=self._ID_COLUMN,
-				id_table=self._ID_TABLE,
-				refcount_column=self._REFCOUNT_COLUMN,
-				type=field.type_str_as_value,
-				type_column=self._TYPE_COLUMN))
+			self._engine.execute("UPDATE {} " +
+				"SET {refcount_column}={refcount_column}+1 " +
+				"WHERE {id_column}=? AND {field_column}=? " +
+				"AND {type_column}=?",
+				[self._ID_TABLE],
+				{'field_column': self._FIELD_COLUMN,
+				'id_column': self._ID_COLUMN,
+				'refcount_column': self._REFCOUNT_COLUMN,
+				'type_column': self._TYPE_COLUMN},
+				[id, field.name_str_no_type, field.type_str])
 
 	def decreaseRefcount(self, id, field, num=1):
 		"""
@@ -123,24 +115,20 @@ class _StructureLayer:
 
 		field should have definite type
 		"""
-
-		# build condition for selecting necessary type
-		# if type is Null, we should use ISNULL, because '=NULL' won't work
-		if field.isNull():
-			type_cond = self._TYPE_COLUMN + ' ISNULL'
-		else:
-			type_cond = self._TYPE_COLUMN + '=' + field.type_str_as_value
+		isnull = field.isNull()
+		type_cond = ' ISNULL' if isnull else '=?'
+		type_cond_val = [] if isnull else [field.type_str]
 
 		# get current value of reference counter
-		l = self._engine.execute(("SELECT {refcount_column} FROM {id_table} " +
-			"WHERE {id_column}={id} AND {field_column}={field_name} AND {type_cond}").format(
-			field_column=self._FIELD_COLUMN,
-			field_name=field.name_as_value_no_type,
-			id=id,
-			id_column=self._ID_COLUMN,
-			id_table=self._ID_TABLE,
-			refcount_column=self._REFCOUNT_COLUMN,
-			type_cond=type_cond))
+		l = self._engine.execute("SELECT {refcount_column} FROM {} " +
+			"WHERE {id_column}=? AND {field_column}=? " +
+			"AND {type_column}" + type_cond,
+			[self._ID_TABLE],
+			{'field_column': self._FIELD_COLUMN,
+			'id_column': self._ID_COLUMN,
+			'refcount_column': self._REFCOUNT_COLUMN,
+			'type_column': self._TYPE_COLUMN},
+			[id, field.name_str_no_type] + type_cond_val)
 
 		if l[0][0] < num:
 		# if for some reason counter value is lower than expected, we will raise
@@ -148,27 +136,25 @@ class _StructureLayer:
 			raise interface.StructureError("Unexpected value of reference counter: " + str(l[0][0]))
 		if l[0][0] == num:
 		# if these references are the last ones, delete this counter
-			self._engine.execute(("DELETE FROM {id_table} " +
-				"WHERE {id_column}={id} AND {field_column}={field_name} AND {type_cond}").format(
-				field_column=self._FIELD_COLUMN,
-				field_name=field.name_as_value_no_type,
-				id=id,
-				id_column=self._ID_COLUMN,
-				id_table=self._ID_TABLE,
-				type_cond=type_cond))
+			self._engine.execute("DELETE FROM {} " +
+				"WHERE {id_column}=? AND {field_column}=? " +
+				"AND {type_column}" + type_cond,
+				[self._ID_TABLE],
+				{'field_column': self._FIELD_COLUMN,
+				'id_column': self._ID_COLUMN,
+				'type_column': self._TYPE_COLUMN},
+				[id, field.name_str_no_type] + type_cond_val)
 		else:
 		# otherwise just decrease the counter by given value
-			self._engine.execute(("UPDATE {id_table} SET {refcount_column}={refcount_column}-{val} " +
-				"WHERE {id_column}={id} AND {field_column}={field_name} " +
-				"AND {type_column}={type}").format(
-				field_column=self._FIELD_COLUMN,
-				field_name=field.name_as_value_no_type,
-				id=id,
-				id_column=self._ID_COLUMN,
-				id_table=self._ID_TABLE,
-				refcount_column=self._REFCOUNT_COLUMN,
-				type=field.type_str_as_value,
-				type_column=self._TYPE_COLUMN, val=num))
+			self._engine.execute("UPDATE {} SET {refcount_column}={refcount_column}-? " +
+				"WHERE {id_column}=? AND {field_column}=? " +
+				"AND {type_column}=?",
+				[self._ID_TABLE],
+				{'field_column': self._FIELD_COLUMN,
+				'id_column': self._ID_COLUMN,
+				'refcount_column': self._REFCOUNT_COLUMN,
+				'type_column': self._TYPE_COLUMN},
+				[num, id, field.name_str_no_type, field.type_str])
 
 	def getValueTypes(self, id, field):
 		"""Returns list of value types already stored in given field"""
