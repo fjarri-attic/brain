@@ -152,9 +152,17 @@ class _Sqlite3Engine(_Engine):
 		r = re.compile(expr)
 		return r.search(item) is not None
 
-	def execute(self, sql_str):
+	def execute(self, sql_str, tables=None, keywords=None, values=None):
 		"""Execute given SQL query"""
-		cur = self._cur.execute(sql_str)
+		if keywords is None: keywords = {}
+		if tables is not None:
+			tables = [self.getSafeName(x) for x in tables]
+			tables_tuple = tuple(tables)
+			sql_str = sql_str.format(*tables_tuple, **keywords)
+		if values is None:
+			cur = self._cur.execute(sql_str)
+		else:
+			cur = self._cur.execute(sql_str, tuple(values))
 		return cur.fetchall()
 
 	def tableExists(self, name):
