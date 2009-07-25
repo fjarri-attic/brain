@@ -212,8 +212,7 @@ class _PostgreEngine(_Engine):
 		port=5432, user='postgres', password='1q2w3e'):
 
 		if name is None:
-			name = 'temp'
-			open_existing = 0
+			raise Exception("Database name must be specified")
 
 		conn = postgresql.open(user=user,
 			password=password, host=host, port=port)
