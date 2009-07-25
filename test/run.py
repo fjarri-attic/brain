@@ -30,76 +30,80 @@ parser.add_option("-v", "--verbosity", action="store", type="int", default=2,
 
 opts, args = parser.parse_args(sys.argv[1:])
 
-# Prepare test suite
+def runFunctionalityTests(all_engines=False, all_connections=False, all_storages=False, verbosity=2):
+	"""Start functionality tests suite"""
 
-suite = helpers.NamedTestSuite()
-suite.addTest(internal.interface.suite())
+	suite = helpers.NamedTestSuite()
+	suite.addTest(internal.interface.suite())
 
-if opts.all_engines:
-	engine_tags = brain.getEngineTags()
-	engine_tags = {tag: tag for tag in engine_tags}
-else:
-	engine_tags = {brain.getDefaultEngineTag(): None}
+	if all_engines:
+		engine_tags = brain.getEngineTags()
+		engine_tags = {tag: tag for tag in engine_tags}
+	else:
+		engine_tags = {brain.getDefaultEngineTag(): None}
 
-storages = {
-	'sqlite3': [('memory', None, None), ('file', 'test.db', 0)],
-	'postgre': [('tempdb', 'tempdb', 0)]
-}
+	storages = {
+		'sqlite3': [('memory', None, None), ('file', 'test.db', 0)],
+		'postgre': [('tempdb', 'tempdb', 0)]
+	}
 
-if not opts.all_storages:
-	# leave only default storages
-	storages = {x: [storages[x][0]] for x in storages}
+	if not all_storages:
+		# leave only default storages
+		storages = {x: [storages[x][0]] for x in storages}
 
-connection_params = {}
-for tag_str in engine_tags:
-	for storage in storages[tag_str]:
-		storage_str, path, open_existing = storage
-		test_tag = tag_str + "." + storage_str
-		connection_params[test_tag] = (engine_tags[tag_str], path, open_existing)
-
-# add engine class tests
-for tag in connection_params:
-	suite.addTest(internal.engine.suite(tag, *connection_params[tag]))
-
-# add functionality tests
-
-class XMLRPCGenerator:
-	def __init__(self):
-		self._client = brain.BrainClient('http://localhost:8000')
-
-	def __getattr__(self, name):
-		return getattr(self._client, name)
-
-if opts.all_connections:
-	connection_generators = {'local': brain, 'xmlrpc': XMLRPCGenerator()}
-else:
-	connection_generators = {'local': brain}
-
-func_tests = {'delete': delete, 'insert': insert,
-	'modify': modify, 'read': read, 'search': search, 'connection': connection}
-
-for gen in connection_generators:
+	connection_params = {}
 	for tag_str in engine_tags:
 		for storage in storages[tag_str]:
-			for func_test in func_tests:
-				storage_str, path, open_existing = storage
-				test_tag = gen + "." + tag_str + "." + storage_str + "." + func_test
-				connection_params[test_tag] = (engine_tags[tag_str], path, open_existing)
-				suite.addTest(unittest.TestLoader().loadTestsFromTestCase(
-					functionality.getParameterized(
-					func_tests[func_test].get_class(),
-					test_tag, connection_generators[gen],
-					engine_tags[tag_str],
-					path, open_existing
-				)))
+			storage_str, path, open_existing = storage
+			test_tag = tag_str + "." + storage_str
+			connection_params[test_tag] = (engine_tags[tag_str], path, open_existing)
 
-# Run tests
+	# add engine class tests
+	for tag in connection_params:
+		suite.addTest(internal.engine.suite(tag, *connection_params[tag]))
 
-if opts.all_connections:
-	xmlrpc_srv = brain.BrainServer()
-	xmlrpc_srv.start()
+	# add functionality tests
 
-helpers.TextTestRunner(verbosity=opts.verbosity).run(suite)
+	class XMLRPCGenerator:
+		def __init__(self):
+			self._client = brain.BrainClient('http://localhost:8000')
 
-if opts.all_connections:
-	xmlrpc_srv.stop()
+		def __getattr__(self, name):
+			return getattr(self._client, name)
+
+	if all_connections:
+		connection_generators = {'local': brain, 'xmlrpc': XMLRPCGenerator()}
+	else:
+		connection_generators = {'local': brain}
+
+	func_tests = {'delete': delete, 'insert': insert,
+		'modify': modify, 'read': read, 'search': search, 'connection': connection}
+
+	for gen in connection_generators:
+		for tag_str in engine_tags:
+			for storage in storages[tag_str]:
+				for func_test in func_tests:
+					storage_str, path, open_existing = storage
+					test_tag = gen + "." + tag_str + "." + storage_str + "." + func_test
+					connection_params[test_tag] = (engine_tags[tag_str], path, open_existing)
+					suite.addTest(unittest.TestLoader().loadTestsFromTestCase(
+						functionality.getParameterized(
+						func_tests[func_test].get_class(),
+						test_tag, connection_generators[gen],
+						engine_tags[tag_str],
+						path, open_existing
+					)))
+
+	# Run tests
+
+	if opts.all_connections:
+		xmlrpc_srv = brain.BrainServer()
+		xmlrpc_srv.start()
+
+	helpers.TextTestRunner(verbosity=verbosity).run(suite)
+
+	if opts.all_connections:
+		xmlrpc_srv.stop()
+
+runFunctionalityTests(all_connections=opts.all_connections, all_engines=opts.all_engines,
+    all_storages=opts.all_storages, verbosity=opts.verbosity)
