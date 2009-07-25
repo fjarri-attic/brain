@@ -245,7 +245,7 @@ class Field:
 		"""
 		name_copy = [repr(x) if x is not None else None for x in self.name]
 		name_copy[-1] = None
-		return self._engine.getSafeValue(self._engine.getNameString(name_copy))
+		return self._engine.getNameString(name_copy)
 
 	def __str__(self):
 		return "Field (" + repr(self.name) + \

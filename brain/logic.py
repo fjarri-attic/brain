@@ -160,14 +160,13 @@ class _StructureLayer:
 		"""Returns list of value types already stored in given field"""
 
 		# just query specification table for all types for given object and field
-		l = self._engine.execute(("SELECT {type_column} FROM {id_table} " +
-			"WHERE {id_column}={id} AND {field_column}={field_name}").format(
-			field_column=self._FIELD_COLUMN,
-			field_name=field.name_as_value_no_type,
-			id=id,
-			id_column=self._ID_COLUMN,
-			id_table=self._ID_TABLE,
-			type_column=self._TYPE_COLUMN))
+		l = self._engine.execute("SELECT {type_column} FROM {} " +
+			"WHERE {id_column}=? AND {field_column}=?",
+			[self._ID_TABLE],
+			{'field_column': self._FIELD_COLUMN,
+			'id_column': self._ID_COLUMN,
+			'type_column': self._TYPE_COLUMN},
+			[id, field.name_str_no_type])
 
 		return [x[0] for x in l]
 
@@ -180,28 +179,23 @@ class _StructureLayer:
 
 		if field is not None:
 		# If field is given, return only fields, which contain its name in the beginning
-			regexp_cond = " AND {field_column} {regexp_op} {regexp}"
-			regexp_val = self._engine.getSafeValue("^" + field.name_str_no_type +
-				("." if exclude_self else ""))
-			type = field.type_str_as_value
+			regexp_cond = " AND {field_column} {regexp_op} ?"
+			regexp_val = ["^" + field.name_str_no_type +
+				("." if exclude_self else "")]
 			regexp_op = self._engine.getRegexpOp()
 		else:
 			regexp_cond = ""
-			regexp_val = None
-			type = None
+			regexp_val = []
 			regexp_op = None
 
 		# Get list of fields
-		l = self._engine.execute(("SELECT DISTINCT {field_column} FROM {id_table} " +
-			"WHERE {id_column}={id}" + regexp_cond).format(
-			field_column=self._FIELD_COLUMN,
-			id=id,
-			id_column=self._ID_COLUMN,
-			id_table=self._ID_TABLE,
-			regexp=regexp_val,
-			regexp_op=regexp_op,
-			type=type,
-			type_column=self._TYPE_COLUMN))
+		l = self._engine.execute("SELECT DISTINCT {field_column} FROM {} " +
+			"WHERE {id_column}=?" + regexp_cond,
+			[self._ID_TABLE],
+			{'field_column': self._FIELD_COLUMN,
+			'id_column': self._ID_COLUMN,
+			'regexp_op': regexp_op},
+			[id] + regexp_val)
 
 		# fill the beginnings of found field names with the name of
 		# given field (if any) or just construct result list
@@ -219,11 +213,8 @@ class _StructureLayer:
 
 		# We need just check if there is at least one row with its id
 		# in specification table
-		l = self._engine.execute("SELECT COUNT(*) FROM {id_table} WHERE {id_column}={id}".format(
-			field_column=self._FIELD_COLUMN,
-			id=id,
-			id_column=self._ID_COLUMN,
-			id_table=self._ID_TABLE))
+		l = self._engine.execute("SELECT COUNT(*) FROM {} WHERE {id_column}=?",
+			[self._ID_TABLE], {'id_column': self._ID_COLUMN}, [id])
 
 		return l[0][0] > 0
 
@@ -241,14 +232,14 @@ class _StructureLayer:
 
 		# Get field values
 		# If field is a mask (i.e., contains Nones), there will be more than one result
-		l = self._engine.execute(("SELECT {value_column}{columns_query} FROM {field_name} " +
-			"WHERE {id_column}={id}{columns_condition}").format(
-			columns_condition=field.columns_condition,
-			columns_query=field.columns_query,
-			field_name=field.name_as_table,
-			id=id,
-			id_column=self._ID_COLUMN,
-			value_column=self._VALUE_COLUMN if not field.isNull() else ""))
+		l = self._engine.execute("SELECT {value_column}{columns_query} FROM {} " +
+			"WHERE {id_column}=?{columns_condition}",
+			[field.name_str],
+			{'columns_condition': field.columns_condition,
+			'columns_query': field.columns_query,
+			'id_column': self._ID_COLUMN,
+			'value_column': self._VALUE_COLUMN if not field.isNull() else ""},
+			[id])
 
 		# Convert results to list of Fields
 		res = []
@@ -280,24 +271,18 @@ class _StructureLayer:
 
 			if max > val: return
 
-			self._engine.execute(("UPDATE {listsizes_table} " +
-				"SET {max_column}={val} " +
-				"WHERE {id_column}={id} AND {field_column}={field_name}").format(
-				field_column=self._FIELD_COLUMN,
-				field_name=field.name_hashstr,
-				id=id,
-				id_column=self._ID_COLUMN,
-				listsizes_table=self._LISTSIZES_TABLE,
-				max_column=self._MAX_COLUMN,
-				val=val))
+			self._engine.execute("UPDATE {} SET {max_column}=? " +
+				"WHERE {id_column}=? AND {field_column}=?",
+				[self._LISTSIZES_TABLE],
+				{'field_column': self._FIELD_COLUMN,
+				'id_column': self._ID_COLUMN,
+				'max_column': self._MAX_COLUMN},
+				[val, id, field.name_hashstr])
 		else:
 		# create new record
-			self._engine.execute(("INSERT INTO {listsizes_table} " +
-				"VALUES ({id}, {field_name}, {val})").format(
-				field_name=field.name_hashstr,
-				id=id,
-				listsizes_table=self._LISTSIZES_TABLE,
-				val=val))
+			self._engine.execute("INSERT INTO {} VALUES (?, ?, ?)",
+				[self._LISTSIZES_TABLE], None,
+				[id, field.name_hashstr, val])
 
 	def assureFieldTableExists(self, field):
 		"""
@@ -307,22 +292,21 @@ class _StructureLayer:
 		"""
 
 		if not self._engine.tableExists(field.name_str):
-			self._engine.execute("CREATE TABLE {field_name} ({values_str})"
-				.format(field_name=field.name_as_table,
-				values_str=field.getCreationStr(self._ID_COLUMN,
-					self._VALUE_COLUMN, self._ID_TYPE, self._INT_TYPE)))
+			self._engine.execute("CREATE TABLE {} ({values_str})",
+				[field.name_str],
+				{'values_str': field.getCreationStr(self._ID_COLUMN,
+				self._VALUE_COLUMN, self._ID_TYPE, self._INT_TYPE)})
 
 	def getMaxListIndex(self, id, field):
 		"""Get maximum value of list index for the undefined column of the field"""
 
-		l = self._engine.execute(("SELECT {max_column} FROM {listsizes_table} " +
-			"WHERE {id_column}={id} AND {field_column}={field_name}").format(
-			field_column=self._FIELD_COLUMN,
-			field_name=field.name_hashstr,
-			id=id,
-			id_column=self._ID_COLUMN,
-			listsizes_table=self._LISTSIZES_TABLE,
-			max_column=self._MAX_COLUMN))
+		l = self._engine.execute("SELECT {max_column} FROM {} " +
+			"WHERE {id_column}=? AND {field_column}=?",
+			[self._LISTSIZES_TABLE],
+			{'field_column': self._FIELD_COLUMN,
+			'id_column': self._ID_COLUMN,
+			'max_column': self._MAX_COLUMN},
+			[id, field.name_hashstr])
 
 		if len(l) > 0:
 			return l[0][0]
@@ -333,14 +317,12 @@ class _StructureLayer:
 		"""Recursive function to transform condition into SQL query"""
 
 		if condition is None:
-			return ("SELECT DISTINCT {id_column} FROM {id_table}").format(
-				id_column=self._ID_COLUMN,
-				id_table=self._ID_TABLE)
+			return "SELECT DISTINCT " + self._ID_COLUMN + " FROM {}", [self._ID_TABLE], []
 
 		if not condition.leaf:
 			# child conditions
-			cond1 = self.buildSqlQuery(condition.operand1)
-			cond2 = self.buildSqlQuery(condition.operand2)
+			cond1, tables1, values1 = self.buildSqlQuery(condition.operand1)
+			cond2, tables2, values2 = self.buildSqlQuery(condition.operand2)
 
 			# mapping to SQL operations
 			operations = {
@@ -349,23 +331,23 @@ class _StructureLayer:
 			}
 
 			if cond1 == None and cond2 == None:
-				return None
+				return None, None, None
 
 			if cond1 == None:
 				if condition.operator == op.AND:
-					return None
+					return None, None, None
 				if condition.operator == op.OR:
-					return cond2
+					return cond2, tables2, values2
 
 			if cond2 == None:
 				if condition.operator == op.AND:
-					return None
+					return None, None, None
 				if condition.operator == op.OR:
-					return cond1
+					return cond1, tables1, values1
 
-			return ("SELECT * FROM ({cond1}) as temp {operation} SELECT * FROM ({cond2}) as temp"
-				.format(cond1=cond1, cond2=cond2,
-				operation=operations[condition.operator]))
+			return "SELECT * FROM (" + cond1 + ") as temp " + \
+				operations[condition.operator] + " SELECT * FROM (" + \
+				cond2 + ") as temp", tables1 + tables2, values1 + values2
 
 		# Leaf condition
 		op1 = condition.operand1 # it must be Field
@@ -379,9 +361,8 @@ class _StructureLayer:
 
 		# If table with given field does not exist, just return empty query
 		if not self._engine.tableExists(op1.name_str):
-			return None
+			return None, None, None
 
-		safe_name = condition.operand1.name_as_table
 		not_str = " NOT " if condition.invert else " "
 
 		# mapping to SQL comparisons
@@ -395,26 +376,23 @@ class _StructureLayer:
 		}
 
 		# build query
+		tables = []
+		values = []
 
 		if op2 is not None or not condition.invert:
 
 			# construct comparing condition
 			if op2 is not None:
-				comp_str = "WHERE{not_str} {value_column} {comp} {val}".format(
-					comp=comparisons[condition.operator],
-					not_str=not_str,
-					val=self._engine.getSafeValue(op2),
-					value_column=self._VALUE_COLUMN)
+				comp_str = "WHERE " + not_str + " " + self._VALUE_COLUMN + " " + \
+					comparisons[condition.operator] + " ?"
+				values = [op2]
 			else:
 				comp_str = ""
 
 			# construct query
-			result = ("SELECT DISTINCT {id_column} FROM {field_name} " +
-				"{comp_str}{columns_condition}").format(
-				columns_condition=op1.columns_condition,
-				comp_str=comp_str,
-				field_name=safe_name,
-				id_column=self._ID_COLUMN)
+			result = "SELECT DISTINCT " + self._ID_COLUMN + " FROM {} " + \
+				comp_str + " " + op1.columns_condition
+			tables = [condition.operand1.name_str]
 
 			if condition.invert:
 			# we will add objects that do not even have such field
@@ -425,13 +403,12 @@ class _StructureLayer:
 		# if we need to invert results, we have to add all objects that do
 		# not have this field explicitly, because they won't be caught by previous query
 		if condition.invert:
-			result += ("SELECT {id_column} FROM (SELECT DISTINCT {id_column} FROM {id_table} " +
-				"EXCEPT SELECT DISTINCT {id_column} FROM {field_name}) as temp").format(
-				field_name=safe_name,
-				id_column=self._ID_COLUMN,
-				id_table=self._ID_TABLE)
+			result += "SELECT " + self._ID_COLUMN + " FROM " + \
+				"(SELECT DISTINCT " + self._ID_COLUMN + " FROM {} " + \
+				"EXCEPT SELECT DISTINCT " + self._ID_COLUMN + " FROM {}) as temp"
+			tables += [self._ID_TABLE, condition.operand1.name_str]
 
-		return result
+		return result, tables, values
 
 	def renumberList(self, id, target_field, field, shift):
 		"""
@@ -448,16 +425,11 @@ class _StructureLayer:
 		types = self.getValueTypes(id, field)
 		for type in types:
 			field.type_str = type
-			self._engine.execute(("UPDATE {field_name} " +
-				"SET {col_name}={col_name}+{shift} " +
-				"WHERE {id_column}={id}{cond} AND {col_name}>={col_val}").format(
-				col_name=col_name,
-				col_val=col_val,
-				cond=cond,
-				field_name=field.name_as_table,
-				id=id,
-				id_column=self._ID_COLUMN,
-				shift=shift))
+			self._engine.execute("UPDATE {} " +
+				"SET " + col_name + "=" + col_name + "+? " +
+				"WHERE " + self._ID_COLUMN + "=?" + cond +
+				" AND " + col_name + ">=?",
+				[field.name_str], None, [shift, id, col_val])
 
 	def deleteValues(self, id, field, condition=None):
 		"""Delete value of given field(s)"""
@@ -473,20 +445,18 @@ class _StructureLayer:
 
 			# prepare query for deletion
 			field_copy.type_str = type
-			query_str = "FROM {field_name} WHERE {id_column}={id}{delete_condition}".format(
-				delete_condition=condition,
-				field_name=field_copy.name_as_table,
-				id=id,
-				id_column=self._ID_COLUMN)
+			query_str = "FROM {} WHERE " + self._ID_COLUMN + "=?" + condition
+			tables = [field_copy.name_str]
+			values = [id]
 
 			# get number of records to be deleted
-			res = self._engine.execute("SELECT COUNT(*) " + query_str)
+			res = self._engine.execute("SELECT COUNT(*) " + query_str, tables, None, values)
 			del_num = res[0][0]
 
 			# if there are any, delete them
 			if del_num > 0:
 				self.decreaseRefcount(id, field_copy, num=del_num)
-				self._engine.execute("DELETE " + query_str)
+				self._engine.execute("DELETE " + query_str, tables, None, values)
 
 				# check if the table is empty and if it is - delete it too
 				if self._engine.tableIsEmpty(field_copy.name_str):
@@ -499,13 +469,10 @@ class _StructureLayer:
 		field should have definite type
 		"""
 
-		new_value = (", " + field.safe_value) if not field.isNull() else ""
-		self._engine.execute(("INSERT INTO {field_name} " +
-			"VALUES ({id}{value}{columns_values})").format(
-			columns_values=field.columns_values,
-			field_name=field.name_as_table,
-			id=id,
-			value=new_value))
+		new_value = ", ?" if not field.isNull() else ""
+		self._engine.execute("INSERT INTO {} " +
+			"VALUES (?" + new_value + field.columns_values + ")",
+			[field.name_str], None, [id] + ([] if field.isNull() else [field.value]))
 
 
 class LogicLayer:
@@ -672,10 +639,10 @@ class LogicLayer:
 	def processSearchRequest(self, request):
 		"""Search for all objects using given search condition"""
 
-		request = self._structure.buildSqlQuery(request.condition)
+		request, tables, values = self._structure.buildSqlQuery(request.condition)
 		if request is None:
 			return []
-		result = self._engine.execute(request)
+		result = self._engine.execute(request, tables, None, values)
 		list_res = [x[0] for x in result]
 
 		return list_res
