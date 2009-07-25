@@ -41,15 +41,19 @@ if opts.all_engines:
 else:
 	engine_tags = {'default': None}
 
-if opts.all_storages:
-	storages = {'memory': (None, None), 'file': ('test.db', 0)}
-else:
-	storages = {'memory': (None, None)}
+storages = {
+	'sqlite3': [('memory', None, None), ('file', 'test.db', 0)],
+	'postgre': [('tempdb', 'tempdb', 0)]
+}
+
+if not opts.all_storages:
+	# leave only default storages
+	storages = {x: [storages[x][0]] for x in storages}
 
 connection_params = {}
 for tag_str in engine_tags:
-	for storage_str in storages:
-		path, open_existing = storages[storage_str]
+	for storage in storages[tag_str]:
+		storage_str, path, open_existing = storage
 		test_tag = tag_str + "." + storage_str
 		connection_params[test_tag] = (engine_tags[tag_str], path, open_existing)
 
@@ -76,9 +80,9 @@ func_tests = {'delete': delete, 'insert': insert,
 
 for gen in connection_generators:
 	for tag_str in engine_tags:
-		for storage_str in storages:
+		for storage in storages[tag_str]:
 			for func_test in func_tests:
-				path, open_existing = storages[storage_str]
+				storage_str, path, open_existing = storage
 				test_tag = gen + "." + tag_str + "." + storage_str + "." + func_test
 				connection_params[test_tag] = (engine_tags[tag_str], path, open_existing)
 				suite.addTest(unittest.TestLoader().loadTestsFromTestCase(
