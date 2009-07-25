@@ -166,7 +166,7 @@ class _Sqlite3Engine(_Engine):
 
 	def tableExists(self, name):
 		res = list(self._cur.execute("SELECT * FROM sqlite_master WHERE type='table' AND name=?",
-			[name]))
+			(name,)))
 		return len(res) > 0
 
 	def tableIsEmpty(self, name):
@@ -285,13 +285,18 @@ class _PostgreEngine(_Engine):
 			print(str)
 		print("--------")
 
-	def execute(self, sql_str):
+	def execute(self, sql_str, tables, values):
 		"""Execute given SQL query"""
-		return self._conn.prepare(sql_str)()
+		if tables is not None:
+			tables = [self.getSafeName(x) for x in tables]
+			tables_tuple = tuple(tables)
+			sql_str = sql_str.format(*tables_tuple)
+		if values is None: values = []
+		values = tuple(values)
+		return self._conn.prepare(sql_str)(*values)
 
 	def tableExists(self, name):
-		res = self._conn.prepare("SELECT * FROM pg_tables WHERE tablename={name}"
-			.format(name=self.getSafeValue(name)))()
+		res = self._conn.prepare("SELECT * FROM pg_tables WHERE tablename=?")(name)
 		return len(res) > 0
 
 	def tableIsEmpty(self, name):
@@ -300,17 +305,6 @@ class _PostgreEngine(_Engine):
 	def deleteTable(self, name):
 		if self.tableExists(name):
 			self._conn.prepare("DROP TABLE " + self.getSafeName(name))()
-
-	def getSafeValue(self, val):
-		"""Transform value so that it could be safely used in queries"""
-		transformations = {
-			str: lambda x: "'" + x.replace("'", "''") + "'",
-			int: lambda x: str(x),
-			float: lambda x: str(x),
-			# FIXME: seems that now .decode() is broken, so we have to do this ugly thing
-			bytes: lambda x: "E'" + ''.join(['\\\\{0:03o}'.format(c) for c in x]) + "'"
-		}
-		return transformations[val.__class__](val)
 
 	def getColumnType(self, val):
 		"""Return SQL type for storing given value"""
