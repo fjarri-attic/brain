@@ -24,11 +24,11 @@ class EngineTest(unittest.TestCase):
 		table_name = 'test'
 
 		for val in vals:
+			val_type = self.engine.getColumnType(val)
+
 			self.engine.begin()
-			self.engine.execute("CREATE TABLE {} (col {type})",
-				[table_name], {'type': self.engine.getColumnType(val)})
-			self.engine.execute("INSERT INTO {} VALUES (?)",
-				[table_name], {}, [val])
+			self.engine.execute("CREATE TABLE {} (col " + val_type + ")", [table_name])
+			self.engine.execute("INSERT INTO {} VALUES (?)", [table_name], [val])
 			res = list(self.engine.execute("SELECT col FROM {}", [table_name]))
 			self.engine.execute("DROP TABLE {}", [table_name])
 			self.engine.commit()
@@ -44,10 +44,8 @@ class EngineTest(unittest.TestCase):
 
 		for name in names:
 			self.engine.begin()
-			self.engine.execute("CREATE TABLE {} (col {type})",
-				[name], {'type': val_type})
-			self.engine.execute("INSERT INTO {} VALUES (?)",
-				[name], None, [test_val])
+			self.engine.execute("CREATE TABLE {} (col " + val_type + ")", [name])
+			self.engine.execute("INSERT INTO {} VALUES (?)", [name], [test_val])
 			res = list(self.engine.execute("SELECT col FROM {}", [name]))
 			self.engine.execute("DROP TABLE {}", [name])
 			self.engine.commit()
@@ -79,10 +77,9 @@ class EngineTest(unittest.TestCase):
 		val_type = self.engine.getColumnType(test_vals[0])
 
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE {} (col1 {type}, col2 {type})",
-			[test_table], {'type': val_type})
-		self.engine.execute("INSERT INTO {} VALUES (?, ?)",
-			[test_table], None, test_vals)
+		self.engine.execute("CREATE TABLE {} (col1 " + val_type + ", col2 " + val_type + ")",
+			[test_table])
+		self.engine.execute("INSERT INTO {} VALUES (?, ?)", [test_table], test_vals)
 
 	def testExecuteReturnsList(self):
 		"""Test that execute() method returns list and not some specific class"""
@@ -92,37 +89,31 @@ class EngineTest(unittest.TestCase):
 		val_type = self.engine.getColumnType(test_vals[0])
 
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE {} (col1 {type}, col2 {type})",
-			[test_table], {'type': self.str_type})
-		self.engine.execute("INSERT INTO {} VALUES (?, ?)",
-			[test_table], None, test_vals)
+		self.engine.execute("CREATE TABLE {} (col1 " + val_type + ", col2 " + val_type + ")",
+			[test_table])
+		self.engine.execute("INSERT INTO {} VALUES (?, ?)", [test_table], test_vals)
 		res = self.engine.execute("SELECT * FROM {}", [test_table])
 		self.failUnless(isinstance(res, list))
 		self.assertEqual(res, [tuple(test_vals)])
 
 	def testTableExists(self):
 		"""Test work of tableExists() method for existing table"""
-
 		test_table = 'ttt'
-
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE {} (col1 {type}, col2 {type})",
-			[test_table], {'type': self.str_type})
+		self.engine.execute("CREATE TABLE {} (col1 " + self.str_type + ")", [test_table])
 		self.failUnless(self.engine.tableExists(test_table))
 
 	def testTableExistsMissingTable(self):
 		"""Test work of tableExists() method for non-existing table"""
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE {} (col1 {type}, col2 {type})",
-			['test'], {'type': self.str_type})
+		self.engine.execute("CREATE TABLE {} (col1 " + self.str_type + ")", ['test'])
 		self.assertFalse(self.engine.tableExists('bbb'))
 
 	def testTableIsEmpty(self):
 		"""Test work of tableIsEmpty() method for empty table"""
 		table_name = 'ttt'
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE {} (col1 {type}, col2 {type})",
-			[table_name], {'type': self.str_type})
+		self.engine.execute("CREATE TABLE {} (col1 " + self.str_type + ")", [table_name])
 		self.failUnless(self.engine.tableIsEmpty(table_name))
 
 	def testTableIsEmptyFilledTable(self):
@@ -133,26 +124,23 @@ class EngineTest(unittest.TestCase):
 		val_type = self.engine.getColumnType(test_vals[0])
 
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE {} (col1 {type}, col2 {type})",
-			[test_table], {'type': self.str_type})
-		self.engine.execute("INSERT INTO {} VALUES (?, ?)",
-			[test_table], None, test_vals)
+		self.engine.execute("CREATE TABLE {} (col1 " + val_type + ", col2 " + val_type + ")",
+			[test_table])
+		self.engine.execute("INSERT INTO {} VALUES (?, ?)", [test_table], test_vals)
 		self.assertFalse(self.engine.tableIsEmpty(test_table))
 
 	def testDeleteTable(self):
 		"""Test work of deleteTable() method for existing table"""
 		test_table = 'ttt'
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE {} (col1 {type}, col2 {type})",
-			[test_table], {'type': self.str_type})
+		self.engine.execute("CREATE TABLE {} (col1 " + self.str_type + ")", [test_table])
 		self.engine.deleteTable(test_table)
 		self.assertFalse(self.engine.tableExists(test_table))
 
 	def testDeleteTableMissingTable(self):
 		"""Test work of deleteTable() method for non-existing table"""
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE {} (col1 {type}, col2 {type})",
-			['ttt'], {'type': self.str_type})
+		self.engine.execute("CREATE TABLE {} (col1 " + self.str_type + ")", ['ttt'])
 		self.engine.deleteTable('aaa')
 
 	def testRollbackTableModifications(self):
@@ -161,19 +149,16 @@ class EngineTest(unittest.TestCase):
 		test_table = 'ttt'
 
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE {} (col1 {type}, col2 {type})",
-			[test_table], {'type': self.str_type})
+		self.engine.execute("CREATE TABLE {} (col1 " + self.str_type +
+			", col2 " + self.str_type + ")", [test_table])
 		self.engine.execute("INSERT INTO {} VALUES (?, ?)",
-			[test_table], None, ['a', 'b'])
+			[test_table], ['a', 'b'])
 		self.engine.commit()
 
 		self.engine.begin()
-		self.engine.execute("INSERT INTO {} VALUES (?, ?)",
-			[test_table], None, ['c', 'd'])
-		self.engine.execute("UPDATE {} SET col1=? WHERE col1=?",
-			[test_table], None, ['e', 'a'])
-		self.engine.execute("DELETE FROM {} WHERE col1=?",
-			[test_table], None, ['e'])
+		self.engine.execute("INSERT INTO {} VALUES (?, ?)", [test_table], ['c', 'd'])
+		self.engine.execute("UPDATE {} SET col1=? WHERE col1=?", [test_table], ['e', 'a'])
+		self.engine.execute("DELETE FROM {} WHERE col1=?", [test_table], ['e'])
 		self.engine.rollback()
 
 		self.engine.begin()
@@ -184,8 +169,7 @@ class EngineTest(unittest.TestCase):
 		"""Test that table creation can be rolled back"""
 		test_table = 'ttt'
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE {} (col1 {type}, col2 {type})",
-			[test_table], {'type': self.str_type})
+		self.engine.execute("CREATE TABLE {} (col1 " + self.str_type + ")", [test_table])
 		self.engine.rollback()
 
 		self.assertFalse(self.engine.tableExists(test_table))
@@ -194,8 +178,7 @@ class EngineTest(unittest.TestCase):
 		"""Test that table deletion can be rolled back"""
 		test_table = 'ttt'
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE {} (col1 {type}, col2 {type})",
-			[test_table], {'type': self.str_type})
+		self.engine.execute("CREATE TABLE {} (col1 " + self.str_type + ")", [test_table])
 		self.engine.commit()
 
 		self.engine.begin()
@@ -208,51 +191,45 @@ class EngineTest(unittest.TestCase):
 		"""Check that engine supports regexp search"""
 		test_table = 'ttt'
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE {} (col1 {type}, col2 {type})",
-			[test_table], {'type': self.str_type})
-		self.engine.execute("INSERT INTO {} VALUES (?, ?)",
-			[test_table], None, ['abc', 'e'])
-		self.engine.execute("INSERT INTO {} VALUES (?, ?)",
-			[test_table], None, ['bac', 'f'])
-		self.engine.execute("INSERT INTO {} VALUES (?, ?)",
-			[test_table], None, ['cba', 'g'])
-		res = self.engine.execute("SELECT col1 FROM {} WHERE col1 {regexp} 'a\w+'",
-			[test_table], {'regexp': self.engine.getRegexpOp()})
+		self.engine.execute("CREATE TABLE {} (col1 " + self.str_type + ")", [test_table])
+		self.engine.execute("INSERT INTO {} VALUES (?)", [test_table], ['abc'])
+		self.engine.execute("INSERT INTO {} VALUES (?)", [test_table], ['bac'])
+		self.engine.execute("INSERT INTO {} VALUES (?)", [test_table], ['cba'])
+		res = self.engine.execute("SELECT col1 FROM {} WHERE col1 " +
+			self.engine.getRegexpOp() + " ?", [test_table], ['a\w+'])
 		self.assertEqual(res, [('abc',), ('bac',)])
 
 	def testRegexpSupportInBlob(self):
 		"""Check that engine supports regexp search in BLOB values"""
 		test_table = 'ttt'
+		bytes_type = self.engine.getColumnType(bytes())
+		regexp = self.engine.getRegexpOp()
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE {} (col1 {type})",
-			[test_table], {'type': self.engine.getColumnType(bytes())})
+		self.engine.execute("CREATE TABLE {} (col1 " + bytes_type + ")", [test_table])
 		for val in [b'\x00\x01\x02', b'\x01\x00\x02', b'\x01\x02\x00']:
-			self.engine.execute("INSERT INTO {} VALUES (?)",
-				[test_table], None, [val])
-		res = self.engine.execute("SELECT col1 FROM {} WHERE col1 {regexp} ?",
-			[test_table], {'regexp': self.engine.getRegexpOp()}, [b'\x00.+'])
+			self.engine.execute("INSERT INTO {} VALUES (?)", [test_table], [val])
+		res = self.engine.execute("SELECT col1 FROM {} WHERE col1 " + regexp + " ?",
+			[test_table], [b'\x00.+'])
 		self.assertEqual(res, [(b'\x00\x01\x02',), (b'\x01\x00\x02',)])
 
 	def testUnicodeSupport(self):
 		"""Check that DB can store and return unicode values"""
 		austria = "\xd6sterreich"
 		test_table = 'ttt'
+		regexp = self.engine.getRegexpOp()
 
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE {} (col1 {type}, col2 {type})",
-			[test_table], {'type': self.str_type})
-		self.engine.execute("INSERT INTO {} VALUES (?, ?)",
-			[test_table], None, ['abc', austria])
+		self.engine.execute("CREATE TABLE {} (col1 " + self.str_type + ")", [test_table])
+		self.engine.execute("INSERT INTO {} VALUES (?)", [test_table], [austria])
 
 		# check that unicode string can be queried
-		res = self.engine.execute("SELECT col2 FROM {}", [test_table])
+		res = self.engine.execute("SELECT col1 FROM {}", [test_table])
 		self.assertEqual(res, [(austria,)])
 
 		# check that regexp works for unicode
-		self.engine.execute("INSERT INTO {} VALUES (?, ?)",
-			[test_table], None, ['aaa', 'bbb'])
-		res = self.engine.execute("SELECT col2 FROM {} WHERE col2 {regexp} ?",
-			[test_table], {'regexp': self.engine.getRegexpOp()}, [austria[:3]])
+		self.engine.execute("INSERT INTO {} VALUES (?)", [test_table], ['aaa'])
+		res = self.engine.execute("SELECT col1 FROM {} WHERE col1 " + regexp + " ?",
+			[test_table], [austria[:3]])
 		self.assertEqual(res, [(austria,)])
 
 	def testTypeMapping(self):
@@ -266,14 +243,11 @@ class EngineTest(unittest.TestCase):
 		"""Check that NULLs and operations with them are supported"""
 		test_table = 'ttt'
 		self.engine.begin()
-		self.engine.execute("CREATE TABLE {} (col1 {type}, col2 {type})",
-			[test_table], {'type': self.str_type})
-		self.engine.execute("INSERT INTO {} VALUES (?, ?)",
-			[test_table], None, ['a', 'b'])
-		self.engine.execute("INSERT INTO {} VALUES (?, ?)",
-			[test_table], None, ['a', None])
-		self.engine.execute("INSERT INTO {} VALUES (?, ?)",
-			[test_table], None, [None, 'b'])
+		self.engine.execute("CREATE TABLE {} (col1 " + self.str_type +
+			", col2 " + self.str_type + ")", [test_table])
+		self.engine.execute("INSERT INTO {} VALUES (?, ?)", [test_table], ['a', 'b'])
+		self.engine.execute("INSERT INTO {} VALUES (?, ?)", [test_table], ['a', None])
+		self.engine.execute("INSERT INTO {} VALUES (?, ?)", [test_table], [None, 'b'])
 		res = self.engine.execute("SELECT col2 FROM {} WHERE col1 ISNULL", [test_table])
 		self.engine.commit()
 

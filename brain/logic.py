@@ -46,38 +46,39 @@ class _StructureLayer:
 
 		# create specification table, which holds field names, their types
 		# and number of records of each type for all database objects
+		id_table_spec = ("({id_column} {id_type}, {field_column} {text_type}, " +
+			"{type_column} {text_type}, " +
+			"{refcount_column} {refcount_type})").format(
+			field_column=self._FIELD_COLUMN,
+			id_column=self._ID_COLUMN,
+			id_type=self._ID_TYPE,
+			refcount_column=self._REFCOUNT_COLUMN,
+			refcount_type=self._INT_TYPE,
+			text_type=self._TEXT_TYPE,
+			type_column=self._TYPE_COLUMN)
+
 		if not self._engine.tableExists(self._ID_TABLE):
-			self._engine.execute("CREATE table {} " +
-				"({id_column} {id_type}, {field_column} {text_type}, " +
-				"{type_column} {text_type}, " +
-				"{refcount_column} {refcount_type})",
-				[self._ID_TABLE],
-				{'field_column': self._FIELD_COLUMN,
-				'id_column': self._ID_COLUMN,
-				'id_type': self._ID_TYPE,
-				'refcount_column': self._REFCOUNT_COLUMN,
-				'refcount_type': self._INT_TYPE,
-				'text_type': self._TEXT_TYPE,
-				'type_column': self._TYPE_COLUMN})
+			self._engine.execute("CREATE table {} " + id_table_spec, [self._ID_TABLE])
 
 		# create support table which holds maximum list index for each list
 		# existing in database
+		listsizes_table_spec = ("({id_column} {id_type}, {field_column} {text_type}, " +
+			"{max_column} {list_index_type})").format(
+			field_column=self._FIELD_COLUMN,
+			id_column=self._ID_COLUMN,
+			id_type=self._ID_TYPE,
+			list_index_type=self._INT_TYPE,
+			max_column=self._MAX_COLUMN,
+			text_type=self._TEXT_TYPE)
+
 		if not self._engine.tableExists(self._LISTSIZES_TABLE):
-			self._engine.execute("CREATE table {} " +
-				"({id_column} {id_type}, {field_column} {text_type}, " +
-				"{max_column} {list_index_type})",
-				[self._LISTSIZES_TABLE],
-				{'field_column' :self._FIELD_COLUMN,
-				'id_column': self._ID_COLUMN,
-				'id_type': self._ID_TYPE,
-				'list_index_type': self._INT_TYPE,
-				'max_column': self._MAX_COLUMN,
-				'text_type': self._TEXT_TYPE})
+			self._engine.execute("CREATE table {} " + listsizes_table_spec,
+				[self._LISTSIZES_TABLE])
 
 	def deleteSpecification(self, id):
 		"""Delete all information about object from specification table"""
-		self._engine.execute("DELETE FROM {} WHERE {id_column}=?",
-			[self._ID_TABLE], {'id_column': self._ID_COLUMN}, [id])
+		self._engine.execute("DELETE FROM {} WHERE " + self._ID_COLUMN + "=?",
+			[self._ID_TABLE], [id])
 
 	def increaseRefcount(self, id, field, new_type):
 		"""
@@ -93,20 +94,16 @@ class _StructureLayer:
 		# if adding a value of new type to existing field,
 		# add a reference counter for this field and this type
 			self._engine.execute("INSERT INTO {} VALUES (?, ?, ?, 1)",
-				[self._ID_TABLE], None, [id, field.name_str_no_type,
+				[self._ID_TABLE], [id, field.name_str_no_type,
 				field.type_str])
 		else:
 		# otherwise increase the existing reference counter
+			ref_col = self._REFCOUNT_COLUMN
 			self._engine.execute("UPDATE {} " +
-				"SET {refcount_column}={refcount_column}+1 " +
-				"WHERE {id_column}=? AND {field_column}=? " +
-				"AND {type_column}=?",
-				[self._ID_TABLE],
-				{'field_column': self._FIELD_COLUMN,
-				'id_column': self._ID_COLUMN,
-				'refcount_column': self._REFCOUNT_COLUMN,
-				'type_column': self._TYPE_COLUMN},
-				[id, field.name_str_no_type, field.type_str])
+				"SET " + ref_col + "="+ ref_col + "+1 " +
+				"WHERE " + self._ID_COLUMN + "=? AND " + self._FIELD_COLUMN + "=? " +
+				"AND " + self._TYPE_COLUMN + "=?",
+				[self._ID_TABLE], [id, field.name_str_no_type, field.type_str])
 
 	def decreaseRefcount(self, id, field, num=1):
 		"""
@@ -120,15 +117,10 @@ class _StructureLayer:
 		type_cond_val = [] if isnull else [field.type_str]
 
 		# get current value of reference counter
-		l = self._engine.execute("SELECT {refcount_column} FROM {} " +
-			"WHERE {id_column}=? AND {field_column}=? " +
-			"AND {type_column}" + type_cond,
-			[self._ID_TABLE],
-			{'field_column': self._FIELD_COLUMN,
-			'id_column': self._ID_COLUMN,
-			'refcount_column': self._REFCOUNT_COLUMN,
-			'type_column': self._TYPE_COLUMN},
-			[id, field.name_str_no_type] + type_cond_val)
+		l = self._engine.execute("SELECT " + self._REFCOUNT_COLUMN + " FROM {} " +
+			"WHERE " + self._ID_COLUMN + "=? AND " + self._FIELD_COLUMN + "=? " +
+			"AND " + self._TYPE_COLUMN + type_cond,
+			[self._ID_TABLE], [id, field.name_str_no_type] + type_cond_val)
 
 		if l[0][0] < num:
 		# if for some reason counter value is lower than expected, we will raise
@@ -137,36 +129,24 @@ class _StructureLayer:
 		if l[0][0] == num:
 		# if these references are the last ones, delete this counter
 			self._engine.execute("DELETE FROM {} " +
-				"WHERE {id_column}=? AND {field_column}=? " +
-				"AND {type_column}" + type_cond,
-				[self._ID_TABLE],
-				{'field_column': self._FIELD_COLUMN,
-				'id_column': self._ID_COLUMN,
-				'type_column': self._TYPE_COLUMN},
-				[id, field.name_str_no_type] + type_cond_val)
+				"WHERE " + self._ID_COLUMN + "=? AND " + self._FIELD_COLUMN + "=? " +
+				"AND " + self._TYPE_COLUMN + type_cond,
+				[self._ID_TABLE], [id, field.name_str_no_type] + type_cond_val)
 		else:
 		# otherwise just decrease the counter by given value
-			self._engine.execute("UPDATE {} SET {refcount_column}={refcount_column}-? " +
-				"WHERE {id_column}=? AND {field_column}=? " +
-				"AND {type_column}=?",
-				[self._ID_TABLE],
-				{'field_column': self._FIELD_COLUMN,
-				'id_column': self._ID_COLUMN,
-				'refcount_column': self._REFCOUNT_COLUMN,
-				'type_column': self._TYPE_COLUMN},
-				[num, id, field.name_str_no_type, field.type_str])
+			ref_col = self._REFCOUNT_COLUMN
+			self._engine.execute("UPDATE {} SET " + ref_col + "=" + ref_col + "-? " +
+				"WHERE " + self._ID_COLUMN + "=? AND " + self._FIELD_COLUMN + "=? " +
+				"AND " + self._TYPE_COLUMN + "=?",
+				[self._ID_TABLE], [num, id, field.name_str_no_type, field.type_str])
 
 	def getValueTypes(self, id, field):
 		"""Returns list of value types already stored in given field"""
 
 		# just query specification table for all types for given object and field
-		l = self._engine.execute("SELECT {type_column} FROM {} " +
-			"WHERE {id_column}=? AND {field_column}=?",
-			[self._ID_TABLE],
-			{'field_column': self._FIELD_COLUMN,
-			'id_column': self._ID_COLUMN,
-			'type_column': self._TYPE_COLUMN},
-			[id, field.name_str_no_type])
+		l = self._engine.execute("SELECT " + self._TYPE_COLUMN + " FROM {} " +
+			"WHERE " + self._ID_COLUMN + "=? AND " + self._FIELD_COLUMN + "=?",
+			[self._ID_TABLE], [id, field.name_str_no_type])
 
 		return [x[0] for x in l]
 
@@ -179,23 +159,18 @@ class _StructureLayer:
 
 		if field is not None:
 		# If field is given, return only fields, which contain its name in the beginning
-			regexp_cond = " AND {field_column} {regexp_op} ?"
+			regexp_cond = " AND " + self._FIELD_COLUMN + \
+				" " + self._engine.getRegexpOp() + " ?"
 			regexp_val = ["^" + field.name_str_no_type +
 				("." if exclude_self else "")]
-			regexp_op = self._engine.getRegexpOp()
 		else:
 			regexp_cond = ""
 			regexp_val = []
-			regexp_op = None
 
 		# Get list of fields
-		l = self._engine.execute("SELECT DISTINCT {field_column} FROM {} " +
-			"WHERE {id_column}=?" + regexp_cond,
-			[self._ID_TABLE],
-			{'field_column': self._FIELD_COLUMN,
-			'id_column': self._ID_COLUMN,
-			'regexp_op': regexp_op},
-			[id] + regexp_val)
+		l = self._engine.execute("SELECT DISTINCT " + self._FIELD_COLUMN + " FROM {} " +
+			"WHERE " + self._ID_COLUMN + "=?" + regexp_cond,
+			[self._ID_TABLE], [id] + regexp_val)
 
 		# fill the beginnings of found field names with the name of
 		# given field (if any) or just construct result list
@@ -213,8 +188,8 @@ class _StructureLayer:
 
 		# We need just check if there is at least one row with its id
 		# in specification table
-		l = self._engine.execute("SELECT COUNT(*) FROM {} WHERE {id_column}=?",
-			[self._ID_TABLE], {'id_column': self._ID_COLUMN}, [id])
+		l = self._engine.execute("SELECT COUNT(*) FROM {} WHERE " + self._ID_COLUMN + "=?",
+			[self._ID_TABLE], [id])
 
 		return l[0][0] > 0
 
@@ -232,14 +207,10 @@ class _StructureLayer:
 
 		# Get field values
 		# If field is a mask (i.e., contains Nones), there will be more than one result
-		l = self._engine.execute("SELECT {value_column}{columns_query} FROM {} " +
-			"WHERE {id_column}=?{columns_condition}",
-			[field.name_str],
-			{'columns_condition': field.columns_condition,
-			'columns_query': field.columns_query,
-			'id_column': self._ID_COLUMN,
-			'value_column': self._VALUE_COLUMN if not field.isNull() else ""},
-			[id])
+		val_col = self._VALUE_COLUMN if not field.isNull() else ""
+		l = self._engine.execute("SELECT " + val_col + field.columns_query + " FROM {} " +
+			"WHERE " + self._ID_COLUMN + "=?" + field.columns_condition,
+			[field.name_str], [id])
 
 		# Convert results to list of Fields
 		res = []
@@ -271,18 +242,13 @@ class _StructureLayer:
 
 			if max > val: return
 
-			self._engine.execute("UPDATE {} SET {max_column}=? " +
-				"WHERE {id_column}=? AND {field_column}=?",
-				[self._LISTSIZES_TABLE],
-				{'field_column': self._FIELD_COLUMN,
-				'id_column': self._ID_COLUMN,
-				'max_column': self._MAX_COLUMN},
-				[val, id, field.name_hashstr])
+			self._engine.execute("UPDATE {} SET " + self._MAX_COLUMN + "=? " +
+				"WHERE " + self._ID_COLUMN + "=? AND " + self._FIELD_COLUMN + "=?",
+				[self._LISTSIZES_TABLE], [val, id, field.name_hashstr])
 		else:
 		# create new record
 			self._engine.execute("INSERT INTO {} VALUES (?, ?, ?)",
-				[self._LISTSIZES_TABLE], None,
-				[id, field.name_hashstr, val])
+				[self._LISTSIZES_TABLE], [id, field.name_hashstr, val])
 
 	def assureFieldTableExists(self, field):
 		"""
@@ -292,21 +258,17 @@ class _StructureLayer:
 		"""
 
 		if not self._engine.tableExists(field.name_str):
-			self._engine.execute("CREATE TABLE {} ({values_str})",
-				[field.name_str],
-				{'values_str': field.getCreationStr(self._ID_COLUMN,
-				self._VALUE_COLUMN, self._ID_TYPE, self._INT_TYPE)})
+			table_spec = field.getCreationStr(self._ID_COLUMN,
+				self._VALUE_COLUMN, self._ID_TYPE, self._INT_TYPE)
+			self._engine.execute("CREATE TABLE {} (" + table_spec + ")",
+				[field.name_str])
 
 	def getMaxListIndex(self, id, field):
 		"""Get maximum value of list index for the undefined column of the field"""
 
-		l = self._engine.execute("SELECT {max_column} FROM {} " +
-			"WHERE {id_column}=? AND {field_column}=?",
-			[self._LISTSIZES_TABLE],
-			{'field_column': self._FIELD_COLUMN,
-			'id_column': self._ID_COLUMN,
-			'max_column': self._MAX_COLUMN},
-			[id, field.name_hashstr])
+		l = self._engine.execute("SELECT " + self._MAX_COLUMN + " FROM {} " +
+			"WHERE " + self._ID_COLUMN + "=? AND " + self._FIELD_COLUMN + "=?",
+			[self._LISTSIZES_TABLE], [id, field.name_hashstr])
 
 		if len(l) > 0:
 			return l[0][0]
@@ -429,7 +391,7 @@ class _StructureLayer:
 				"SET " + col_name + "=" + col_name + "+? " +
 				"WHERE " + self._ID_COLUMN + "=?" + cond +
 				" AND " + col_name + ">=?",
-				[field.name_str], None, [shift, id, col_val])
+				[field.name_str], [shift, id, col_val])
 
 	def deleteValues(self, id, field, condition=None):
 		"""Delete value of given field(s)"""
@@ -450,13 +412,13 @@ class _StructureLayer:
 			values = [id]
 
 			# get number of records to be deleted
-			res = self._engine.execute("SELECT COUNT(*) " + query_str, tables, None, values)
+			res = self._engine.execute("SELECT COUNT(*) " + query_str, tables,values)
 			del_num = res[0][0]
 
 			# if there are any, delete them
 			if del_num > 0:
 				self.decreaseRefcount(id, field_copy, num=del_num)
-				self._engine.execute("DELETE " + query_str, tables, None, values)
+				self._engine.execute("DELETE " + query_str, tables, values)
 
 				# check if the table is empty and if it is - delete it too
 				if self._engine.tableIsEmpty(field_copy.name_str):
@@ -472,7 +434,7 @@ class _StructureLayer:
 		new_value = ", ?" if not field.isNull() else ""
 		self._engine.execute("INSERT INTO {} " +
 			"VALUES (?" + new_value + field.columns_values + ")",
-			[field.name_str], None, [id] + ([] if field.isNull() else [field.value]))
+			[field.name_str], [id] + ([] if field.isNull() else [field.value]))
 
 
 class LogicLayer:
@@ -642,7 +604,7 @@ class LogicLayer:
 		request, tables, values = self._structure.buildSqlQuery(request.condition)
 		if request is None:
 			return []
-		result = self._engine.execute(request, tables, None, values)
+		result = self._engine.execute(request, tables, values)
 		list_res = [x[0] for x in result]
 
 		return list_res
