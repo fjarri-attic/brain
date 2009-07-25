@@ -31,6 +31,8 @@ def getEngineByTag(tag):
 class _Engine:
 	"""Engine layer class interface"""
 
+	__FIELD_SEP = '.' # separator for field elements in table name
+
 	def close(self):
 		raise NotImplementedError
 
@@ -54,10 +56,6 @@ class _Engine:
 	def tableIsEmpty(self, name): raise NotImplementedError
 	def deleteTable(self, name): raise NotImplementedError
 
-	def getSafeValue(self, s):
-		"""Transform string value so that it could be safely used in queries"""
-		raise NotImplementedError
-
 	def getColumnType(self, val):
 		"""Return SQL type for storing given value"""
 		raise NotImplementedError
@@ -68,19 +66,20 @@ class _Engine:
 
 	def getNameString(self, l):
 		"""Get field name from list"""
-		raise NotImplementedError
+		sep = self.__FIELD_SEP
+		temp_list = [(x.replace('\\', '\\\\').replace(sep, '\\' + sep)
+			if isinstance(x, str) else '') for x in l]
+		return (sep + sep).join(temp_list)
 
 	def getNameList(self, s):
 		"""Get field name list from string"""
-		raise NotImplementedError
+		sep = self.__FIELD_SEP
+		l = s.split(sep + sep)
+		return [(x.replace('\\' + sep, sep).replace('\\\\', '\\') if x != '' else None) for x in l]
 
 	def getSafeName(self, s):
 		"""Transform string value so that it could be safely used as table name"""
-		raise NotImplementedError
-
-	def getNullValue(self):
-		"""Returns null value to use in queries"""
-		raise NotImplementedError
+		return '"' + s.replace('"', '""') + '"'
 
 	def begin(self):
 		"""Begin transaction"""
@@ -97,8 +96,6 @@ class _Engine:
 
 class _Sqlite3Engine(_Engine):
 	"""Wrapper for Sqlite 3 db engine"""
-
-	__FIELD_SEP = '.' # separator for field elements in table name
 
 	def __init__(self, name=None, open_existing=None):
 
@@ -165,12 +162,12 @@ class _Sqlite3Engine(_Engine):
 		return cur.fetchall()
 
 	def tableExists(self, name):
-		res = list(self._cur.execute("SELECT * FROM sqlite_master WHERE type='table' AND name=?",
-			(name,)))
+		res = self._cur.execute("SELECT * FROM sqlite_master WHERE type='table' AND name=?",
+			(name,)).fetchall()
 		return len(res) > 0
 
 	def tableIsEmpty(self, name):
-		return list(self._cur.execute("SELECT COUNT(*) FROM " + self.getSafeName(name)))[0][0] == 0
+		return self._cur.execute("SELECT COUNT(*) FROM " + self.getSafeName(name)).fetchall()[0][0] == 0
 
 	def deleteTable(self, name):
 		self._cur.execute("DROP TABLE IF EXISTS " + self.getSafeName(name))
@@ -188,26 +185,6 @@ class _Sqlite3Engine(_Engine):
 			"TEXT": str, "INTEGER": int, "FLOAT": float, "BLOB": bytes
 		}
 		return classes[type_str]
-
-	def getNameString(self, l):
-		"""Get field name from list"""
-		sep = self.__FIELD_SEP
-		temp_list = [(x.replace('\\', '\\\\').replace(sep, '\\' + sep)
-			if isinstance(x, str) else '') for x in l]
-		return (sep + sep).join(temp_list)
-
-	def getNameList(self, s):
-		"""Get field name list from string"""
-		sep = self.__FIELD_SEP
-		l = s.split(sep + sep)
-		return [(x.replace('\\' + sep, sep).replace('\\\\', '\\') if x != '' else None) for x in l]
-
-	def getSafeName(self, s):
-		"""Transform string value so that it could be safely used as table name"""
-		return '"' + s.replace('"', '""') + '"'
-
-	def getNullValue(self):
-		return 'NULL'
 
 	def begin(self):
 		"""Begin transaction"""
@@ -278,13 +255,6 @@ class _PostgreEngine(_Engine):
 	def getIdType(self):
 		return self.getColumnType(int())
 
-	def dump(self):
-		"""Dump the whole database to string; used for debug purposes"""
-		print("Dump:")
-		for str in self._conn.iterdump():
-			print(str)
-		print("--------")
-
 	def execute(self, sql_str, tables, values):
 		"""Execute given SQL query"""
 		if tables is not None:
@@ -319,26 +289,6 @@ class _PostgreEngine(_Engine):
 			"TEXT": str, "INT8": int, "FLOAT8": float, "BYTEA": bytes
 		}
 		return classes[type_str]
-
-	def getNameString(self, l):
-		"""Get field name from list"""
-		sep = self.__FIELD_SEP
-		temp_list = [(x.replace('\\', '\\\\').replace(sep, '\\' + sep)
-			if isinstance(x, str) else '') for x in l]
-		return (sep + sep).join(temp_list)
-
-	def getNameList(self, s):
-		"""Get field name list from string"""
-		sep = self.__FIELD_SEP
-		l = s.split(sep + sep)
-		return [(x.replace('\\' + sep, sep).replace('\\\\', '\\') if x != '' else None) for x in l]
-
-	def getSafeName(self, s):
-		"""Transform string value so that it could be safely used as table name"""
-		return '"' + s.replace('"', '""') + '"'
-
-	def getNullValue(self):
-		return 'NULL'
 
 	def begin(self):
 		"""Begin transaction"""
