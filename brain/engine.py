@@ -256,7 +256,7 @@ class _PostgreEngine(_Engine):
 	def getIdType(self):
 		return self.getColumnType(int())
 
-	def execute(self, sql_str, tables, values):
+	def execute(self, sql_str, tables=None, values=None):
 		"""Execute given SQL query"""
 
 		# replace '?' by '$n's (postgre placeholder syntax)
@@ -272,7 +272,8 @@ class _PostgreEngine(_Engine):
 		# FIXME: it is not 100% reliable, because there can be other ?'s in string
 		# but since we are doing this substitution before inserting table names,
 		# it will work for now
-		sql_str = re.sub(r'\?', Counter(), sql_str)
+		if values is not None:
+			sql_str = re.sub(r'\?', Counter(), sql_str)
 
 		# insert table names
 		if tables is not None:
@@ -285,7 +286,7 @@ class _PostgreEngine(_Engine):
 		return self._conn.prepare(sql_str)(*values)
 
 	def tableExists(self, name):
-		res = self._conn.prepare("SELECT * FROM pg_tables WHERE tablename=?")(name)
+		res = self._conn.prepare("SELECT * FROM pg_tables WHERE tablename=$1")(name)
 		return len(res) > 0
 
 	def tableIsEmpty(self, name):
