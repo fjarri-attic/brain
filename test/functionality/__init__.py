@@ -5,6 +5,7 @@ def getParameterized(base_class, name_prefix, connection_generator,
 		def setUp(self):
 			self.db = path
 			self.gen = connection_generator
+			self.tag = engine_tag
 			self.conn = self.gen.connect(path, open_existing, engine_tag)
 
 		def tearDown(self):

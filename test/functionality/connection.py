@@ -24,7 +24,7 @@ class Connection(TestRequest):
 
 		# now open another connection to this database and check that
 		# changes were really made
-		conn2 = brain.connect(self.db)
+		conn2 = self.gen.connect(name=self.db, engine_tag=self.tag, open_existing=True)
 		res = conn2.read(obj)
 		conn2.close()
 		self.assertEqual(res, data)
