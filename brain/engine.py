@@ -209,7 +209,7 @@ class _PostgreEngine(_Engine):
 	__FIELD_SEP = '.' # separator for field elements in table name
 
 	def __init__(self, name, open_existing=None, host='localhost',
-		port=5432, user='postgres', password='1q2w3e'):
+		port=5432, user='postgres', password=''):
 
 		if name is None:
 			raise Exception("Database name must be specified")
