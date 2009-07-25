@@ -209,10 +209,13 @@ class _PostgreEngine(_Engine):
 	__FIELD_SEP = '.' # separator for field elements in table name
 
 	def __init__(self, name, open_existing=None, host='localhost',
-		port=5432, user='postgres', password=''):
+		port=5432, user='postgres', password='', connection_limit=-1):
 
 		if name is None:
 			raise Exception("Database name must be specified")
+
+		if not isinstance(connection_limit, int):
+			raise Exception("Connection limit must be an integer")
 
 		conn = postgresql.open(user=user,
 			password=password, host=host, port=port)
@@ -229,7 +232,8 @@ class _PostgreEngine(_Engine):
 		# recreate DB even if such file already exists
 			if db_exists:
 				conn.execute("DROP DATABASE " + self.getSafeName(name))
-			conn.execute("CREATE DATABASE " + self.getSafeName(name))
+			conn.execute("CREATE DATABASE " + self.getSafeName(name) +
+			    " CONNECTION LIMIT " + str(connection_limit))
 
 		conn.close()
 
