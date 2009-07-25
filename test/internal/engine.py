@@ -199,8 +199,13 @@ class EngineTest(unittest.TestCase):
 			self.engine.getRegexpOp() + " ?", [test_table], ['a\w+'])
 		self.assertEqual(res, [('abc',), ('bac',)])
 
+	@unittest.skip("Not all DB engines support it")
 	def testRegexpSupportInBlob(self):
-		"""Check that engine supports regexp search in BLOB values"""
+		"""
+		Check that engine supports regexp search in BLOB values
+
+		Sqlite3 supports it, postgre does not (only using PL\something)
+		"""
 		test_table = 'ttt'
 		bytes_type = self.engine.getColumnType(bytes())
 		regexp = self.engine.getRegexpOp()
