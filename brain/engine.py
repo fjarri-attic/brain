@@ -1,6 +1,7 @@
 """Module, containing wrappers for different DB engines"""
 
 import sqlite3
+import re
 
 postgresql_available = False
 try:
@@ -257,12 +258,30 @@ class _PostgreEngine(_Engine):
 
 	def execute(self, sql_str, tables, values):
 		"""Execute given SQL query"""
+
+		# replace '?' by '$n's (postgre placeholder syntax)
+
+		class Counter:
+			def __init__(self):
+				self.c = 0
+
+			def __call__(self, match_obj):
+				self.c += 1
+				return "$" + str(self.c)
+
+		# FIXME: it is not 100% reliable, because there can be other ?'s in string
+		# but since we are doing this substitution before inserting table names,
+		# it will work for now
+		sql_str = re.sub(r'\?', Counter(), sql_str)
+
+		# insert table names
 		if tables is not None:
 			tables = [self.getSafeName(x) for x in tables]
 			tables_tuple = tuple(tables)
 			sql_str = sql_str.format(*tables_tuple)
 		if values is None: values = []
 		values = tuple(values)
+
 		return self._conn.prepare(sql_str)(*values)
 
 	def tableExists(self, name):
