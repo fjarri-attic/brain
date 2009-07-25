@@ -1,6 +1,7 @@
 """Unit tests for database facade"""
 
 import unittest
+import copy
 
 import sys, os.path
 scriptdir, scriptfile = os.path.split(sys.argv[0])
@@ -230,6 +231,25 @@ class Connection(TestRequest):
 		# try to use reference
 		data = self.conn.read(data2['ref'])
 		self.assertEqual(data, {'test': 'val'})
+
+	def testSecondConnection(self):
+		"""Check that second connection to DB can see changes after commit in first connection"""
+
+		# this test makes no sense for in-memory databases - they allow only one connection
+		if self.in_memory: return
+
+		data = {'name': 'Alex', 'age': 22}
+		obj = self.conn.create(data)
+
+		# create second connection
+		args = self.connection_args
+		kwds = copy.deepcopy(self.connection_kwds)
+		kwds['open_existing'] = 1
+		conn2 = self.gen.connect(self.tag, *args, **kwds)
+		res = conn2.read(obj)
+		conn2.close()
+
+		self.assertEqual(res, data)
 
 
 def get_class():

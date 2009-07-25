@@ -33,6 +33,8 @@ opts, args = parser.parse_args(sys.argv[1:])
 def runFunctionalityTests(all_engines=False, all_connections=False, all_storages=False, verbosity=2):
 	"""Start functionality tests suite"""
 
+	IN_MEMORY = 'memory' # tag for in-memory DB tests
+
 	suite = helpers.NamedTestSuite()
 	suite.addTest(internal.interface.suite())
 
@@ -43,8 +45,9 @@ def runFunctionalityTests(all_engines=False, all_connections=False, all_storages
 		engine_tags = {brain.getDefaultEngineTag(): None}
 
 	storages = {
-		'sqlite3': [('memory', (None,), {}), ('file', ('test.db', 0), {})],
-		'postgre': [('tempdb', ('tempdb', 0), {'port': 5432, 'user': 'postgres', 'password': ''})]
+		'sqlite3': [(IN_MEMORY, (None,), {}), ('file', ('test.db',), {'open_existing': 0})],
+		'postgre': [('tempdb', ('tempdb',), {'open_existing': 0,
+			'port': 5432, 'user': 'postgres', 'password': ''})]
 	}
 
 	if not all_storages:
@@ -87,6 +90,7 @@ def runFunctionalityTests(all_engines=False, all_connections=False, all_storages
 						func_tests[func_test].get_class(),
 						test_tag, connection_generators[gen],
 						engine_tags[tag_str],
+						(storage_str == IN_MEMORY),
 						*args, **kwds)))
 
 	# Run tests
