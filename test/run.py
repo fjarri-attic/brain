@@ -43,24 +43,21 @@ def runFunctionalityTests(all_engines=False, all_connections=False, all_storages
 		engine_tags = {brain.getDefaultEngineTag(): None}
 
 	storages = {
-		'sqlite3': [('memory', None, None), ('file', 'test.db', 0)],
-		'postgre': [('tempdb', 'tempdb', 0)]
+		'sqlite3': [('memory', (None,), {}), ('file', ('test.db', 0), {})],
+		'postgre': [('tempdb', ('tempdb', 0), {'port': 5432, 'user': 'postgres', 'password': ''})]
 	}
 
 	if not all_storages:
 		# leave only default storages
 		storages = {x: [storages[x][0]] for x in storages}
 
-	connection_params = {}
+	# add engine class tests
 	for tag_str in engine_tags:
 		for storage in storages[tag_str]:
-			storage_str, path, open_existing = storage
+			storage_str, args, kwds = storage
 			test_tag = tag_str + "." + storage_str
-			connection_params[test_tag] = (engine_tags[tag_str], path, open_existing)
-
-	# add engine class tests
-	for tag in connection_params:
-		suite.addTest(internal.engine.suite(tag, *connection_params[tag]))
+			suite.addTest(internal.engine.suite(test_tag,
+				engine_tags[tag_str], *args, **kwds))
 
 	# add functionality tests
 
@@ -83,16 +80,14 @@ def runFunctionalityTests(all_engines=False, all_connections=False, all_storages
 		for tag_str in engine_tags:
 			for storage in storages[tag_str]:
 				for func_test in func_tests:
-					storage_str, path, open_existing = storage
+					storage_str, args, kwds = storage
 					test_tag = gen + "." + tag_str + "." + storage_str + "." + func_test
-					connection_params[test_tag] = (engine_tags[tag_str], path, open_existing)
 					suite.addTest(unittest.TestLoader().loadTestsFromTestCase(
 						functionality.getParameterized(
 						func_tests[func_test].get_class(),
 						test_tag, connection_generators[gen],
 						engine_tags[tag_str],
-						path, open_existing
-					)))
+						*args, **kwds)))
 
 	# Run tests
 

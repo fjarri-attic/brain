@@ -273,11 +273,11 @@ class EngineTest(unittest.TestCase):
 			self.engine.getColumnType(id1))
 
 
-def suite(name, engine_tag, path, open_existing):
+def suite(name, engine_tag, *args, **kwds):
 
 	class Derived(EngineTest):
 		def setUp(self):
-			self.engine = getEngineByTag(engine_tag)(path, open_existing)
+			self.engine = getEngineByTag(engine_tag)(*args, **kwds)
 			self.str_type = self.engine.getColumnType(str())
 
 		def tearDown(self):

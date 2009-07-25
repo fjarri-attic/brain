@@ -1,13 +1,11 @@
 def getParameterized(base_class, name_prefix, connection_generator,
-	engine_tag, name, open_existing):
+	engine_tag, *args, **kwds):
 	"""Get named test suite with predefined setUp()"""
 	class Derived(base_class):
 		def setUp(self):
-			self.db = name
 			self.gen = connection_generator
 			self.tag = engine_tag
-			self.conn = self.gen.connect(engine_tag, name=name,
-				open_existing=open_existing)
+			self.conn = self.gen.connect(engine_tag, *args, **kwds)
 
 		def tearDown(self):
 			self.conn.close()

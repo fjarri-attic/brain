@@ -16,17 +16,9 @@ class Connection(TestRequest):
 	def testAutocommitNoErrors(self):
 		"""Check autocommit works when there are no exceptions raised"""
 
-		# we cannot test autocommit on in-memory database
-		if self.db == None: return
-
 		data = {'name': 'Alex', 'age': 22}
 		obj = self.conn.create(data)
-
-		# now open another connection to this database and check that
-		# changes were really made
-		conn2 = self.gen.connect(name=self.db, engine_tag=self.tag, open_existing=True)
-		res = conn2.read(obj)
-		conn2.close()
+		res = self.conn.read(obj)
 		self.assertEqual(res, data)
 
 	def testAutocommitRollsBackOnError(self):
