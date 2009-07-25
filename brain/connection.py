@@ -62,7 +62,7 @@ def _fieldsToTree(fields):
 	# get rid of temporary root object and return only its first element
 	return res[0]
 
-def connect(name, open_existing=None, engine_tag=None):
+def connect(engine_tag, *args, **kwds):
 	"""Connect to database and return Connection object"""
 
 	tags = engine.getEngineTags()
@@ -70,7 +70,7 @@ def connect(name, open_existing=None, engine_tag=None):
 	if engine_tag not in tags:
 		raise interface.FacadeError("Unknown DB engine: " + str(engine_tag))
 
-	engine_obj = engine.getEngineByTag(engine_tag)(name=name, open_existing=open_existing)
+	engine_obj = engine.getEngineByTag(engine_tag)(*args, **kwds)
 
 	return Connection(engine_obj)
 

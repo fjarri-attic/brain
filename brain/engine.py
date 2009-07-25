@@ -98,7 +98,7 @@ class _Engine:
 class _Sqlite3Engine(_Engine):
 	"""Wrapper for Sqlite 3 db engine"""
 
-	def __init__(self, name=None, open_existing=None):
+	def __init__(self, name, open_existing=None):
 
 		if name is None:
 			name = ':memory:'
@@ -208,7 +208,7 @@ class _PostgreEngine(_Engine):
 
 	__FIELD_SEP = '.' # separator for field elements in table name
 
-	def __init__(self, name=None, open_existing=None, host='localhost',
+	def __init__(self, name, open_existing=None, host='localhost',
 		port=5432, user='postgres', password='1q2w3e'):
 
 		if name is None:

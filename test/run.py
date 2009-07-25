@@ -39,7 +39,7 @@ if opts.all_engines:
 	engine_tags = brain.getEngineTags()
 	engine_tags = {tag: tag for tag in engine_tags}
 else:
-	engine_tags = {'default': None}
+	engine_tags = {brain.getDefaultEngineTag(): None}
 
 storages = {
 	'sqlite3': [('memory', None, None), ('file', 'test.db', 0)],

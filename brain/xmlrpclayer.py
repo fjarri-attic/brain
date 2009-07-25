@@ -58,9 +58,9 @@ class _Dispatcher:
 		func = getattr(self._sessions[session_id], method)
 		return func(*args, **kwds)
 
-	def export_connect(self, path, open_existing, engine_tag):
+	def export_connect(self, *args, **kwds):
 		session_id = "".join(random.sample(string.ascii_letters + string.digits, 8))
-		self._sessions[session_id] = brain.connect(path, open_existing, engine_tag)
+		self._sessions[session_id] = brain.connect(*args, **kwds)
 		return session_id
 
 	def export_close(self, session_id):
@@ -112,16 +112,16 @@ class BrainClient:
 	def getDefaultEngineTag(self):
 		return self._client.getDefaultEngineTag()
 
-	def connect(self, path, open_existing=None, engine_tag=None):
-		return _RemoteConnection(self._client, path, open_existing, engine_tag)
+	def connect(self, *args, **kwds):
+		return _RemoteConnection(self._client, *args, **kwds)
 
 
 class _RemoteConnection:
 	"""Class which mimics local DB connection"""
 
-	def __init__(self, client, path, open_existing, engine_tag):
+	def __init__(self, client, *args, **kwds):
 		self._client = client
-		self._session_id = client.connect(path, open_existing, engine_tag)
+		self._session_id = client.connect(*args, **kwds)
 		self._multicall = None
 		self._transaction = False
 

@@ -211,7 +211,7 @@ class Connection(TestRequest):
 		Check that method calls with keyword arguments can pass through
 		remote connections, like XML RPC
 		"""
-		conn2 = self.gen.connect(None, engine_tag=self.gen.getDefaultEngineTag())
+		conn2 = self.gen.connect(self.gen.getDefaultEngineTag(), name=None)
 		conn2.close()
 
 	def testDump(self):
@@ -219,7 +219,7 @@ class Connection(TestRequest):
 		self.prepareStandNoList()
 		res = self.conn.dump()
 		self.assertEqual(res, {
-	 		self.id1: {'name': 'Alex', 'phone': '1111'},
+			self.id1: {'name': 'Alex', 'phone': '1111'},
 			self.id2: {'name': 'Bob', 'phone': '2222'},
 			self.id3: {'name': 'Carl', 'phone': '3333', 'age': '27'},
 			self.id4: {'name': 'Don', 'phone': '4444', 'age': '20'},
