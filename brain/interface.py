@@ -105,41 +105,14 @@ class Field:
 	type_str = property(__get_type_str, __set_type_str)
 
 	@property
-	def type_str_as_value(self):
-		"""Returns string with SQL type for stored value"""
-		if not self.isNull():
-			return self._engine.getSafeValue(self.type_str)
-		else:
-			return self._engine.getNullValue()
-
-	@property
 	def name_str_no_type(self):
 		"""Returns name string with no type specifier"""
 		return self._engine.getNameString(['field'] + self.name)
 
 	@property
-	def safe_value(self):
-		"""Returns value in form that can be safely used as value in queries"""
-		return self._engine.getSafeValue(self.value)
-
-	@property
 	def name_str(self):
 		"""Returns field name in string form"""
 		return self._engine.getNameString(['field', self.type_str] + self.name)
-
-	@property
-	def name_as_table(self):
-		"""Returns field name in form that can be safely used as a table name"""
-		return self._engine.getSafeName(self.name_str)
-
-	@property
-	def name_as_value(self):
-		"""Returns field name in form that can be safely used as value in queries"""
-		return self._engine.getSafeValue(self.name_str)
-
-	@property
-	def name_as_value_no_type(self):
-		return self._engine.getSafeValue(self.name_str_no_type)
 
 	@property
 	def columns_query(self):

@@ -165,8 +165,8 @@ class _Sqlite3Engine(_Engine):
 		return cur.fetchall()
 
 	def tableExists(self, name):
-		res = list(self._cur.execute("SELECT * FROM sqlite_master WHERE type='table' AND name={name}"
-			.format(name=self.getSafeValue(name))))
+		res = list(self._cur.execute("SELECT * FROM sqlite_master WHERE type='table' AND name=?",
+			[name]))
 		return len(res) > 0
 
 	def tableIsEmpty(self, name):
@@ -174,17 +174,6 @@ class _Sqlite3Engine(_Engine):
 
 	def deleteTable(self, name):
 		self._cur.execute("DROP TABLE IF EXISTS " + self.getSafeName(name))
-
-	def getSafeValue(self, val):
-		"""Transform value so that it could be safely used in queries"""
-		transformations = {
-			str: lambda x: "'" + x.replace("'", "''") + "'",
-			int: lambda x: str(x),
-			float: lambda x: str(x),
-			# FIXME: seems that now .decode() is broken, so we have to do this ugly thing
-			bytes: lambda x: "X'" + ''.join(["{0:02X}".format(x) for x in val]) + "'"
-		}
-		return transformations[val.__class__](val)
 
 	def getColumnType(self, val):
 		"""Return SQL type for storing given value"""
