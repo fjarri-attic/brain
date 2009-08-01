@@ -207,16 +207,22 @@ class _StructureLayer:
 
 		# Get field values
 		# If field is a mask (i.e., contains Nones), there will be more than one result
-		val_col = self._VALUE_COLUMN if not field.isNull() else ""
-		l = self._engine.execute("SELECT " + val_col + field.columns_query + " FROM {} " +
-			"WHERE " + self._ID_COLUMN + "=?" + field.columns_condition,
-			[field.name_str], [id])
+		is_null = field.isNull()
+		columns_query = field.columns_query
+
+		if is_null and columns_query == "":
+			l = [(None,)]
+		else:
+			val_col = self._VALUE_COLUMN if not is_null else ""
+			l = self._engine.execute("SELECT " + val_col + columns_query + " FROM {} " +
+				"WHERE " + self._ID_COLUMN + "=?" + field.columns_condition,
+				[field.name_str], [id])
 
 		# Convert results to list of Fields
 		res = []
 		l = [tuple(x) for x in l]
 		for elem in l:
-			if field.isNull():
+			if is_null:
 			# in NULL table there is no values, all columns are list indexes
 				list_indexes = elem
 				value = None
