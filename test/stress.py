@@ -58,12 +58,12 @@ def getRandomPath(root):
 	if random.random() < STOP_PATH_GENERATION:
 		return []
 
-	if isisntance(root, list):
+	if isinstance(root, list):
 		random_index = random.randrange(len(root))
 		return [random_index] + getRandomPath(root[random_index])
 	elif isinstance(root, dict):
-		random_key = random.choice(root)
-		return [random_key] + gerRandomPath(root[random_key])
+		random_key = random.choice(list(root.keys()))
+		return [random_key] + getRandomPath(root[random_key])
 	else:
 		return []
 
@@ -77,6 +77,7 @@ def getRandomPathToList(root):
 	path = ['aaa']
 	while not isinstance(path[-1], int):
 		path = getRandomNonTrivialPath(root)
+	return path
 
 def listInData(data):
 	if isinstance(data, list):
@@ -105,7 +106,7 @@ class RandomAction:
 
 		self._args = ()
 		self._kwds = {}
-		self._method = random.choice(args_constructors)
+		self._method = random.choice(list(args_constructors.keys()))
 		args_constructors[self._method]()
 
 	def _constructModifyArgs(self):
@@ -124,35 +125,51 @@ class RandomAction:
 		kwds = self._kwds
 		getattr(conn, self._method)(obj_id, *args, **kwds)
 
+	def __str__(self):
+		return self._method + "(" + repr(self._args) + ")"
+
 
 random.seed()
 
 # create objects
 for i in range(OBJS_NUM):
 	data = getRandomNonTrivialData(STARTING_DEPTH)
-	print("=" * 80)
-	print(data)
-	objs.append(conn.create(data))
+
+	try:
+		objs.append(conn.create(data))
+	except:
+		print("Error creating object: " + str(data))
+		raise
+
 	fake_objs.append(fake_conn.create(data))
 
 # perform test
 for c in range(TEST_ITERATIONS):
 	for i in range(OBJS_NUM):
-		state_before = conn.read(objs[i])
 		fake_state_before = fake_conn.read(fake_objs[i])
+		try:
+			state_before = conn.read(objs[i])
+		except:
+			print("Error reading object " + str(fake_state_before))
+			raise
 
 		action = RandomAction(state_before)
-		action(conn, objs[i])
+
+		try:
+			action(conn, objs[i])
+		except:
+			print("Error performing action: " + str(action))
+			print("On object: " + str(fake_state_before))
+
 		action(fake_conn, fake_objs[i])
 
 		state_after = conn.read(objs[i])
 		fake_state_after = fake_conn.read(fake_objs[i])
 
 		if state_after != fake_state_after:
-			print("Failed")
-			print("Main state before: " + repr(state_before))
-			print("Fake state before: " + repr(fake_state_before))
+			print("Action results are different:")
+			print("State before: " + repr(fake_state_before))
 			print("Action: " + repr(action))
 			print("Main state after: " + repr(state_after))
 			print("Fake state after: " + repr(fake_state_after))
-			break
+			raise Exception("Functionality error")
