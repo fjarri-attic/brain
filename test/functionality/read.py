@@ -108,6 +108,17 @@ class Read(TestRequest):
 			{'Name': 'Track 2 name', 'Authors': ['Carl', 'Dan']}
 		]})
 
+	def testReadNullValueFromRoot(self):
+		"""
+		Regression test for incorrect getValue() logic:
+		When reading NULL value which does not have list among its ancestors
+		(and therefore has blank column condition), incorrect SQL query was formed
+		"""
+		data = {'none_field': None}
+		obj = self.conn.create(data)
+		res = self.conn.read(obj)
+		self.assertEqual(res, data)
+
 
 def get_class():
 	return Read
