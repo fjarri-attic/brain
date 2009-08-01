@@ -24,40 +24,40 @@ def _flattenHierarchy(data, engine):
 
 	return [Field(engine, path, value) for path, value in flattenNode(data)]
 
+def _saveTo(obj, ptr, path, value):
+	"""Save given value to a place in hierarchy, defined by pointer"""
+
+	# ensure that there is a place in obj where ptr points
+	if isinstance(obj, list) and len(obj) < ptr + 1:
+		# extend the list to corresponding index
+		obj.extend([None] * (ptr + 1 - len(obj)))
+	elif isinstance(obj, dict) and ptr not in obj:
+		# create dictionary key
+		obj[ptr] = None
+
+	if len(path) == 0:
+	# if we are in leaf now, store value
+		obj[ptr] = value
+	else:
+	# if not, create required structure and call this function recursively
+		if obj[ptr] is None:
+			if isinstance(path[0], str):
+				obj[ptr] = {}
+			else:
+				obj[ptr] = []
+
+		_saveTo(obj[ptr], path[0], path[1:], value)
+
 def _fieldsToTree(fields):
 	"""Transform list of Field objects to nested dictionaries and lists"""
 
 	if len(fields) == 0: return []
 
-	def saveTo(obj, ptr, path, value):
-		"""Save given value to a place in hierarchy, defined by pointer"""
-
-		# ensure that there is a place in obj where ptr points
-		if isinstance(obj, list) and len(obj) < ptr + 1:
-			# extend the list to corresponding index
-			obj.extend([None] * (ptr + 1 - len(obj)))
-		elif isinstance(obj, dict) and ptr not in obj:
-			# create dictionary key
-			obj[ptr] = None
-
-		if len(path) == 0:
-		# if we are in leaf now, store value
-			obj[ptr] = value
-		else:
-		# if not, create required structure and call this function recursively
-			if obj[ptr] is None:
-				if isinstance(path[0], str):
-					obj[ptr] = {}
-				else:
-					obj[ptr] = []
-
-			saveTo(obj[ptr], path[0], path[1:], value)
-
 	# we need some starting object, whose pointer we can pass to recursive saveTo()
 	res = []
 
 	for field in fields:
-		saveTo(res, 0, field.name, field.value)
+		_saveTo(res, 0, field.name, field.value)
 
 	# get rid of temporary root object and return only its first element
 	return res[0]
@@ -66,7 +66,7 @@ def connect(engine_tag, *args, **kwds):
 	"""Connect to database and return Connection object"""
 
 	tags = engine.getEngineTags()
-	if engine_tag is None: engine_tag = tags[0]
+	if engine_tag is None: engine_tag = engine.getDefaultEngineTag()
 	if engine_tag not in tags:
 		raise interface.FacadeError("Unknown DB engine: " + str(engine_tag))
 
@@ -362,3 +362,58 @@ class Connection:
 	def dump(self):
 		"""Dump the whole database contents"""
 		self._requests.append(interface.DumpRequest())
+
+
+class FakeConnection:
+
+	def __init__(self):
+		self._id_counter = 0
+		self._root = {}
+
+	def create(self, data, path=None):
+		if path is None: path = []
+		self._id_counter += 1
+		_saveTo(self._root, self._id_counter, path, data)
+		return self._id_counter
+
+	def modify(self, id, value, path=None):
+		if path is None and value is None: pass
+		if path is None: path = []
+		_saveTo(self._root, id, path, value)
+
+	def _getPath(self, obj, path):
+		if len(path) == 1:
+			return obj[path[0]]
+		else:
+			return self._getPath(obj, path[1:])
+
+	def insertMany(self, id, path, values):
+		target = self._getPath(self._root, [id] + path[:-1])
+		index = path[-1]
+
+		if index is None:
+			for value in values:
+				target.append(value)
+		else:
+			for value in values:
+				target.insert(index, value)
+
+	def _deleteAll(self, obj, path):
+		if len(path) == 1:
+			del obj[path[0]]
+		else:
+			if path[0] is None:
+				for x in obj: self._deleteAll(obj[x], path[1:])
+			else:
+				self._deleteAll(obj[path[0]], path[1:])
+
+	def deleteMany(self, id, paths=None):
+		if paths is None:
+			del self._root[id]
+		else:
+			for path in paths:
+				self._deleteAll(rood, [id] + path)
+
+	def read(self, id):
+		return self._root[id]
+
