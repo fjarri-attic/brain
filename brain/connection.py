@@ -412,7 +412,7 @@ class FakeConnection:
 			del self._root[id]
 		else:
 			for path in paths:
-				self._deleteAll(rood, [id] + path)
+				self._deleteAll(self._root, [id] + path)
 
 	def read(self, id):
 		return self._root[id]
