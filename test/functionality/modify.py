@@ -225,6 +225,16 @@ class Modify(TestRequest):
 		res = self.conn.read(obj)
 		self.assertEqual(res, {'fld1': [1, 2]})
 
+	def testListAndDictInList(self):
+		"""
+		Regression test for case when nested list and dict as elements of the list
+		caused false positive from data structure check
+		"""
+		data = {'root': [{'key': 2}, [1]]}
+		obj = self.conn.create(data)
+		res = self.conn.read(obj)
+		self.assertEqual(res, data)
+
 
 def get_class():
 	return Modify
