@@ -163,8 +163,14 @@ for c in range(TEST_ITERATIONS):
 
 		action(fake_conn, fake_objs[i])
 
-		state_after = conn.read(objs[i])
 		fake_state_after = fake_conn.read(fake_objs[i])
+		try:
+			state_after = conn.read(objs[i])
+		except:
+			print("Error reading object: " + str(fake_state_after))
+			print("After action: " + str(action))
+			print("On state: " + str(fake_state_before))
+			raise
 
 		if state_after != fake_state_after:
 			print("Action results are different:")
