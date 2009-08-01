@@ -225,9 +225,9 @@ class Modify(TestRequest):
 		res = self.conn.read(obj)
 		self.assertEqual(res, {'fld1': [1, 2]})
 
-	def testListAndDictInList(self):
+	def testListAndMapInList(self):
 		"""
-		Regression test for case when nested list and dict as elements of the list
+		Regression test for case when nested list and map as elements of the list
 		caused false positive from data structure check
 		"""
 		data = {'root': [{'key': 2}, [1]]}
