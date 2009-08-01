@@ -436,6 +436,46 @@ class _StructureLayer:
 			"VALUES (?" + new_value + field.columns_values + ")",
 			[field.name_str], [id] + ([] if field.isNull() else [field.value]))
 
+	def checkForListAndMapConflicts(self, id, field, last):
+		"""
+		Check that adding this field will not mean adding list elements to map
+		or map keys to list. If field is None, root level is checked.
+		"""
+
+		# Get all fields with names, starting from name_copy, excluding
+		# the one whose name equals name_copy
+		relatives = self.getFieldsList(id, field, exclude_self=True)
+
+		# for each relative, check that they do not have lists on the same level
+		# where target field has map and vice versa
+		for relative in relatives:
+
+			# check only those relatives, which have the same list indexes
+			# otherwise we will get false positives if list and map
+			# are being saved in one list, for example
+			if field is not None:
+				types = self.getValueTypes(id, relative)
+
+				need_to_check = False
+				for type in types:
+					relative.type_str = type
+					res = self._engine.execute("SELECT COUNT(*) FROM {} WHERE " +
+						self._ID_COLUMN + "=?" + field.columns_condition,
+						[relative.name_str], [id])
+
+					if res[0][0] > 0:
+						need_to_check = True
+						break
+
+				if not need_to_check: continue
+
+			elem = relative.name[len(field.name) if field is not None else 0]
+
+			if isinstance(last, str) and not isinstance(elem, str):
+				raise interface.StructureError("Cannot modify map, when list already exists on this level")
+			if not isinstance(last, str) and isinstance(elem, str):
+				raise interface.StructureError("Cannot modify list, when map already exists on this level")
+
 
 class LogicLayer:
 	"""Class, representing DDB logic"""
@@ -470,31 +510,10 @@ class LogicLayer:
 				anc.type_str = type
 				self._deleteField(id, anc)
 
-			self._checkForListAndMapConflicts(id, anc, last)
+			self._structure.checkForListAndMapConflicts(id, anc, last)
 
 		# check separately for root level lists and maps
-		self._checkForListAndMapConflicts(id, None, field.name[0])
-
-	def _checkForListAndMapConflicts(self, id, field, last):
-		"""
-		Check that adding this field will not mean adding list elements to map
-		or map keys to list. If field is None, root level is checked.
-		"""
-
-		# Get all fields with names, starting from name_copy, excluding
-		# the one whose name equals name_copy
-		relatives = self._structure.getFieldsList(id, field, exclude_self=True)
-
-		# we have to check only first field in list
-		# if there are no conflicts, other fields do not conflict too
-		if len(relatives) > 0:
-			elem = relatives[0].name[len(field.name) if field is not None else 0]
-
-			if isinstance(last, str) and not isinstance(elem, str):
-				raise interface.StructureError("Cannot modify map, when list already exists on this level")
-			if not isinstance(last, str) and isinstance(elem, str):
-				raise interface.StructureError("Cannot modify list, when map already exists on this level")
-
+		self._structure.checkForListAndMapConflicts(id, None, field.name[0])
 
 	def _addFieldToSpecification(self, id, field):
 		"""Check if field conforms to hierarchy and if yes, add it"""
