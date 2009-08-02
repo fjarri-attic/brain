@@ -508,14 +508,6 @@ class LogicLayer:
 
 		# check all ancestor fields in hierarchy
 		for anc, last in field.ancestors(include_self=False):
-
-			# delete all values whose names are a part of the name of field to add
-			# in other words, no named maps or lists
-			types = self._structure.getValueTypes(id, anc)
-			for type in types:
-				anc.type_str = type
-				self._deleteField(id, anc)
-
 			self._structure.checkForListAndMapConflicts(id, anc, last)
 
 		# check separately for root level lists and maps
@@ -537,13 +529,13 @@ class LogicLayer:
 	def _setFieldValue(self, id, field):
 		"""Set value of given field"""
 
-		# Update maximum values cache
 		for anc, last in field.ancestors(include_self=True):
+			# Update maximum values cache
 			if anc.pointsToListElement():
 				self._structure.updateListSize(id, anc)
 
-		# Delete old value (checking all tables because type could be different)
-		self._structure.deleteValues(id, field)
+			# Delete old value (checking all tables because type could be different)
+			self._structure.deleteValues(id, anc)
 
 		# Create field table if it does not exist yet
 		self._structure.assureFieldTableExists(field)
