@@ -195,5 +195,21 @@ class Insert(TestRequest):
 			10.0, 1, 2, 4.0, 5.0, b'Gryphon', b'Swordsman'
 		]})
 
+	def testWrongRenumber(self):
+		"""
+		Regression test for bug when special characters in field name (namely,
+		separating dots) were not escaped when searching for child fields using
+		regexp. As a result, getFieldsList() returned two copies of one field,
+		and renumber moved list element to wrong position during insertion.
+		"""
+		data = {'key1': [ [[20]], {'key2': [30]} ]}
+		to_add = 'aaa'
+		obj = self.conn.create(data)
+		self.conn.insert(obj, ['key1', 0, 0], to_add)
+		res = self.conn.read(obj)
+		data['key1'][0].insert(0, to_add)
+		self.assertEqual(res, data)
+
+
 def get_class():
 	return Insert
