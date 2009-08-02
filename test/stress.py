@@ -119,7 +119,7 @@ class RandomAction:
 			[getRandomData(MAX_DEPTH)])
 
 	def _constructDeleteArgs(self):
-		self._args = (getRandomNonTrivialPath(self._obj_contents),)
+		self._args = ([getRandomNonTrivialPath(self._obj_contents)],)
 
 	def __call__(self, conn, obj_id):
 		args = self._args
