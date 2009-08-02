@@ -401,7 +401,7 @@ class FakeConnection:
 	def _deleteAll(self, obj, path):
 		if len(path) == 1:
 			del obj[path[0]]
-			return False
+			return len(obj) == 0
 		else:
 			if path[0] is None:
 				for x in obj:
