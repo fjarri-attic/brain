@@ -1,5 +1,6 @@
 import random
 import string
+import copy
 
 import sys, os.path
 scriptdir, scriptfile = os.path.split(sys.argv[0])
@@ -110,12 +111,12 @@ class RandomAction:
 		args_constructors[self._method]()
 
 	def _constructModifyArgs(self):
-		self._args = (getRandomNonTrivialPath(self._obj_contents),
-			getRandomData(MAX_DEPTH))
+		self._args = (getRandomData(MAX_DEPTH),
+			getRandomNonTrivialPath(self._obj_contents))
 
 	def _constructInsertArgs(self):
 		self._args = (getRandomPathToList(self._obj_contents),
-			getRandomData(MAX_DEPTH))
+			[getRandomData(MAX_DEPTH)])
 
 	def _constructDeleteArgs(self):
 		self._args = (getRandomNonTrivialPath(self._obj_contents),)
@@ -126,7 +127,7 @@ class RandomAction:
 		getattr(conn, self._method)(obj_id, *args, **kwds)
 
 	def __str__(self):
-		return self._method + "(" + repr(self._args) + ")"
+		return self._method + repr(self._args)
 
 
 random.seed()
@@ -146,7 +147,7 @@ for i in range(OBJS_NUM):
 # perform test
 for c in range(TEST_ITERATIONS):
 	for i in range(OBJS_NUM):
-		fake_state_before = fake_conn.read(fake_objs[i])
+		fake_state_before = copy.deepcopy(fake_conn.read(fake_objs[i]))
 		try:
 			state_before = conn.read(objs[i])
 		except:
@@ -160,6 +161,7 @@ for c in range(TEST_ITERATIONS):
 		except:
 			print("Error performing action: " + str(action))
 			print("On object: " + str(fake_state_before))
+			raise
 
 		action(fake_conn, fake_objs[i])
 
@@ -175,7 +177,7 @@ for c in range(TEST_ITERATIONS):
 		if state_after != fake_state_after:
 			print("Action results are different:")
 			print("State before: " + repr(fake_state_before))
-			print("Action: " + repr(action))
+			print("Action: " + str(action))
 			print("Main state after: " + repr(state_after))
 			print("Fake state after: " + repr(fake_state_after))
 			raise Exception("Functionality error")
