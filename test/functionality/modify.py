@@ -235,7 +235,7 @@ class Modify(TestRequest):
 		res = self.conn.read(obj)
 		self.assertEqual(res, data)
 
-	def testStructureInPlaceOfElement(self):
+	def testOverwriteValueWithStructure(self):
 		"""
 		Regression test for saving structure to the place of existing list element
 		It shows that it is necessary to check all ancestors when rewriting a value
@@ -261,6 +261,16 @@ class Modify(TestRequest):
 		res = self.conn.read(obj)
 		data['key'][1][1] = to_add
 		self.assertEqual(res, data)
+
+	def testOverwriteStructureWithValue(self):
+		"""
+		Regression test for saving value in place of structure - there was a bug in
+		conficts removal logic, when child fields were not deleted on modification.
+		"""
+		obj = self.conn.create({'key': [['aaa']]})
+		self.conn.modify(obj, 'bbb', ['key', 0])
+		res = self.conn.read(obj)
+		self.assertEqual(res, {'key': ['bbb']})
 
 
 def get_class():
