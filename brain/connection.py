@@ -385,7 +385,7 @@ class FakeConnection:
 		if len(path) == 1:
 			return obj[path[0]]
 		else:
-			return self._getPath(obj, path[1:])
+			return self._getPath(obj[path[0]], path[1:])
 
 	def insertMany(self, id, path, values):
 		target = self._getPath(self._root, [id] + path[:-1])
