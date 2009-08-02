@@ -248,6 +248,20 @@ class Modify(TestRequest):
 		data['key'][0] = to_add
 		self.assertEqual(res, data)
 
+	def testRefcountForNullValue(self):
+		"""
+		Regression test for bug in refcounter logic, when refcounter for NULL values
+		could not be increased because '=NULL' instead of 'ISNULL' was used in
+		update query
+		"""
+		data = {'key': [[None], [77, None]]}
+		to_add = 'aaa'
+		obj = self.conn.create(data)
+		self.conn.modify(obj, to_add, ['key', 1, 1])
+		res = self.conn.read(obj)
+		data['key'][1][1] = to_add
+		self.assertEqual(res, data)
+
 
 def get_class():
 	return Modify
