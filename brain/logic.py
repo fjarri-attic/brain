@@ -162,8 +162,7 @@ class _StructureLayer:
 		# If field is given, return only fields, which contain its name in the beginning
 			regexp_cond = " AND " + self._FIELD_COLUMN + \
 				" " + self._engine.getRegexpOp() + " ?"
-			regexp_val = ["^" + field.name_str_no_type +
-				("." if exclude_self else "")]
+			regexp_val = ["^" + re.escape(field.name_str_no_type) + "\.\."]
 		else:
 			regexp_cond = ""
 			regexp_val = []
@@ -181,6 +180,9 @@ class _StructureLayer:
 			if field is not None:
 				fld.name[:len(field.name)] = field.name
 			res.append(fld)
+
+		if field is not None and not exclude_self:
+			res += [Field(self._engine, field.name)]
 
 		return res
 
