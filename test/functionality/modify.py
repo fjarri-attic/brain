@@ -235,6 +235,19 @@ class Modify(TestRequest):
 		res = self.conn.read(obj)
 		self.assertEqual(res, data)
 
+	def testStructureInPlaceOfElement(self):
+		"""
+		Regression test for saving structure to the place of existing list element
+		It shows that it is necessary to check all ancestors when rewriting a value
+		"""
+		data = {'key': [1, 'elem1']}
+		to_add = {'to_add': None}
+		obj = self.conn.create(data)
+		self.conn.modify(obj, to_add, ['key', 0])
+		res = self.conn.read(obj)
+		data['key'][0] = to_add
+		self.assertEqual(res, data)
+
 
 def get_class():
 	return Modify
