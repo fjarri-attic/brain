@@ -102,8 +102,9 @@ class _StructureLayer:
 			self._engine.execute("UPDATE {} " +
 				"SET " + ref_col + "="+ ref_col + "+1 " +
 				"WHERE " + self._ID_COLUMN + "=? AND " + self._FIELD_COLUMN + "=? " +
-				"AND " + self._TYPE_COLUMN + "=?",
-				[self._ID_TABLE], [id, field.name_str_no_type, field.type_str])
+				"AND " + self._TYPE_COLUMN + ("=?" if not field.isNull() else " ISNULL"),
+				[self._ID_TABLE], [id, field.name_str_no_type] +
+				([field.type_str] if not field.isNull() else []))
 
 	def decreaseRefcount(self, id, field, num=1):
 		"""
