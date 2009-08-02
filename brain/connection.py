@@ -401,11 +401,17 @@ class FakeConnection:
 	def _deleteAll(self, obj, path):
 		if len(path) == 1:
 			del obj[path[0]]
+			return False
 		else:
 			if path[0] is None:
-				for x in obj: self._deleteAll(obj[x], path[1:])
+				for x in obj:
+					if self._deleteAll(obj[x], path[1:]):
+						del obj[x]
 			else:
-				self._deleteAll(obj[path[0]], path[1:])
+				if self._deleteAll(obj[path[0]], path[1:]):
+					del obj[path[0]]
+
+			return len(obj) == 0
 
 	def deleteMany(self, id, paths=None):
 		if paths is None:
