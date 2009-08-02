@@ -513,6 +513,10 @@ class LogicLayer:
 		for anc, last in field.ancestors(include_self=False):
 			self._structure.checkForListAndMapConflicts(id, anc, last)
 
+		# remove all child fields
+		for fld in self._structure.getFieldsList(id, field, exclude_self=True):
+			self._structure.deleteValues(id, fld)
+
 		# check separately for root level lists and maps
 		self._structure.checkForListAndMapConflicts(id, None, field.name[0])
 
@@ -537,7 +541,7 @@ class LogicLayer:
 			if anc.pointsToListElement():
 				self._structure.updateListSize(id, anc)
 
-			# Delete old value (checking all tables because type could be different)
+			# Delete parent values (checking all tables because type could be different)
 			self._structure.deleteValues(id, anc)
 
 		# Create field table if it does not exist yet
