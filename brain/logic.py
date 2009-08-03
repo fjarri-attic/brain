@@ -501,7 +501,8 @@ class LogicLayer:
 			self._renumber(id, field, -1)
 		else:
 			# otherwise just delete values using given field mask
-			self._structure.deleteValues(id, field)
+			for fld in self._structure.getFieldsList(id, field, exclude_self=False):
+				self._structure.deleteValues(id, fld)
 
 	def _checkForConflicts(self, id, field):
 		"""
