@@ -261,6 +261,30 @@ class Delete(TestRequest):
 			'Data': b'\x00\x01\x03'
 		}]})
 
+	def testRemovesChildrenFromMap(self):
+		"""
+		Regression test for bug when deletion of key from map did not remove
+		the value of this key, if the value is a structure
+		"""
+		data = {'aaa': 'bbb', 'parent': {'key': {'subkey': 'ccc'}}}
+		obj = self.conn.create(data)
+		self.conn.delete(obj, ['parent', 'key'])
+		del data['parent']
+		res = self.conn.read(obj)
+		self.assertEqual(res, data)
+
+	def testRemovesChildrenFromList(self):
+		"""
+		Regression test for bug when deletion of element from list did not remove
+		the value of this element, if the value is a structure
+		"""
+		data = {'aaa': 'bbb', 'parent': [[{'subkey': 'ccc'}]]}
+		obj = self.conn.create(data)
+		self.conn.delete(obj, ['parent', 0])
+		del data['parent']
+		res = self.conn.read(obj)
+		self.assertEqual(res, data)
+
 
 def get_class():
 	return Delete
