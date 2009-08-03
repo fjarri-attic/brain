@@ -272,6 +272,20 @@ class Modify(TestRequest):
 		res = self.conn.read(obj)
 		self.assertEqual(res, {'key': ['bbb']})
 
+	def testOverwriteMapWithList(self):
+		"""
+		Regression test for bug with false positive in conflicts checker, when
+		one creates list in place of existing map
+		"""
+		data = {'kkk': {'key2': 1}}
+		to_add = ['list_val']
+		obj = self.conn.create(data)
+		print('***')
+		self.conn.modify(obj, to_add, ['kkk'])
+		data['kkk'] = to_add
+		res = self.conn.read(obj)
+		self.assertEqual(res, data)
+
 
 def get_class():
 	return Modify
