@@ -377,6 +377,8 @@ class FakeConnection:
 	def modify(self, id, value, path=None):
 		if path is None and value is None: pass
 		if path is None: path = []
+		if id not in self._root:
+			self._root[id] = {} if isinstance(path[0], str) else []
 		_saveTo(self._root, id, path, value)
 
 	def _getPath(self, obj, path):
@@ -386,6 +388,9 @@ class FakeConnection:
 			return self._getPath(obj[path[0]], path[1:])
 
 	def insertMany(self, id, path, values):
+		if id not in self._root:
+			self._root[id] = {} if isinstance(path[0], str) else []
+
 		target = self._getPath(self._root, [id] + path[:-1])
 		index = path[-1]
 
