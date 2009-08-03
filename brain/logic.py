@@ -503,7 +503,7 @@ class LogicLayer:
 			# otherwise just delete values using given field mask
 			self._structure.deleteValues(id, field)
 
-	def _removeConflicts(self, id, field):
+	def _checkForConflicts(self, id, field):
 		"""
 		Check that adding this field does not break the database structure, namely:
 		given field can either contain value, or list, or map, not several at once
@@ -525,7 +525,7 @@ class LogicLayer:
 		# if adding a new field, ensure that there will be
 		# no conflicts in database structure
 		if len(types) == 0:
-			self._removeConflicts(id, field)
+			self._checkForConflicts(id, field)
 
 		self._structure.increaseRefcount(id, field, new_type=(not field.type_str in types))
 
@@ -579,7 +579,7 @@ class LogicLayer:
 			# if adding a new field, ensure that there will be
 			# no conflicts in database structure
 			if len(types) == 0:
-				self._removeConflicts(id, path)
+				self._checkForConflicts(id, path)
 
 			# remove all child fields
 			for fld in self._structure.getFieldsList(id, path, exclude_self=False):
