@@ -581,9 +581,11 @@ class LogicLayer:
 			if len(types) == 0:
 				self._removeConflicts(id, path)
 
-		# remove all child fields
-		for fld in self._structure.getFieldsList(id, path, exclude_self=False):
-			self._structure.deleteValues(id, fld)
+			# remove all child fields
+			for fld in self._structure.getFieldsList(id, path, exclude_self=False):
+				self._structure.deleteValues(id, fld)
+		else:
+			self._deleteObject(id)
 
 		for field in fields:
 			field.name = path.name + field.name
