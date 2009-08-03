@@ -280,7 +280,6 @@ class Modify(TestRequest):
 		data = {'kkk': {'key2': 1}}
 		to_add = ['list_val']
 		obj = self.conn.create(data)
-		print('***')
 		self.conn.modify(obj, to_add, ['kkk'])
 		data['kkk'] = to_add
 		res = self.conn.read(obj)
