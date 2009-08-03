@@ -296,9 +296,7 @@ class Connection:
 		if path is None: path = []
 
 		fields = _flattenHierarchy(value, self._engine)
-		for field in fields:
-			field.name = path + field.name
-		self._requests.append(interface.ModifyRequest(id, fields))
+		self._requests.append(interface.ModifyRequest(id, Field(self._engine, path), fields))
 
 	def read(self, id, path=None):
 		"""Create read request and add it to queue"""

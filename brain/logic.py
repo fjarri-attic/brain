@@ -513,10 +513,6 @@ class LogicLayer:
 		for anc, last in field.ancestors(include_self=False):
 			self._structure.checkForListAndMapConflicts(id, anc, last)
 
-		# remove all child fields
-		for fld in self._structure.getFieldsList(id, field, exclude_self=True):
-			self._structure.deleteValues(id, fld)
-
 		# check separately for root level lists and maps
 		self._structure.checkForListAndMapConflicts(id, None, field.name[0])
 
@@ -536,13 +532,10 @@ class LogicLayer:
 	def _setFieldValue(self, id, field):
 		"""Set value of given field"""
 
+		# Update maximum values cache
 		for anc, last in field.ancestors(include_self=True):
-			# Update maximum values cache
 			if anc.pointsToListElement():
 				self._structure.updateListSize(id, anc)
-
-			# Delete parent values (checking all tables because type could be different)
-			self._structure.deleteValues(id, anc)
 
 		# Create field table if it does not exist yet
 		self._structure.assureFieldTableExists(field)
@@ -574,17 +567,35 @@ class LogicLayer:
 			# shift numbers of all elements in list
 			self._structure.renumberList(id, target_field, fld, shift)
 
-	def _modifyFields(self, id, fields):
+	def _modifyFields(self, id, path, fields):
+
+		if len(fields) == 0:
+			return
+
+		if path.name != []:
+			# check if there are already field with this name in object
+			types = self._structure.getValueTypes(id, path)
+
+			# if adding a new field, ensure that there will be
+			# no conflicts in database structure
+			if len(types) == 0:
+				self._removeConflicts(id, path)
+
+		# remove all child fields
+		for fld in self._structure.getFieldsList(id, path, exclude_self=False):
+			self._structure.deleteValues(id, fld)
+
 		for field in fields:
+			field.name = path.name + field.name
 			self._setFieldValue(id, field)
 
 	def processCreateRequest(self, request):
 		new_id = self._engine.getNewId()
-		self._modifyFields(new_id, request.fields)
+		self._modifyFields(new_id, interface.Field(self._engine, []), request.fields)
 		return new_id
 
 	def processModifyRequest(self, request):
-		self._modifyFields(request.id, request.fields)
+		self._modifyFields(request.id, request.path, request.fields)
 
 	def processDeleteRequest(self, request):
 
@@ -659,7 +670,8 @@ class LogicLayer:
 			enumerate(request.field_groups, target_col, request.path.name[target_col])
 
 		fields = functools.reduce(list.__add__, request.field_groups, [])
-		self._modifyFields(request.id, fields)
+		for field in fields:
+			self._setFieldValue(request.id, field)
 
 	def processObjectExistsRequest(self, request):
 		return self._structure.objectExists(request.id)

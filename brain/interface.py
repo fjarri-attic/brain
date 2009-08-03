@@ -261,12 +261,13 @@ class CreateRequest:
 class ModifyRequest:
 	"""Request for modification of existing objects"""
 
-	def __init__(self, id, fields=None):
+	def __init__(self, id, path=None, fields=None):
 
 		if id is None:
 			raise FormatError("Cannot modify undefined object")
 
 		self.id = id
+		self.path = path if path is not None else []
 		self.fields = fields
 
 	def __str__(self):
