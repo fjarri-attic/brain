@@ -58,10 +58,6 @@ class Format(unittest.TestCase):
 
 	# Tests for request constructors
 
-	def testModifyRequestNoFields(self):
-		"""Test that request can be created without fields"""
-		r = ModifyRequest('1')
-
 	def testCreateRequestEmptyData(self):
 		"""Test that creation request will fail without data provided"""
 		self.assertRaises(FormatError, CreateRequest, None)
@@ -70,7 +66,7 @@ class Format(unittest.TestCase):
 		"""Test that requests throw exceptions when no ID is provided"""
 		field = Field(None, ['fld'], 1)
 		fields = [field]
-		self.assertRaises(brain.FormatError, ModifyRequest, None, fields)
+		self.assertRaises(brain.FormatError, ModifyRequest, None, field, fields)
 		self.assertRaises(brain.FormatError, ReadRequest, None, field)
 		self.assertRaises(brain.FormatError, DeleteRequest, None, field)
 		self.assertRaises(brain.FormatError, InsertRequest, None, field, [fields])
