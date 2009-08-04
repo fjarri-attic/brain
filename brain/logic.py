@@ -259,6 +259,12 @@ class _StructureLayer:
 			self._engine.execute("INSERT INTO {} VALUES (?, ?, ?)",
 				[self._LISTSIZES_TABLE], [id, field.name_hashstr, val])
 
+	def deleteListSize(self, id, field):
+		"""Delete information about field from listsizes table"""
+		self._engine.execute("DELETE FROM {} WHERE " +
+			self._ID_COLUMN + "=? AND " + self._FIELD_COLUMN + "=?",
+			[self._LISTSIZES_TABLE], [id, field.name_hashstr])
+
 	def assureFieldTableExists(self, field):
 		"""
 		Create table for storing values of this field if it does not exist yet
@@ -432,6 +438,8 @@ class _StructureLayer:
 				# check if the table is empty and if it is - delete it too
 				if self._engine.tableIsEmpty(field_copy.name_str):
 					self._engine.deleteTable(field_copy.name_str)
+					if field_copy.pointsToList():
+						self.deleteListSize(id, field_copy)
 
 	def addValueRecord(self, id, field):
 		"""
