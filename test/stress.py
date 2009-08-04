@@ -19,7 +19,7 @@ OBJS_NUM = 1
 STARTING_DEPTH = 3
 MAX_DEPTH = 3
 MAX_ELEMENTS_NUM = 3
-STOP_DATA_GENERATION = 0.1
+STOP_DATA_GENERATION = 0.6
 STOP_PATH_GENERATION = 0.1
 
 objs = []
@@ -161,8 +161,10 @@ for c in range(TEST_ITERATIONS):
 		except:
 			print("Error performing action: " + str(action))
 			print("On object: " + str(fake_state_before))
+			conn._engine.dump()
 			raise
 
+		print(action)
 		action(fake_conn, fake_objs[i])
 
 		fake_state_after = fake_conn.read(fake_objs[i])
@@ -172,6 +174,7 @@ for c in range(TEST_ITERATIONS):
 			print("Error reading object: " + str(fake_state_after))
 			print("After action: " + str(action))
 			print("On state: " + str(fake_state_before))
+			conn._engine.dump()
 			raise
 
 		if state_after != fake_state_after:
@@ -180,4 +183,5 @@ for c in range(TEST_ITERATIONS):
 			print("Action: " + str(action))
 			print("Main state after: " + repr(state_after))
 			print("Fake state after: " + repr(fake_state_after))
+			conn._engine.dump()
 			raise Exception("Functionality error")
