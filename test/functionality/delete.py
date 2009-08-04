@@ -285,6 +285,23 @@ class Delete(TestRequest):
 		res = self.conn.read(obj)
 		self.assertEqual(res, data)
 
+	def testDeleteListsizes(self):
+		"""
+		Check that when list is deleted, corresponding
+		listsizes table is removed too
+		"""
+		obj = self.conn.create({'aaa': [1, 2, 3], 'bbb': 'ccc'})
+		self.conn.delete(obj, ['aaa'])
+		self.conn.modify(obj, [1], ['aaa'])
+
+		# insert value to the end of the list; if information
+		# about the original list was not removed from the database,
+		# it will think that the length of the list is 3, and store
+		# new value in the wrong position
+		self.conn.insert(obj, ['aaa', None], 2)
+		res = self.conn.read(obj)
+		self.assertEqual(res, {'aaa': [1, 2], 'bbb': 'ccc'})
+
 
 def get_class():
 	return Delete
