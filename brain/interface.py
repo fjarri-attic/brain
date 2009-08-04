@@ -186,6 +186,10 @@ class Field:
 		"""Returns True if field points to element of the list"""
 		return isinstance(self.name[-1], int)
 
+	def pointsToList(self):
+		"""Returns True if field points to list (either mask or single element)"""
+		return not isinstance(self.name[-1], str)
+
 	def getLastListColumn(self):
 		"""Returns name and value of column corresponding to the last name element"""
 
