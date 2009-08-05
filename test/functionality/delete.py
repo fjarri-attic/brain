@@ -322,6 +322,17 @@ class Delete(TestRequest):
 		res = self.conn.read(obj)
 		self.assertEqual(res, {'key': [2, [None, 4], 3]})
 
+	def testDecreaseRefcounterForNull(self):
+		"""
+		Regression test for bug when deleting a None did not decrease
+		corresponding refcount (because databases ignore =NULL condition)
+		"""
+		obj = self.conn.create([None, None, [1]])
+		self.conn.delete(obj, [1])
+		self.conn.delete(obj, [0])
+		res = self.conn.read(obj)
+		self.assertEqual(res, [[1]])
+
 
 def get_class():
 	return Delete
