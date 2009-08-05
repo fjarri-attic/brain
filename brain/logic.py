@@ -120,8 +120,8 @@ class _StructureLayer:
 			ref_col = self._REFCOUNT_COLUMN
 			self._engine.execute("UPDATE {} SET " + ref_col + "=" + ref_col + "-? " +
 				"WHERE " + self._ID_COLUMN + "=? AND " + self._FIELD_COLUMN + "=? " +
-				"AND " + self._TYPE_COLUMN + "=?",
-				[self._ID_TABLE], [num, id, field.name_str_no_type, field.type_str])
+				"AND " + self._TYPE_COLUMN + type_cond,
+				[self._ID_TABLE], [num, id, field.name_str_no_type] + type_cond_val)
 
 	def getValueTypes(self, id, field):
 		"""Returns list of value types already stored in given field"""
