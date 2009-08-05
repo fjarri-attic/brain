@@ -447,9 +447,9 @@ class _StructureLayer:
 				fld.type_str = type
 				res = self._engine.execute("SELECT MAX(" + col_name + ") FROM {} WHERE " +
 					self._ID_COLUMN + "=?" + cond, [fld.name_str], [id])
-				if len(res) > 0:
-					if res[0][0] > max:
-						max = res[0][0]
+
+				if res[0][0] is not None and res[0][0] > max:
+					max = res[0][0]
 
 		return max if max != -1 else None
 
