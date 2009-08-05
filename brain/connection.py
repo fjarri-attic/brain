@@ -377,8 +377,6 @@ class FakeConnection:
 	def modify(self, id, value, path=None):
 		if path is None and value is None: pass
 		if path is None: path = []
-		if id not in self._root:
-			self._root[id] = {} if isinstance(path[0], str) else []
 		_saveTo(self._root, id, path, value)
 
 	def _getPath(self, obj, path):
@@ -408,10 +406,12 @@ class FakeConnection:
 		else:
 			if path[0] is None:
 				for x in obj:
-					if self._deleteAll(obj[x], path[1:]):
+					if self._deleteAll(obj[x], path[1:]) and (isinstance(obj, dict) or
+							x == len(obj) - 1):
 						del obj[x]
 			else:
-				if self._deleteAll(obj[path[0]], path[1:]):
+				if self._deleteAll(obj[path[0]], path[1:]) and (isinstance(obj, dict) or
+						path[0] == len(obj) - 1):
 					del obj[path[0]]
 
 			return len(obj) == 0
@@ -424,5 +424,7 @@ class FakeConnection:
 				self._deleteAll(self._root, [id] + path)
 
 	def read(self, id):
-		return self._root[id]
-
+		if id in self._root:
+			return self._root[id]
+		else:
+			return None
