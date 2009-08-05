@@ -18,8 +18,6 @@ class _StructureLayer:
 	_FIELD_COLUMN = 'field' # field names
 	_TYPE_COLUMN = 'type' # field types
 	_REFCOUNT_COLUMN = 'refcount' # number of records with this type
-
-	_MAX_COLUMN = 'max' # name of column with maximum list index values
 	_VALUE_COLUMN = 'value' # name of column with field values
 
 
@@ -28,7 +26,6 @@ class _StructureLayer:
 
 		# memorize strings with support table names
 		self._ID_TABLE = self._engine.getNameString(["id"])
-		self._LISTSIZES_TABLE = self._engine.getNameString(["listsizes"])
 
 		# types for support tables
 		self._ID_TYPE = self._engine.getIdType()
@@ -59,21 +56,6 @@ class _StructureLayer:
 
 		if not self._engine.tableExists(self._ID_TABLE):
 			self._engine.execute("CREATE table {} " + id_table_spec, [self._ID_TABLE])
-
-		# create support table which holds maximum list index for each list
-		# existing in database
-		listsizes_table_spec = ("({id_column} {id_type}, {field_column} {text_type}, " +
-			"{max_column} {list_index_type})").format(
-			field_column=self._FIELD_COLUMN,
-			id_column=self._ID_COLUMN,
-			id_type=self._ID_TYPE,
-			list_index_type=self._INT_TYPE,
-			max_column=self._MAX_COLUMN,
-			text_type=self._TEXT_TYPE)
-
-		if not self._engine.tableExists(self._LISTSIZES_TABLE):
-			self._engine.execute("CREATE table {} " + listsizes_table_spec,
-				[self._LISTSIZES_TABLE])
 
 	def deleteSpecification(self, id):
 		"""Delete all information about object from specification table"""
@@ -239,32 +221,6 @@ class _StructureLayer:
 
 		return res
 
-	def updateListSize(self, id, field):
-		"""Update information about the size of given list"""
-
-		# get current maximum list index for given list
-		max = self.getMaxListIndex(id, field)
-		val = field.name[-1]
-
-		if max is not None:
-		# if there is a list, and given value is greater than maximum index, update it
-
-			if max > val: return
-
-			self._engine.execute("UPDATE {} SET " + self._MAX_COLUMN + "=? " +
-				"WHERE " + self._ID_COLUMN + "=? AND " + self._FIELD_COLUMN + "=?",
-				[self._LISTSIZES_TABLE], [val, id, field.name_hashstr])
-		else:
-		# create new record
-			self._engine.execute("INSERT INTO {} VALUES (?, ?, ?)",
-				[self._LISTSIZES_TABLE], [id, field.name_hashstr, val])
-
-	def deleteListSize(self, id, field):
-		"""Delete information about field from listsizes table"""
-		self._engine.execute("DELETE FROM {} WHERE " +
-			self._ID_COLUMN + "=? AND " + self._FIELD_COLUMN + "=?",
-			[self._LISTSIZES_TABLE], [id, field.name_hashstr])
-
 	def assureFieldTableExists(self, field):
 		"""
 		Create table for storing values of this field if it does not exist yet
@@ -277,18 +233,6 @@ class _StructureLayer:
 				self._VALUE_COLUMN, self._ID_TYPE, self._INT_TYPE)
 			self._engine.execute("CREATE TABLE {} (" + table_spec + ")",
 				[field.name_str])
-
-	def getMaxListIndex(self, id, field):
-		"""Get maximum value of list index for the undefined column of the field"""
-
-		l = self._engine.execute("SELECT " + self._MAX_COLUMN + " FROM {} " +
-			"WHERE " + self._ID_COLUMN + "=? AND " + self._FIELD_COLUMN + "=?",
-			[self._LISTSIZES_TABLE], [id, field.name_hashstr])
-
-		if len(l) > 0:
-			return l[0][0]
-		else:
-			return None
 
 	def buildSqlQuery(self, condition):
 		"""Recursive function to transform condition into SQL query"""
@@ -438,8 +382,6 @@ class _StructureLayer:
 				# check if the table is empty and if it is - delete it too
 				if self._engine.tableIsEmpty(field_copy.name_str):
 					self._engine.deleteTable(field_copy.name_str)
-					if field_copy.pointsToList():
-						self.deleteListSize(id, field_copy)
 
 	def addValueRecord(self, id, field):
 		"""
@@ -493,6 +435,24 @@ class _StructureLayer:
 			if not isinstance(last, str) and isinstance(elem, str):
 				raise interface.StructureError("Cannot modify list, when map already exists on this level")
 
+	def getMaxListIndex(self, id, field):
+		"""Get maximum index in list, specified by given field"""
+
+		col_name, col_val = field.getLastListColumn()
+		cond = field.renumber_condition
+
+		max = -1
+		for fld in self.getFieldsList(id, field, exclude_self=False):
+			for type in self.getValueTypes(id, fld):
+				fld.type_str = type
+				res = self._engine.execute("SELECT MAX(" + col_name + ") FROM {} WHERE " +
+					self._ID_COLUMN + "=?" + cond, [fld.name_str], [id])
+				if len(res) > 0:
+					if res[0][0] > max:
+						max = res[0][0]
+
+		return max if max != -1 else None
+
 
 class LogicLayer:
 	"""Class, representing DDB logic"""
@@ -540,11 +500,6 @@ class LogicLayer:
 
 	def _setFieldValue(self, id, field):
 		"""Set value of given field"""
-
-		# Update maximum values cache
-		for anc, last in field.ancestors(include_self=True):
-			if anc.pointsToListElement():
-				self._structure.updateListSize(id, anc)
 
 		# Create field table if it does not exist yet
 		self._structure.assureFieldTableExists(field)

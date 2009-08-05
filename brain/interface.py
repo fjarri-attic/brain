@@ -193,9 +193,9 @@ class Field:
 	def getLastListColumn(self):
 		"""Returns name and value of column corresponding to the last name element"""
 
-		# This function makes sense only if self.pointsToListElement() is True
-		if not self.pointsToListElement():
-			raise interface.LogicError("Field should point to list element")
+		# This function makes sense only if self.pointsToList() is True
+		if not self.pointsToList():
+			raise LogicError("Field should point to list element")
 
 		list_elems = self._getListElements()
 		col_num = len(list_elems) - 1 # index of last column
@@ -207,22 +207,13 @@ class Field:
 	def renumber_condition(self):
 		"""Returns condition for renumbering after deletion of this element"""
 
-		# This function makes sense only if self.pointsToListElement() is True
-		if not self.pointsToListElement():
-			raise interface.LogicError("Field should point to list element")
+		# This function makes sense only if self.pointsToList() is True
+		if not self.pointsToList():
+			raise LogicError("Field should point to list element")
 
 		self_copy = Field(self._engine, self.name)
 		self_copy.name[-1] = None
 		return self_copy.columns_condition
-
-	@property
-	def name_hashstr(self):
-		"""
-		Returns string that can serve as hash for field name along with its list elements
-		"""
-		name_copy = [repr(x) if x is not None else None for x in self.name]
-		name_copy[-1] = None
-		return self._engine.getNameString(name_copy)
 
 	def __str__(self):
 		return "Field (" + repr(self.name) + \
