@@ -102,7 +102,9 @@ class RandomAction:
 			'deleteMany': self._constructDeleteArgs
 		}
 
-		if not listInData(self._obj_contents):
+		if self._obj_contents is None:
+			del args_constructors['deleteMany']
+		elif not listInData(self._obj_contents):
 			del args_constructors['insertMany']
 
 		self._args = ()
@@ -135,6 +137,7 @@ random.seed()
 # create objects
 for i in range(OBJS_NUM):
 	data = getRandomNonTrivialData(STARTING_DEPTH)
+	print("Initial state: " + repr(data))
 
 	try:
 		objs.append(conn.create(data))
@@ -152,6 +155,7 @@ for c in range(TEST_ITERATIONS):
 			state_before = conn.read(objs[i])
 		except:
 			print("Error reading object " + str(fake_state_before))
+			conn._engine.dump()
 			raise
 
 		action = RandomAction(state_before)
@@ -164,10 +168,15 @@ for c in range(TEST_ITERATIONS):
 			conn._engine.dump()
 			raise
 
-		print(action)
 		action(fake_conn, fake_objs[i])
 
 		fake_state_after = fake_conn.read(fake_objs[i])
+		if fake_state_after is None:
+			fake_conn.modify(fake_objs[i], fake_state_before)
+			continue
+
+		print(action)
+
 		try:
 			state_after = conn.read(objs[i])
 		except:
