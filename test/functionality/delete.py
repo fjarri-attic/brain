@@ -302,6 +302,26 @@ class Delete(TestRequest):
 		res = self.conn.read(obj)
 		self.assertEqual(res, {'aaa': [1, 2], 'bbb': 'ccc'})
 
+	def testRenumberListsizes(self):
+		"""
+		Regression test, which checks that if list is moved due to deletion of element
+		in parent list, it is handled correctly
+		"""
+		obj = self.conn.create({'key': 777})
+		self.conn.modify(obj, [1, 2, [None]], ['key'])
+
+		# this request should renumber listsizes table too
+		self.conn.delete(obj, ['key', 0])
+
+		# if listsizes remained unchanges, the following request will
+		# insert value to wrong position - this applies both
+		# to parent and child list
+		self.conn.insert(obj, ['key', None], 3)
+		self.conn.insert(obj, ['key', 1, None], 4)
+
+		res = self.conn.read(obj)
+		self.assertEqual(res, {'key': [2, [None, 4], 3]})
+
 
 def get_class():
 	return Delete
