@@ -150,6 +150,7 @@ for i in range(OBJS_NUM):
 # perform test
 for c in range(TEST_ITERATIONS):
 	for i in range(OBJS_NUM):
+		conn._engine.dump()
 		fake_state_before = copy.deepcopy(fake_conn.read(fake_objs[i]))
 		try:
 			state_before = conn.read(objs[i])
@@ -160,6 +161,13 @@ for c in range(TEST_ITERATIONS):
 
 		action = RandomAction(state_before)
 
+		action(fake_conn, fake_objs[i])
+
+		fake_state_after = fake_conn.read(fake_objs[i])
+		if fake_state_after is None:
+			fake_conn.modify(fake_objs[i], fake_state_before)
+			continue
+
 		try:
 			action(conn, objs[i])
 		except:
@@ -167,13 +175,6 @@ for c in range(TEST_ITERATIONS):
 			print("On object: " + str(fake_state_before))
 			conn._engine.dump()
 			raise
-
-		action(fake_conn, fake_objs[i])
-
-		fake_state_after = fake_conn.read(fake_objs[i])
-		if fake_state_after is None:
-			fake_conn.modify(fake_objs[i], fake_state_before)
-			continue
 
 		print(action)
 
