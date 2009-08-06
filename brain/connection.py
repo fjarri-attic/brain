@@ -406,13 +406,17 @@ class FakeConnection:
 		else:
 			if path[0] is None:
 				for x in obj:
-					if self._deleteAll(obj[x], path[1:]) and (isinstance(obj, dict) or
-							x == len(obj) - 1):
-						del obj[x]
+					if self._deleteAll(obj[x], path[1:]):
+						if isinstance(obj, dict) or x == len(obj) - 1:
+							del obj[x]
+						else:
+							obj[x] = None
 			else:
-				if self._deleteAll(obj[path[0]], path[1:]) and (isinstance(obj, dict) or
-						path[0] == len(obj) - 1):
-					del obj[path[0]]
+				if self._deleteAll(obj[path[0]], path[1:]):
+					if isinstance(obj, dict) or path[0] == len(obj) - 1:
+						del obj[path[0]]
+					else:
+						obj[path[0]] = None
 
 			return len(obj) == 0
 
