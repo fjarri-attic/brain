@@ -269,7 +269,7 @@ class Delete(TestRequest):
 		data = {'aaa': 'bbb', 'parent': {'key': {'subkey': 'ccc'}}}
 		obj = self.conn.create(data)
 		self.conn.delete(obj, ['parent', 'key'])
-		del data['parent']
+		data['parent'] = None
 		res = self.conn.read(obj)
 		self.assertEqual(res, data)
 
@@ -281,7 +281,7 @@ class Delete(TestRequest):
 		data = {'aaa': 'bbb', 'parent': [[{'subkey': 'ccc'}]]}
 		obj = self.conn.create(data)
 		self.conn.delete(obj, ['parent', 0])
-		del data['parent']
+		data['parent'] = None
 		res = self.conn.read(obj)
 		self.assertEqual(res, data)
 
@@ -332,6 +332,37 @@ class Delete(TestRequest):
 		self.conn.delete(obj, [0])
 		res = self.conn.read(obj)
 		self.assertEqual(res, [[1]])
+
+	def testNoneInPlaceOfStructure(self):
+		"""
+		Check that if deletion of structure element leads to recursive deletion of parent
+		structures, None is stored in this place when deletion is finished
+		"""
+		obj = self.conn.create(['aaa', [[2], 1], 'bbb'])
+		self.conn.delete(obj, [1, 0, 0])
+		self.conn.delete(obj, [1, 1])
+		res = self.conn.read(obj)
+		self.assertEqual(res, ['aaa', [None], 'bbb'])
+
+	def testNoneInPlaceOfStructureListEnd(self):
+		"""
+		Check that if empty structures are recursively deleted, ending in the last
+		list element, None is stored in this element
+		"""
+		obj = self.conn.create(['aaa', [1]])
+		self.conn.delete(obj, [1, 0])
+		res = self.conn.read(obj)
+		self.assertEqual(res, ['aaa', None])
+
+	def testNoneInPlaceOfStructureDictKey(self):
+		"""
+		Check that if empty structures are recursively deleted, ending in the dictionary key,
+		None is stored as the value of this key
+		"""
+		obj = self.conn.create({'aaa': 1, 'bbb': [2]})
+		self.conn.delete(obj, ['bbb', 0])
+		res = self.conn.read(obj)
+		self.assertEqual(res, {'aaa': 1, 'bbb': None})
 
 
 def get_class():
