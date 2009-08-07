@@ -62,15 +62,13 @@ class _StructureLayer:
 		self._engine.execute("DELETE FROM {} WHERE " + self._ID_COLUMN + "=?",
 			[self._ID_TABLE], [id])
 
-	def increaseRefcount(self, id, field, new_type):
+	def increaseRefcount(self, id, field):
 		"""
 		Increase reference counter of given field and type (or create it)
-		new_field=True means that field with this name does not exist in this object
-		new_type=True means that field with this name and this type does not exist
-		in this object
 
 		field should have definite type
 		"""
+		new_type = field.type_str not in self.getValueTypes(id, field)
 
 		if new_type:
 		# if adding a value of new type to existing field,
@@ -84,9 +82,8 @@ class _StructureLayer:
 			self._engine.execute("UPDATE {} " +
 				"SET " + ref_col + "="+ ref_col + "+1 " +
 				"WHERE " + self._ID_COLUMN + "=? AND " + self._FIELD_COLUMN + "=? " +
-				"AND " + self._TYPE_COLUMN + ("=?" if not field.isNull() else " ISNULL"),
-				[self._ID_TABLE], [id, field.name_str_no_type] +
-				([field.type_str] if not field.isNull() else []))
+				"AND " + self._TYPE_COLUMN + "=?",
+				[self._ID_TABLE], [id, field.name_str_no_type, field.type_str])
 
 	def decreaseRefcount(self, id, field, num=1):
 		"""
@@ -95,9 +92,8 @@ class _StructureLayer:
 
 		field should have definite type
 		"""
-		isnull = field.isNull()
-		type_cond = ' ISNULL' if isnull else '=?'
-		type_cond_val = [] if isnull else [field.type_str]
+		type_cond = '=?'
+		type_cond_val = [field.type_str]
 
 		# get current value of reference counter
 		l = self._engine.execute("SELECT " + self._REFCOUNT_COLUMN + " FROM {} " +
@@ -188,36 +184,28 @@ class _StructureLayer:
 
 		# if there is no such field - nothing to do
 		if not self._engine.tableExists(field.name_str):
-			return None
+			return []
 
 		# Get field values
 		# If field is a mask (i.e., contains Nones), there will be more than one result
-		is_null = field.isNull()
 		columns_query = field.columns_query
 
-		if is_null and columns_query == "":
-			l = [(None,)]
-		else:
-			val_col = self._VALUE_COLUMN if not is_null else ""
-			l = self._engine.execute("SELECT " + val_col + columns_query + " FROM {} " +
-				"WHERE " + self._ID_COLUMN + "=?" + field.columns_condition,
-				[field.name_str], [id])
+		val_col = self._VALUE_COLUMN
+		l = self._engine.execute("SELECT " + val_col + columns_query + " FROM {} " +
+			"WHERE " + self._ID_COLUMN + "=?" + field.columns_condition,
+			[field.name_str], [id])
 
 		# Convert results to list of Fields
 		res = []
 		l = [tuple(x) for x in l]
 		for elem in l:
-			if is_null:
-			# in NULL table there is no values, all columns are list indexes
-				list_indexes = elem
-				value = None
-			else:
-			# in non-NULL table first element is a value itself
-				list_indexes = elem[1:]
-				value = elem[0]
+			list_indexes = elem[1:]
+			value = elem[0]
 
-			res.append(Field(self._engine,
-				field.getDeterminedName(list_indexes), value))
+			new_field = Field(self._engine, field.getDeterminedName(list_indexes))
+			new_field.type_str = field.type_str
+			new_field.db_value = value
+			res.append(new_field)
 
 		return res
 
@@ -383,26 +371,6 @@ class _StructureLayer:
 				if self._engine.tableIsEmpty(field_copy.name_str):
 					self._engine.deleteTable(field_copy.name_str)
 
-		# Create None in place of deleted parent structures (if any)
-		# FIXME: It is a temporary solution to make logic compatible with
-		# stress test. We should add support for empty dicts/lists instead
-
-		field_copy = Field(self._engine, field.name)
-		field_copy.value = None
-
-		if len(field_copy.name) > 1:
-			field_copy.name.pop()
-			while len(field_copy.name) != 0:
-				if isinstance(field_copy.name[-1], str) or \
-						self.getMaxListIndex(id, field_copy) is not None:
-					self.assureFieldTableExists(field_copy)
-					types = self.getValueTypes(id, field_copy)
-					self.increaseRefcount(id, field_copy, new_type=(not field.type_str in types))
-					self.addValueRecord(id, field_copy)
-					break
-				field_copy.name.pop()
-
-
 	def addValueRecord(self, id, field):
 		"""
 		Add value to the corresponding table
@@ -410,50 +378,10 @@ class _StructureLayer:
 		field should have definite type
 		"""
 
-		new_value = ", ?" if not field.isNull() else ""
+		new_value = ", ?"
 		self._engine.execute("INSERT INTO {} " +
 			"VALUES (?" + new_value + field.columns_values + ")",
-			[field.name_str], [id] + ([] if field.isNull() else [field.value]))
-
-	def checkForListAndMapConflicts(self, id, field, last):
-		"""
-		Check that adding this field will not mean adding list elements to map
-		or map keys to list. If field is None, root level is checked.
-		"""
-
-		# Get all fields with names, starting from name_copy, excluding
-		# the one whose name equals name_copy
-		relatives = self.getFieldsList(id, field, exclude_self=True)
-
-		# for each relative, check that they do not have lists on the same level
-		# where target field has map and vice versa
-		for relative in relatives:
-
-			# check only those relatives, which have the same list indexes
-			# otherwise we will get false positives if list and map
-			# are being saved in one list, for example
-			if field is not None:
-				types = self.getValueTypes(id, relative)
-
-				need_to_check = False
-				for type in types:
-					relative.type_str = type
-					res = self._engine.execute("SELECT COUNT(*) FROM {} WHERE " +
-						self._ID_COLUMN + "=?" + field.columns_condition,
-						[relative.name_str], [id])
-
-					if res[0][0] > 0:
-						need_to_check = True
-						break
-
-				if not need_to_check: continue
-
-			elem = relative.name[len(field.name) if field is not None else 0]
-
-			if isinstance(last, str) and not isinstance(elem, str):
-				raise interface.StructureError("Cannot modify map, when list already exists on this level")
-			if not isinstance(last, str) and isinstance(elem, str):
-				raise interface.StructureError("Cannot modify list, when map already exists on this level")
+			[field.name_str], [id, field.db_value])
 
 	def getMaxListIndex(self, id, field):
 		"""Get maximum index in list, specified by given field"""
@@ -497,33 +425,20 @@ class LogicLayer:
 		Check that adding this field does not break the database structure, namely:
 		given field can either contain value, or list, or map, not several at once
 		"""
-
-		# check all ancestor fields in hierarchy
-		for anc, last in field.ancestors(include_self=False):
-			self._structure.checkForListAndMapConflicts(id, anc, last)
-
-		# check separately for root level lists and maps
-		self._structure.checkForListAndMapConflicts(id, None, field.name[0])
-
-	def _addFieldToSpecification(self, id, field):
-		"""Check if field conforms to hierarchy and if yes, add it"""
-
-		# check if there are already field with this name in object
-		types = self._structure.getValueTypes(id, field)
-
-		# if adding a new field, ensure that there will be
-		# no conflicts in database structure
-		if len(types) == 0:
-			self._checkForConflicts(id, field)
-
-		self._structure.increaseRefcount(id, field, new_type=(not field.type_str in types))
+		parent = self._structure.getFieldValue(id, Field(self._engine, field.name[:-1]))
+		if len(parent) == 0:
+			return
+		if isinstance(field.name, str) and isinstance(parent[0].value, list):
+			raise interface.StructureError("Cannot modify map, when list already exists on this level")
+		elif not isinstance(field.name, str) and isinstance(parent[0].value, dict):
+			raise interface.StructureError("Cannot modify list, when map already exists on this level")
 
 	def _setFieldValue(self, id, field):
 		"""Set value of given field"""
 
 		# Create field table if it does not exist yet
 		self._structure.assureFieldTableExists(field)
-		self._addFieldToSpecification(id, field) # create object header
+		self._structure.increaseRefcount(id, field)
 		self._structure.addValueRecord(id, field) # Insert new value
 
 	def _deleteObject(self, id):
@@ -556,20 +471,11 @@ class LogicLayer:
 		if len(fields) == 0:
 			return
 
-		if path.name != []:
-			# check if there are already field with this name in object
-			types = self._structure.getValueTypes(id, path)
-
-			# if adding a new field, ensure that there will be
-			# no conflicts in database structure
-			if len(types) == 0:
-				self._checkForConflicts(id, path)
-
-			# remove all child fields
-			for fld in self._structure.getFieldsList(id, path, exclude_self=False):
-				self._structure.deleteValues(id, fld)
+		if len(self._structure.getFieldValue(id, path)) > 0:
+			for field in self._structure.getFieldsList(id, path, exclude_self=False):
+				self._structure.deleteValues(id, field, path.columns_condition)
 		else:
-			self._deleteObject(id)
+			self._checkForConflicts(id, path)
 
 		for field in fields:
 			field.name = path.name + field.name
@@ -613,9 +519,7 @@ class LogicLayer:
 		for field in fields:
 			for type in self._structure.getValueTypes(request.id, field):
 				field.type_str = type
-				res = self._structure.getFieldValue(request.id, field)
-				if res is not None:
-					result_list += res
+				result_list += self._structure.getFieldValue(request.id, field)
 
 		return result_list
 

@@ -2,12 +2,8 @@
 
 from . import op
 
-_SUPPORTED_TYPES = [
-	int,
-	str,
-	float,
-	bytes
-]
+_POINTER_TYPES = [list, dict]
+_SUPPORTED_TYPES = [int, str, float, bytes] + _POINTER_TYPES
 
 
 #
@@ -38,6 +34,64 @@ class FacadeError(BrainError):
 #
 # Classes
 #
+
+class Pointer:
+	def __init__(self):
+		self.py_value = None
+
+	@classmethod
+	def fromPyValue(cls, py_value):
+		obj = cls()
+		obj.py_value = py_value
+		return obj
+
+	@classmethod
+	def fromDBValue(cls, db_value):
+		obj = cls()
+		obj.db_value = db_value
+		return obj
+
+	def __get_py_value(self):
+		return self._py_value
+
+	def __set_py_value(self, py_value):
+		if isinstance(py_value, dict):
+			self._db_value = '1'
+		elif isinstance(py_value, list):
+			self._db_value = '2'
+		elif py_value is None:
+			self._db_value = '0'
+		else:
+			raise FormatError("Unknown value type: " + py_value.__class__.__name__)
+		self._py_value = py_value
+
+	py_value = property(__get_py_value, __set_py_value)
+
+	def __get_db_value(self):
+		return self._db_value
+
+	def __set_db_value(self, db_value):
+		if db_value == '1':
+			self._py_value = dict()
+		elif db_value == '2':
+			self._py_value = list()
+		elif db_value == '0':
+			self._py_value = None
+		self._db_value = db_value
+
+	db_value = property(__get_db_value, __set_db_value)
+
+	def __str__(self):
+		if isinstance(self._py_value, dict):
+			return "Pointer to dict"
+		elif isinstance(self._py_value, list):
+			return "Pointer to list"
+		else:
+			return "Pointer to None"
+
+	def __repr__(self):
+		return str(self)
+
 
 class Field:
 	"""Class for more convenient handling of Field objects"""
@@ -87,22 +141,43 @@ class Field:
 		"""Get name of additional list column corresponding to given index"""
 		return "c" + str(index)
 
-	def isNull(self):
-		"""Whether field contains Null value"""
-		return (self.value is None)
-
 	def __get_type_str(self):
 		"""Returns string with SQL type for stored value"""
-		return self._engine.getColumnType(self.value) if not self.isNull() else None
+		return self._engine.getColumnType(self._value)
 
 	def __set_type_str(self, type_str):
 		"""Set field type using given value from specification table"""
-		if type_str is None:
-			self.value = None
-		else:
-			self.value = self._engine.getValueClass(type_str)()
+		self._value = self._engine.getValueClass(type_str)()
 
 	type_str = property(__get_type_str, __set_type_str)
+
+	def __get_db_value(self):
+		if isinstance(self._value, Pointer):
+			return self._value.db_value
+		else:
+			return self._value
+
+	def __set_db_value(self, db_value):
+		if isinstance(self._value, Pointer):
+			self._value.db_value = db_value
+		else:
+			self._value = db_value
+
+	db_value = property(__get_db_value, __set_db_value)
+
+	def __get_value(self):
+		if isinstance(self._value, Pointer):
+			return self._value.py_value
+		else:
+			return self._value
+
+	def __set_value(self, value):
+		if value is None or value.__class__ in _POINTER_TYPES:
+			self._value = Pointer.fromPyValue(value)
+		else:
+			self._value = value
+
+	value = property(__get_value, __set_value)
 
 	@property
 	def name_str_no_type(self):
@@ -127,7 +202,7 @@ class Field:
 
 		# if value is null, this condition will be used alone,
 		# so there's no need in leading comma
-		return (('' if self.isNull() else ', ') + ', '.join(l) if len(l) > 0 else '')
+		return (', ' + ', '.join(l) if len(l) > 0 else '')
 
 	@property
 	def columns_condition(self):
@@ -162,7 +237,7 @@ class Field:
 				counter += 1
 
 		return ("{id_column} {id_type}" +
-			(", {value_column} {value_type}" if not self.isNull() else "") + res).format(
+			", {value_column} {value_type}" + res).format(
 			id_column=id_column,
 			value_column=value_column,
 			id_type=id_type,
@@ -217,7 +292,7 @@ class Field:
 
 	def __str__(self):
 		return "Field (" + repr(self.name) + \
-			(", value=" + repr(self.value) if self.value else "") + ")"
+			(", value=" + repr(self._value) if self._value is not None else "") + ")"
 
 	def __repr__(self):
 		return str(self)

@@ -26,7 +26,7 @@ class Format(unittest.TestCase):
 
 	def testFieldWrongValue(self):
 		"""Test that Field constructor raises exceptions on wrong values"""
-		values = [[1], {'a': 1}, bytearray(b'aaaa')]
+		values = [set([1, 2]), bytearray(b'aaaa')]
 
 		for value in values:
 			self.assertRaises(brain.FormatError, Field, None, ['fld'], value)
@@ -134,7 +134,7 @@ class Format(unittest.TestCase):
 	def testSearchRequestWrongValueType(self):
 		"""Test that Condition raises exception if value type is not supported"""
 		self.assertRaises(brain.FormatError, SearchRequest.Condition,
-			'phone', op.EQ, [1]
+			'phone', op.EQ, bytearray(b'a')
 		)
 
 	def testSearchRequestConditionEqSupportedTypes(self):

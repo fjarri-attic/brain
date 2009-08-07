@@ -14,19 +14,20 @@ class Modify(TestRequest):
 	"""Test different uses of ModifyRequest"""
 
 	def testBlankObjectAddition(self):
-		"""Check that object without fields cannot be created"""
+		"""Check that object without fields can be created"""
+		for data in [{}, [], None]:
+			obj = self.conn.create(data)
+			res = self.conn.read(obj)
+			self.assertEqual(res, data)
 
-		self.assertRaises(brain.FormatError, self.conn.create, {})
-		self.assertRaises(brain.FormatError, self.conn.create, [])
-		self.assertRaises(brain.FormatError, self.conn.create, None)
-
-	def testModifyNothing(self):
-		"""Check that modification without parameters does nothing"""
-		orig_data = {'fld': 1}
-		obj = self.conn.create(orig_data)
-		self.conn.modify(obj, None)
-		data = self.conn.read(obj)
-		self.assertEqual(data, orig_data)
+	def testStoreNothing(self):
+		"""Check that None or empty structure can be stored in object"""
+		for data in [{}, [], None]:
+			obj = self.conn.create({'fld': 1})
+			self.conn.modify(obj, data)
+			self.conn._engine.dump()
+			res = self.conn.read(obj)
+			self.assertEqual(res, data)
 
 	def testAdditionNoCheck(self):
 		"""Check simple object addition"""

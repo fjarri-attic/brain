@@ -14,11 +14,11 @@ def _flattenHierarchy(data, engine):
 	def flattenNode(node, prefix=[]):
 		"""Transform current list/dictionary to a list of field name elements"""
 		if isinstance(node, dict):
-			results = [flattenNode(node[x], list(prefix) + [x]) for x in node.keys()]
-			return functools.reduce(list.__add__, results, [])
+			results = [flattenNode(node[x], prefix + [x]) for x in node.keys()]
+			return functools.reduce(list.__add__, results, [(prefix, dict())])
 		elif isinstance(node, list):
-			results = [flattenNode(x, list(prefix) + [i]) for i, x in enumerate(node)]
-			return functools.reduce(list.__add__, results, [])
+			results = [flattenNode(x, prefix + [i]) for i, x in enumerate(node)]
+			return functools.reduce(list.__add__, results, [(prefix, list())])
 		else:
 			return [(prefix, node)]
 
@@ -292,9 +292,7 @@ class Connection:
 	@_transacted
 	def modify(self, id, value, path=None):
 		"""Create modification request and add it to queue"""
-		if path is None and value is None: value = {}
 		if path is None: path = []
-
 		fields = _flattenHierarchy(value, self._engine)
 		self._requests.append(interface.ModifyRequest(id, Field(self._engine, path), fields))
 
@@ -341,10 +339,7 @@ class Connection:
 	def create(self, data, path=None):
 		"""Create creation request and add it to queue"""
 		if path is None: path = []
-		if data is not None:
-			fields = _flattenHierarchy(data, self._engine)
-		else:
-			fields = []
+		fields = _flattenHierarchy(data, self._engine)
 
 		for field in fields:
 			field.name = path + field.name
