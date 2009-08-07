@@ -383,6 +383,26 @@ class _StructureLayer:
 				if self._engine.tableIsEmpty(field_copy.name_str):
 					self._engine.deleteTable(field_copy.name_str)
 
+		# Create None in place of deleted parent structures (if any)
+		# FIXME: It is a temporary solution to make logic compatible with
+		# stress test. We should add support for empty dicts/lists instead
+
+		field_copy = Field(self._engine, field.name)
+		field_copy.value = None
+
+		if len(field_copy.name) > 1:
+			field_copy.name.pop()
+			while len(field_copy.name) != 0:
+				if isinstance(field_copy.name[-1], str) or \
+						self.getMaxListIndex(id, field_copy) is not None:
+					self.assureFieldTableExists(field_copy)
+					types = self.getValueTypes(id, field_copy)
+					self.increaseRefcount(id, field_copy, new_type=(not field.type_str in types))
+					self.addValueRecord(id, field_copy)
+					break
+				field_copy.name.pop()
+
+
 	def addValueRecord(self, id, field):
 		"""
 		Add value to the corresponding table
