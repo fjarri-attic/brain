@@ -225,12 +225,16 @@ def _runTests(objects, actions, verbosity):
 					conn._engine.dump()
 				raise Exception("Functionality error")
 
-def runFuzzTest(objects=1, actions=100, verbosity=2):
+def runFuzzTest(objects=1, actions=100, verbosity=2, seed=None):
 
 	print("Fuzz test")
-	print(str(objects) + " objects, " + str(actions) + " actions")
+	print(str(objects) + " objects, " + str(actions) + " actions" +
+		((", seed: " + str(seed)) if seed is not None else ""))
 
-	random.seed()
+	if seed is not None:
+		random.seed(seed)
+	else:
+		random.seed()
 
 	print("=" * 70)
 	time1 = time.time()

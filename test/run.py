@@ -22,6 +22,8 @@ parser.add_option("-o", "--objects", action="store", type="int", default=1,
 	dest="objects", help="[fuzz] number of objects")
 parser.add_option("-a", "--actions", action="store", type="int", default=100,
 	dest="actions", help="[fuzz] number of actions")
+parser.add_option("-s", "--seed", action="store", type="int", default=0,
+	dest="seed", help="[fuzz] starting seed for random number generator")
 
 parser.add_option("-v", "--verbosity", action="store", type="int", default=2,
 	dest="verbosity", help="verbosity level, 0-3")
@@ -47,4 +49,5 @@ if mode == 'func':
 		all_engines=opts.all_engines, all_storages=opts.all_storages,
 		verbosity=opts.verbosity)
 elif mode == 'fuzz':
-	fuzz.runFuzzTest(objects=opts.objects, actions=opts.actions, verbosity=opts.verbosity)
+	fuzz.runFuzzTest(objects=opts.objects, actions=opts.actions,
+		seed=opts.seed, verbosity=opts.verbosity)
