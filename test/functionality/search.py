@@ -105,6 +105,15 @@ class Search(TestRequest):
 
 		self.assertEqual(res, [])
 
+		# Same test, but now non-existent field goes first
+		res = self.conn.search(
+			(op.NOT, ['blablabla'], op.EQ, '22'),
+			op.AND,
+			(['phone'], op.EQ, '1111')
+		)
+
+		self.assertEqual(res, [])
+
 	def testNonExistentFieldInOrCondition(self):
 		"""Check that condition on non-existent field works with Or operator"""
 		self.prepareStandNoList()
@@ -118,6 +127,29 @@ class Search(TestRequest):
 		)
 
 		self.assertSameElements(res, [self.id1, self.id5])
+
+		# Same test, but now non-existent field goes first
+		res = self.conn.search(
+			(op.NOT, ['blablabla'], op.EQ, '22'),
+			op.OR,
+			(['phone'], op.EQ, '1111')
+		)
+
+		self.assertSameElements(res, [self.id1, self.id5])
+
+	def testNonExistentFieldInBothParts(self):
+		"""
+		Check that request work if both parts of complex condition mention
+		non-existent field
+		"""
+		self.prepareStandNoList()
+		res = self.conn.search(
+			(['foobar'], op.EQ, '1111'),
+			op.OR,
+			(op.NOT, ['blablabla'], op.EQ, '22')
+		)
+
+		self.assertSameElements(res, [])
 
 	def testListOneLevel(self):
 		"""Check searching in simple lists"""

@@ -101,10 +101,6 @@ class _StructureLayer:
 			"AND " + self._TYPE_COLUMN + type_cond,
 			[self._ID_TABLE], [id, field.name_str_no_type] + type_cond_val)
 
-		if l[0][0] < num:
-		# if for some reason counter value is lower than expected, we will raise
-		# exception, because this bug can be hard to catch later
-			raise interface.StructureError("Unexpected value of reference counter: " + str(l[0][0]))
 		if l[0][0] == num:
 		# if these references are the last ones, delete this counter
 			self._engine.execute("DELETE FROM {} " +
@@ -239,19 +235,17 @@ class _StructureLayer:
 				op.OR: 'UNION'
 			}
 
-			if cond1 == None and cond2 == None:
+			if cond1 is None and cond2 is None:
 				return None, None, None
-
-			if cond1 == None:
+			elif cond1 is None:
 				if condition.operator == op.AND:
 					return None, None, None
-				if condition.operator == op.OR:
+				elif condition.operator == op.OR:
 					return cond2, tables2, values2
-
-			if cond2 == None:
+			elif cond2 is None:
 				if condition.operator == op.AND:
 					return None, None, None
-				if condition.operator == op.OR:
+				elif condition.operator == op.OR:
 					return cond1, tables1, values1
 
 			return "SELECT * FROM (" + cond1 + ") as temp " + \
@@ -457,9 +451,6 @@ class LogicLayer:
 			self._structure.renumberList(id, target_field, fld, shift)
 
 	def _modifyFields(self, id, path, fields):
-
-		if len(fields) == 0:
-			return
 
 		if len(self._structure.getValueTypes(id, path)) > 0:
 			for field in self._structure.getFieldsList(id, path, exclude_self=False):
