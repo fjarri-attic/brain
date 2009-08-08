@@ -30,7 +30,7 @@ class Modify(TestRequest):
 
 	def testStoreInRoot(self):
 		"""Check that values can be stored in root level of object"""
-		for data in [1, 1.0, "aaa", b"aaa"]:
+		for data in [1, 1.0, "aaa", b"aaa", None]:
 			obj = self.conn.create(data)
 			res = self.conn.read(obj)
 			self.assertEqual(res, data)
