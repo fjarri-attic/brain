@@ -21,7 +21,7 @@ MAX_DEPTH = 5
 MAX_ELEMENTS_NUM = 3
 STOP_DATA_GENERATION = 0.6
 STOP_PATH_GENERATION = 0.1
-NONE_PROBABILITY = 0.1
+NONE_PROBABILITY = 0.3
 
 objs = []
 fake_objs = []
@@ -65,10 +65,10 @@ def getRandomPath(root):
 			return [None]
 		else:
 			random_index = random.randrange(len(root))
-			return [random_index] + getRandomDefinitePath(root[random_index])
+			return [random_index] + getRandomPath(root[random_index])
 	elif isinstance(root, dict) and len(root) > 0:
 		random_key = random.choice(list(root.keys()))
-		return [random_key] + getRandomDefinitePath(root[random_key])
+		return [random_key] + getRandomPath(root[random_key])
 	else:
 		return []
 
@@ -78,9 +78,9 @@ def getRandomDefinitePath(root):
 		path = getRandomPath(root)
 	return path
 
-def getRandomDefiniteNonTrivialPath(root):
+def getRandomDeletePath(root):
 	path = []
-	while path == []:
+	while len(path) == 0:
 		path = getRandomDefinitePath(root)
 	return path
 
@@ -88,6 +88,8 @@ def getRandomInsertPath(root):
 	path = []
 	while len(path) == 0 or isinstance(path[-1], str):
 		path = getRandomPath(root)
+	if random.random() < NONE_PROBABILITY:
+		path[-1] = None
 	return path
 
 def listInData(data):
@@ -127,11 +129,12 @@ class RandomAction:
 			getRandomDefinitePath(self._obj_contents))
 
 	def _constructInsertArgs(self):
-		self._args = (getRandomInsertPath(self._obj_contents),
-			[getRandomData(MAX_DEPTH)])
+		elems = random.randint(1, MAX_ELEMENTS_NUM)
+		to_insert = [getRandomData(MAX_DEPTH) for i in range(elems)]
+		self._args = (getRandomInsertPath(self._obj_contents), to_insert)
 
 	def _constructDeleteArgs(self):
-		self._args = ([getRandomDefiniteNonTrivialPath(self._obj_contents)],)
+		self._args = ([getRandomDeletePath(self._obj_contents)],)
 
 	def __call__(self, conn, obj_id):
 		args = self._args
@@ -175,7 +178,7 @@ for c in range(TEST_ITERATIONS):
 
 		fake_state_after = fake_conn.read(fake_objs[i])
 		if fake_state_after is None:
-			fake_conn.modify(fake_objs[i], fake_state_before)
+			fake_conn.modify(fake_objs[i], fake_state_before, [])
 			continue
 
 		try:
