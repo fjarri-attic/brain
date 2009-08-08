@@ -412,7 +412,7 @@ class LogicLayer:
 	def _deleteField(self, id, field):
 		"""Delete given field(s)"""
 
-		if field.pointsToListElement():
+		if len(field.name) > 0 and field.pointsToListElement():
 			# deletion of list element requires renumbering of other elements
 			self._renumber(id, field, -1)
 		else:
@@ -428,9 +428,9 @@ class LogicLayer:
 		parent = self._structure.getFieldValue(id, Field(self._engine, field.name[:-1]))
 		if len(parent) == 0:
 			return
-		if isinstance(field.name, str) and isinstance(parent[0].value, list):
+		if isinstance(field.name[-1], str) and isinstance(parent[0].value, list):
 			raise interface.StructureError("Cannot modify map, when list already exists on this level")
-		elif not isinstance(field.name, str) and isinstance(parent[0].value, dict):
+		elif not isinstance(field.name[-1], str) and isinstance(parent[0].value, dict):
 			raise interface.StructureError("Cannot modify list, when map already exists on this level")
 
 	def _setFieldValue(self, id, field):
@@ -471,10 +471,10 @@ class LogicLayer:
 		if len(fields) == 0:
 			return
 
-		if len(self._structure.getFieldValue(id, path)) > 0:
+		if len(self._structure.getValueTypes(id, path)) > 0:
 			for field in self._structure.getFieldsList(id, path, exclude_self=False):
 				self._structure.deleteValues(id, field, path.columns_condition)
-		else:
+		elif len(path.name) > 0:
 			self._checkForConflicts(id, path)
 
 		for field in fields:

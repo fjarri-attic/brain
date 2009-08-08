@@ -25,7 +25,13 @@ class Modify(TestRequest):
 		for data in [{}, [], None]:
 			obj = self.conn.create({'fld': 1})
 			self.conn.modify(obj, data)
-			self.conn._engine.dump()
+			res = self.conn.read(obj)
+			self.assertEqual(res, data)
+
+	def testStoreInRoot(self):
+		"""Check that values can be stored in root level of object"""
+		for data in [1, 1.0, "aaa", b"aaa"]:
+			obj = self.conn.create(data)
 			res = self.conn.read(obj)
 			self.assertEqual(res, data)
 
