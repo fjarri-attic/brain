@@ -451,13 +451,17 @@ class LogicLayer:
 			self._structure.renumberList(id, target_field, fld, shift)
 
 	def _modifyFields(self, id, path, fields):
+		"""Store values of given fields"""
 
 		if len(self._structure.getValueTypes(id, path)) > 0:
+		# path already exists, delete it and all its children
 			for field in self._structure.getFieldsList(id, path, exclude_self=False):
 				self._structure.deleteValues(id, field, path.columns_condition)
 		elif len(path.name) > 0:
+		# path does not exist and is not root - check for list/map conflicts
 			self._checkForConflicts(id, path)
 
+		# store field values
 		for field in fields:
 			field.name = path.name + field.name
 			self._setFieldValue(id, field)
