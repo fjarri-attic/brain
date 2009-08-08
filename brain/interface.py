@@ -36,7 +36,12 @@ class FacadeError(BrainError):
 #
 
 class Pointer:
+	"""Class, representing special type of DB values - Nones and pointers to structures"""
+
 	def __init__(self):
+		self._none_code = 0
+		self._py_to_db = {dict: 1, list: 2}
+		self._db_to_py = {self._py_to_db[key]: key for key in self._py_to_db}
 		self.py_value = None
 
 	@classmethod
@@ -45,38 +50,30 @@ class Pointer:
 		obj.py_value = py_value
 		return obj
 
-	@classmethod
-	def fromDBValue(cls, db_value):
-		obj = cls()
-		obj.db_value = db_value
-		return obj
+	# Property, representing value in Python form
 
 	def __get_py_value(self):
 		return self._py_value
 
 	def __set_py_value(self, py_value):
-		if isinstance(py_value, dict):
-			self._db_value = 1
-		elif isinstance(py_value, list):
-			self._db_value = 2
-		elif py_value is None:
-			self._db_value = 0
-		else:
-			raise FormatError("Unknown value type: " + py_value.__class__.__name__)
+		if py_value is not None and not py_value.__class__ in self._py_to_db:
+			raise FormatError("Not supported Python value: " + repr(py_value))
+
+		self._db_value = self._none_code if py_value is None else self._py_to_db[py_value.__class__]
 		self._py_value = py_value
 
 	py_value = property(__get_py_value, __set_py_value)
+
+	# Property, representing value in DB form
 
 	def __get_db_value(self):
 		return self._db_value
 
 	def __set_db_value(self, db_value):
-		if db_value == 1:
-			self._py_value = dict()
-		elif db_value == 2:
-			self._py_value = list()
-		elif db_value == 0:
-			self._py_value = None
+		if db_value != self._none_code and not db_value in self._db_to_py:
+			raise StructureError("Not supported DB value: " + repr(db_value))
+
+		self._py_value = None if db_value == self._none_code else self._db_to_py[db_value]()
 		self._db_value = db_value
 
 	db_value = property(__get_db_value, __set_db_value)
