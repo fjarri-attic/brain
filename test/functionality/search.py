@@ -236,6 +236,20 @@ class Search(TestRequest):
 		res = self.conn.search()
 		self.assertSameElements(res, [self.id1, self.id2, self.id3, self.id4, self.id5])
 
+	def testSearchForList(self):
+		"""Check that one can search for list in hierarchy"""
+		obj1 = self.conn.create({'aaa': 'val'})
+		obj2 = self.conn.create({'aaa': [1, 2]})
+		res = self.conn.search(['aaa'], op.EQ, list())
+		self.assertEqual(res, [obj2])
+
+	def testSearchForMap(self):
+		"""Check that one can search for map in hierarchy"""
+		obj1 = self.conn.create({'aaa': 'val'})
+		obj2 = self.conn.create({'aaa': {'bbb': 'val'}})
+		res = self.conn.search(['aaa'], op.EQ, dict())
+		self.assertEqual(res, [obj2])
+
 
 def get_class():
 	return Search
