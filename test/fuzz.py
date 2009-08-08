@@ -1,6 +1,10 @@
+"""Database fuzz testing"""
+
 import random
 import string
 import copy
+import traceback
+import time
 
 import sys, os.path
 scriptdir, scriptfile = os.path.split(sys.argv[0])
@@ -8,11 +12,6 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import brain
 from brain.connection import FakeConnection
-
-engine_tag = brain.getDefaultEngineTag()
-
-conn = brain.connect(None, name=None)
-fake_conn = FakeConnection()
 
 TEST_ITERATIONS = 100
 OBJS_NUM = 1
@@ -22,9 +21,6 @@ MAX_ELEMENTS_NUM = 3
 STOP_DATA_GENERATION = 0.6
 STOP_PATH_GENERATION = 0.1
 NONE_PROBABILITY = 0.3
-
-objs = []
-fake_objs = []
 
 def getRandomString():
 	return "".join(random.sample(string.ascii_letters + string.digits, 8))
@@ -124,6 +120,9 @@ class RandomAction:
 		self._method = random.choice(list(args_constructors.keys()))
 		args_constructors[self._method]()
 
+	def dump(self, verbosity):
+		return (str(self) if verbosity > 3 else self._method)
+
 	def _constructModifyArgs(self):
 		self._args = (getRandomData(MAX_DEPTH),
 			getRandomDefinitePath(self._obj_contents))
@@ -144,67 +143,107 @@ class RandomAction:
 	def __str__(self):
 		return self._method + repr(self._args)
 
+def _runTests(objects, actions, verbosity):
 
-random.seed()
+	engine_tag = brain.getDefaultEngineTag()
 
-# create objects
-for i in range(OBJS_NUM):
-	data = getRandomNonTrivialData(STARTING_DEPTH)
-	print("Initial state: " + repr(data))
+	conn = brain.connect(None, name=None)
+	fake_conn = FakeConnection()
 
+	objs = []
+	fake_objs = []
+
+	# create objects
+	for i in range(objects):
+		data = getRandomNonTrivialData(STARTING_DEPTH)
+
+		try:
+			objs.append(conn.create(data))
+		except:
+			print("Error creating object: " + str(data))
+			raise
+
+		if verbosity > 2:
+			print("Object " + str(i) + " created" +
+				(", initial state: " + repr(data) if verbosity > 3 else ""))
+
+		fake_objs.append(fake_conn.create(data))
+
+	# perform test
+	for c in range(actions):
+		for i in range(objects):
+			fake_state_before = copy.deepcopy(fake_conn.read(fake_objs[i]))
+			try:
+				state_before = conn.read(objs[i])
+			except:
+				print("Error reading object " + str(i) +
+					(": " + str(fake_state_before) if verbosity > 3 else ""))
+				if verbosity > 3:
+					conn._engine.dump()
+				raise
+
+			action = RandomAction(state_before)
+
+			action(fake_conn, fake_objs[i])
+
+			fake_state_after = fake_conn.read(fake_objs[i])
+			if fake_state_after is None:
+				fake_conn.modify(fake_objs[i], fake_state_before, [])
+				continue
+
+			try:
+				action(conn, objs[i])
+			except:
+				print("Error performing action on object " + str(i) +
+					": " + action.dump())
+				if verbosity > 3:
+					print("State before: " + str(fake_state_before))
+					conn._engine.dump()
+				raise
+
+			if verbosity > 2:
+				print("Object " + str(i) + ", " + action.dump(verbosity))
+
+			try:
+				state_after = conn.read(objs[i])
+			except:
+				print("Error reading object " + str(i) +
+					((": " + str(fake_state_after)) if verbosity > 3 else ""))
+				print("After action: " + action.dump(verbosity))
+				if verbosity > 3:
+					print("On state: " + str(fake_state_before))
+					conn._engine.dump()
+				raise
+
+			if state_after != fake_state_after:
+				print("Action results are different:")
+				print("State before: " + repr(fake_state_before))
+				print("Action: " + action.dump(verbosity))
+				print("Main state after: " + repr(state_after))
+				print("Fake state after: " + repr(fake_state_after))
+				if verbosity > 3:
+					conn._engine.dump()
+				raise Exception("Functionality error")
+
+def runFuzzTest(objects=1, actions=100, verbosity=2):
+
+	print("Fuzz test")
+	print(str(objects) + " objects, " + str(actions) + " actions")
+
+	random.seed()
+
+	print("=" * 70)
+	time1 = time.time()
 	try:
-		objs.append(conn.create(data))
+		_runTests(objects, actions, verbosity)
 	except:
-		print("Error creating object: " + str(data))
-		raise
+		err_class, err_obj, err_tb = err
+		self.__stream.writeln("! " + str(err_obj))
 
-	fake_objs.append(fake_conn.create(data))
-
-# perform test
-for c in range(TEST_ITERATIONS):
-	for i in range(OBJS_NUM):
-		#conn._engine.dump()
-		fake_state_before = copy.deepcopy(fake_conn.read(fake_objs[i]))
-		try:
-			state_before = conn.read(objs[i])
-		except:
-			print("Error reading object " + str(fake_state_before))
-			conn._engine.dump()
-			raise
-
-		action = RandomAction(state_before)
-
-		action(fake_conn, fake_objs[i])
-
-		fake_state_after = fake_conn.read(fake_objs[i])
-		if fake_state_after is None:
-			fake_conn.modify(fake_objs[i], fake_state_before, [])
-			continue
-
-		try:
-			action(conn, objs[i])
-		except:
-			print("Error performing action: " + str(action))
-			print("On object: " + str(fake_state_before))
-			conn._engine.dump()
-			raise
-
-		print(action)
-
-		try:
-			state_after = conn.read(objs[i])
-		except:
-			print("Error reading object: " + str(fake_state_after))
-			print("After action: " + str(action))
-			print("On state: " + str(fake_state_before))
-			conn._engine.dump()
-			raise
-
-		if state_after != fake_state_after:
-			print("Action results are different:")
-			print("State before: " + repr(fake_state_before))
-			print("Action: " + str(action))
-			print("Main state after: " + repr(state_after))
-			print("Fake state after: " + repr(fake_state_after))
-			conn._engine.dump()
-			raise Exception("Functionality error")
+		# report traceback
+		if verbosity > 1:
+			traceback.print_tb(err_tb, None, self.__stream)
+	finally:
+		print("=" * 70)
+		time2 = time.time()
+		print("Finished in {0:.3f} seconds".format(time2 - time1))

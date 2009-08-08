@@ -18,6 +18,8 @@ import brain
 def runFunctionalityTests(all_engines=False, all_connections=False, all_storages=False, verbosity=2):
 	"""Start functionality tests suite"""
 
+	print("Functionality tests")
+
 	IN_MEMORY = 'memory' # tag for in-memory DB tests
 
 	suite = helpers.NamedTestSuite()
