@@ -21,7 +21,7 @@ parser.add_option("--as", "--all-storages", action="store_true",
 parser.add_option("-o", "--objects", action="store", type="int", default=1,
 	dest="objects", help="[fuzz] number of objects")
 parser.add_option("-a", "--actions", action="store", type="int", default=100,
-	dest="action", help="[fuzz] number of actions")
+	dest="actions", help="[fuzz] number of actions")
 
 parser.add_option("-v", "--verbosity", action="store", type="int", default=2,
 	dest="verbosity", help="verbosity level, 0-3")
@@ -47,4 +47,4 @@ if mode == 'func':
 		all_engines=opts.all_engines, all_storages=opts.all_storages,
 		verbosity=opts.verbosity)
 elif mode == 'fuzz':
-	fuzz.runFuzzTest(verbosity=opts.verbosity)
+	fuzz.runFuzzTest(objects=opts.objects, actions=opts.actions, verbosity=opts.verbosity)
