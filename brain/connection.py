@@ -37,7 +37,7 @@ def _saveTo(obj, ptr, path, value):
 
 	if len(path) == 0:
 	# if we are in leaf now, store value
-		if (not isinstance(value, list) and not isinstance(value, dict)) or obj[ptr] is None:
+		if (value != [] and value != {}) or obj[ptr] is None:
 			obj[ptr] = value
 	else:
 	# if not, create required structure and call this function recursively
@@ -398,23 +398,12 @@ class FakeConnection:
 	def _deleteAll(self, obj, path):
 		if len(path) == 1:
 			del obj[path[0]]
-			return len(obj) == 0
 		else:
 			if path[0] is None:
 				for x in obj:
-					if self._deleteAll(obj[x], path[1:]):
-						if isinstance(obj, dict) or x == len(obj) - 1 or len(obj) == 1:
-							del obj[x]
-						else:
-							obj[x] = None
+					self._deleteAll(obj[x], path[1:])
 			else:
-				if self._deleteAll(obj[path[0]], path[1:]):
-					if isinstance(obj, dict) or path[0] == len(obj) - 1 or len(obj) == 1:
-						del obj[path[0]]
-					else:
-						obj[path[0]] = None
-
-			return len(obj) == 0
+				self._deleteAll(obj[path[0]], path[1:])
 
 	def deleteMany(self, id, paths=None):
 		if paths is None:

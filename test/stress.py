@@ -16,11 +16,12 @@ fake_conn = FakeConnection()
 
 TEST_ITERATIONS = 100
 OBJS_NUM = 1
-STARTING_DEPTH = 2
-MAX_DEPTH = 2
+STARTING_DEPTH = 5
+MAX_DEPTH = 5
 MAX_ELEMENTS_NUM = 3
 STOP_DATA_GENERATION = 0.6
 STOP_PATH_GENERATION = 0.1
+NONE_PROBABILITY = 0.1
 
 objs = []
 fake_objs = []
@@ -60,24 +61,33 @@ def getRandomPath(root):
 		return []
 
 	if isinstance(root, list):
-		random_index = random.randrange(len(root))
-		return [random_index] + getRandomPath(root[random_index])
-	elif isinstance(root, dict):
+		if len(root) == 0:
+			return [None]
+		else:
+			random_index = random.randrange(len(root))
+			return [random_index] + getRandomDefinitePath(root[random_index])
+	elif isinstance(root, dict) and len(root) > 0:
 		random_key = random.choice(list(root.keys()))
-		return [random_key] + getRandomPath(root[random_key])
+		return [random_key] + getRandomDefinitePath(root[random_key])
 	else:
 		return []
 
-def getRandomNonTrivialPath(root):
-	path = []
-	while path == []:
+def getRandomDefinitePath(root):
+	path = [None]
+	while None in path:
 		path = getRandomPath(root)
 	return path
 
-def getRandomPathToList(root):
-	path = ['aaa']
-	while not isinstance(path[-1], int):
-		path = getRandomNonTrivialPath(root)
+def getRandomDefiniteNonTrivialPath(root):
+	path = []
+	while path == []:
+		path = getRandomDefinitePath(root)
+	return path
+
+def getRandomInsertPath(root):
+	path = []
+	while len(path) == 0 or isinstance(path[-1], str):
+		path = getRandomPath(root)
 	return path
 
 def listInData(data):
@@ -102,9 +112,9 @@ class RandomAction:
 			'deleteMany': self._constructDeleteArgs
 		}
 
-		if self._obj_contents is None:
+		if self._obj_contents.__class__ not in [list, dict] or len(self._obj_contents) == 0:
 			del args_constructors['deleteMany']
-		elif not listInData(self._obj_contents):
+		if not listInData(self._obj_contents):
 			del args_constructors['insertMany']
 
 		self._args = ()
@@ -114,14 +124,14 @@ class RandomAction:
 
 	def _constructModifyArgs(self):
 		self._args = (getRandomData(MAX_DEPTH),
-			getRandomNonTrivialPath(self._obj_contents))
+			getRandomDefinitePath(self._obj_contents))
 
 	def _constructInsertArgs(self):
-		self._args = (getRandomPathToList(self._obj_contents),
+		self._args = (getRandomInsertPath(self._obj_contents),
 			[getRandomData(MAX_DEPTH)])
 
 	def _constructDeleteArgs(self):
-		self._args = ([getRandomNonTrivialPath(self._obj_contents)],)
+		self._args = ([getRandomDefiniteNonTrivialPath(self._obj_contents)],)
 
 	def __call__(self, conn, obj_id):
 		args = self._args
@@ -150,7 +160,7 @@ for i in range(OBJS_NUM):
 # perform test
 for c in range(TEST_ITERATIONS):
 	for i in range(OBJS_NUM):
-		conn._engine.dump()
+		#conn._engine.dump()
 		fake_state_before = copy.deepcopy(fake_conn.read(fake_objs[i]))
 		try:
 			state_before = conn.read(objs[i])
