@@ -13,14 +13,14 @@ sys.path.append(os.path.join(scriptdir, ".."))
 import brain
 from brain.connection import FakeConnection
 
-TEST_ITERATIONS = 100
-OBJS_NUM = 1
-STARTING_DEPTH = 5
-MAX_DEPTH = 5
-MAX_ELEMENTS_NUM = 3
-STOP_DATA_GENERATION = 0.6
-STOP_PATH_GENERATION = 0.1
-NONE_PROBABILITY = 0.3
+STARTING_DEPTH = 5 # starting data depth of objects
+MAX_DEPTH = 5 # maximum depth of data structures created during test
+MAX_ELEMENTS_NUM = 3 # maximum number of elements in created lists/dictionaries
+STOP_DATA_GENERATION = 0.6 # probability of stopping data generation on each level of structure
+STOP_PATH_GENERATION = 0.1 # probability of stopping path generation on each level of structure
+NONE_PROBABILITY = 0.3 # probability of last None appearance in the path of insert request
+
+# Auxiliary functions
 
 def getRandomString():
 	return "".join(random.sample(string.ascii_letters + string.digits, 8))
@@ -47,12 +47,14 @@ def getRandomData(depth):
 		return {getRandomString(): getRandomData(depth - 1) for x in range(length)}
 
 def getRandomNonTrivialData(depth):
+	"""Returns non-None random data structure"""
 	data = None
 	while not isinstance(data, list) and not isinstance(data, dict):
 		data = getRandomData(depth)
 	return data
 
 def getRandomPath(root):
+	"""Returns path to random element of given structure"""
 	if random.random() < STOP_PATH_GENERATION:
 		return []
 
@@ -69,18 +71,29 @@ def getRandomPath(root):
 		return []
 
 def getRandomDefinitePath(root):
+	"""Returns random path without Nones"""
 	path = [None]
 	while None in path:
 		path = getRandomPath(root)
 	return path
 
 def getRandomDeletePath(root):
+	"""
+	Returns random path for delete request -
+	definite non-zero path, because mask deletion is hard to support in fuzz test,
+	and we want to avoid deletion of the object
+	"""
 	path = []
 	while len(path) == 0:
 		path = getRandomDefinitePath(root)
 	return path
 
 def getRandomInsertPath(root):
+	"""
+	Returns random path for the target of insert request -
+	random path, pointing to list, probably with the None in the end
+	Warning: the function will last forever if there is not any list in data
+	"""
 	path = []
 	while len(path) == 0 or isinstance(path[-1], str):
 		path = getRandomPath(root)
@@ -89,6 +102,7 @@ def getRandomInsertPath(root):
 	return path
 
 def listInData(data):
+	"""Returns True if there is a list in given data structure"""
 	if isinstance(data, list):
 		return True
 	elif isinstance(data, dict):
@@ -100,6 +114,7 @@ def listInData(data):
 
 
 class RandomAction:
+	"""Class, representing an action on a given object"""
 
 	def __init__(self, obj_contents):
 		self._obj_contents = obj_contents
@@ -143,10 +158,14 @@ class RandomAction:
 	def __str__(self):
 		return self._method + repr(self._args)
 
-def _runTests(objects, actions, verbosity):
 
+def _runTests(objects, actions, verbosity):
+	"""Main test function. Create several objects and perform random actions on them."""
+
+	# using default engine, because we are testing only DB logic here
 	engine_tag = brain.getDefaultEngineTag()
 
+	# create brain connection and fake Python-powered connection
 	conn = brain.connect(None, name=None)
 	fake_conn = FakeConnection()
 
@@ -172,7 +191,11 @@ def _runTests(objects, actions, verbosity):
 	# perform test
 	for c in range(actions):
 		for i in range(objects):
+
+			# copy original state in case we delete object or some error occurs
 			fake_state_before = copy.deepcopy(fake_conn.read(fake_objs[i]))
+
+			# try to read the real object from the database
 			try:
 				state_before = conn.read(objs[i])
 			except:
@@ -182,15 +205,17 @@ def _runTests(objects, actions, verbosity):
 					conn._engine.dump()
 				raise
 
+			# create random action and test it on fake object
 			action = RandomAction(state_before)
-
 			action(fake_conn, fake_objs[i])
 
+			# if object gets deleted, return its state to original
 			fake_state_after = fake_conn.read(fake_objs[i])
 			if fake_state_after is None:
 				fake_conn.modify(fake_objs[i], fake_state_before, [])
 				continue
 
+			# try to perform action on a real object
 			try:
 				action(conn, objs[i])
 			except:
@@ -204,6 +229,7 @@ def _runTests(objects, actions, verbosity):
 			if verbosity > 2:
 				print("Object " + str(i) + ", " + action.dump(verbosity))
 
+			# try to read resulting object state
 			try:
 				state_after = conn.read(objs[i])
 			except:
@@ -215,6 +241,7 @@ def _runTests(objects, actions, verbosity):
 					conn._engine.dump()
 				raise
 
+			# compare resulting states of real and fake objects
 			if state_after != fake_state_after:
 				print("Action results are different:")
 				print("State before: " + repr(fake_state_before))
@@ -225,7 +252,9 @@ def _runTests(objects, actions, verbosity):
 					conn._engine.dump()
 				raise Exception("Functionality error")
 
+
 def runFuzzTest(objects=1, actions=100, verbosity=2, seed=None):
+	"""Main test function. Start test, terminate on first exception"""
 
 	print("Fuzz test")
 	print(str(objects) + " objects, " + str(actions) + " actions" +
