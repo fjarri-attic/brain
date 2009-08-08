@@ -52,7 +52,8 @@ def _saveTo(obj, ptr, path, value):
 def _fieldsToTree(fields):
 	"""Transform list of Field objects to nested dictionaries and lists"""
 
-	if len(fields) == 0: return []
+	if len(fields) == 0:
+		return []
 
 	# we need some starting object, whose pointer we can pass to recursive saveTo()
 	res = []
@@ -67,7 +68,8 @@ def connect(engine_tag, *args, **kwds):
 	"""Connect to database and return Connection object"""
 
 	tags = engine.getEngineTags()
-	if engine_tag is None: engine_tag = engine.getDefaultEngineTag()
+	if engine_tag is None:
+		engine_tag = engine.getDefaultEngineTag()
 	if engine_tag not in tags:
 		raise interface.FacadeError("Unknown DB engine: " + str(engine_tag))
 
@@ -132,7 +134,8 @@ def _transacted(func):
 
 			if create_transaction: obj.begin()
 			func(obj, *args, **kwds)
-			if create_transaction: return obj.commit()[0]
+			if create_transaction:
+				return obj.commit()[0]
 
 	return wrapper
 
@@ -293,7 +296,8 @@ class Connection:
 	@_transacted
 	def modify(self, id, value, path=None):
 		"""Create modification request and add it to queue"""
-		if path is None: path = []
+		if path is None:
+			path = []
 		fields = _flattenHierarchy(value, self._engine)
 		self._requests.append(interface.ModifyRequest(id, Field(self._engine, path), fields))
 
@@ -339,7 +343,8 @@ class Connection:
 	@_transacted
 	def create(self, data, path=None):
 		"""Create creation request and add it to queue"""
-		if path is None: path = []
+		if path is None:
+			path = []
 		fields = _flattenHierarchy(data, self._engine)
 
 		for field in fields:
@@ -359,27 +364,44 @@ class Connection:
 
 
 class FakeConnection:
+	"""
+	Class which mimics some Connection methods, implementing them using Python data structures.
+	It is used to test request results for real Connection class
+	"""
 
 	def __init__(self):
 		self._id_counter = 0
 		self._root = {}
 
+	def _getPath(self, obj, path):
+		"""Get pointer to data structure with given path"""
+		if len(path) == 1:
+			return obj[path[0]]
+		else:
+			return self._getPath(obj[path[0]], path[1:])
+
+	def _deleteAll(self, obj, path):
+		"""Delete all values from given path"""
+		if len(path) == 1:
+			del obj[path[0]]
+		else:
+			if path[0] is None:
+				for x in obj:
+					self._deleteAll(obj[x], path[1:])
+			else:
+				self._deleteAll(obj[path[0]], path[1:])
+
 	def create(self, data, path=None):
-		if path is None: path = []
+		if path is None:
+			path = []
 		self._id_counter += 1
 		_saveTo(self._root, self._id_counter, path, data)
 		return self._id_counter
 
 	def modify(self, id, value, path=None):
-		if path is None and value is None: pass
-		if path is None: path = []
+		if path is None:
+			path = []
 		_saveTo(self._root, id, path, value)
-
-	def _getPath(self, obj, path):
-		if len(path) == 1:
-			return obj[path[0]]
-		else:
-			return self._getPath(obj[path[0]], path[1:])
 
 	def insertMany(self, id, path, values):
 		if id not in self._root:
@@ -394,16 +416,6 @@ class FakeConnection:
 		else:
 			for value in values:
 				target.insert(index, value)
-
-	def _deleteAll(self, obj, path):
-		if len(path) == 1:
-			del obj[path[0]]
-		else:
-			if path[0] is None:
-				for x in obj:
-					self._deleteAll(obj[x], path[1:])
-			else:
-				self._deleteAll(obj[path[0]], path[1:])
 
 	def deleteMany(self, id, paths=None):
 		if paths is None:
