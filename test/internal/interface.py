@@ -99,7 +99,8 @@ class Format(unittest.TestCase):
 			Field(None, ['aaa'], 1),
 			op.AND,
 			SearchRequest.Condition(
-				Field(None, ['blablabla']), op.REGEXP, '22', invert=True
+				Field(None, ['blablabla']), op.REGEXP,
+				Field(None, [], '22'), invert=True
 			)
 		)
 
@@ -107,7 +108,8 @@ class Format(unittest.TestCase):
 		"""Test that condition raises error if second operand in node is not Condition"""
 		self.assertRaises(brain.FormatError, SearchRequest.Condition,
 			SearchRequest.Condition(
-				Field(None, ['blablabla']), op.REGEXP, '22', invert=True
+				Field(None, ['blablabla']), op.REGEXP,
+				Field(None, [], '22'), invert=True
 			),
 			op.AND,
 			Field(None, ['aaa'], 1)
@@ -117,11 +119,11 @@ class Format(unittest.TestCase):
 		"""Test that condition raises error if condition operator is unknown"""
 		self.assertRaises(brain.FormatError, SearchRequest.Condition,
 			SearchRequest.Condition(
-				Field(None, ['phone']), op.EQ, '1111'
+				Field(None, ['phone']), op.EQ, Field(None, [], '1111')
 			),
 			'something',
 			SearchRequest.Condition(
-				Field(None, ['blablabla']), op.EQ, '22', invert=True
+				Field(None, ['blablabla']), op.EQ, Field(None, [], '22'), invert=True
 			)
 		)
 
@@ -131,24 +133,24 @@ class Format(unittest.TestCase):
 			'phone', 'something', '1111'
 		)
 
-	def testSearchRequestWrongValueType(self):
-		"""Test that Condition raises exception if value type is not supported"""
-		self.assertRaises(brain.FormatError, SearchRequest.Condition,
-			'phone', op.EQ, bytearray(b'a')
-		)
+	def testWrongValueType(self):
+		"""Test that exception is raised if value type is not supported"""
+		self.assertRaises(brain.FormatError, Field, None, [], bytearray(b'a'))
 
 	def testSearchRequestConditionEqSupportedTypes(self):
 		"""Test that all necessary types are supported for equality check"""
 		classes = [str, int, float, bytes]
 
 		for cls in classes:
-			c = SearchRequest.Condition(Field(None, ['fld']), op.EQ, cls())
+			c = SearchRequest.Condition(Field(None, ['fld']), op.EQ,
+				Field(None, [], cls()))
 
 	def testSearchRequestConditionRegexpSupportedTypes(self):
 		"""Test that only strings and bytearrays are supported for regexps"""
 
 		def construct_condition(cls):
-			return SearchRequest.Condition(Field(None, ['fld']), op.REGEXP, cls())
+			return SearchRequest.Condition(Field(None, ['fld']), op.REGEXP,
+				Field(None, [], cls()))
 
 		classes = [str, int, float, bytes]
 		supported_classes = [str, bytes]
@@ -163,12 +165,12 @@ class Format(unittest.TestCase):
 		"""Test that None value can be used in search condition"""
 
 		# check that Nones can be used in equalities
-		SearchRequest.Condition(Field(None, ['fld']), op.EQ, None)
+		SearchRequest.Condition(Field(None, ['fld']), op.EQ, Field(None, [], None))
 
 		# check that Nones cannot be used with other operators
 		for operator in [op.REGEXP, op.LT, op.LTE, op.GT, op.GTE]:
 			self.assertRaises(brain.FormatError, SearchRequest.Condition,
-				Field(None, ['fld']), operator, None)
+				Field(None, ['fld']), operator, Field(None, [], None))
 
 	def testObjectExistsCreation(self):
 		"""Simple test for ObjectExistsRequest constructor"""

@@ -433,20 +433,15 @@ class SearchRequest:
 			if operator in comparisons:
 
 				# if node operator is a comparison, it is a leaf of condition tree
-				val_class = operand2.__class__
-
-				# check if value type is supported
-				if operand2 is not None and val_class not in _SUPPORTED_TYPES:
-					raise FormatError("Operand type is not supported: " +
-						val_class.__name__)
+				val = operand2.value
 
 				# Nones only support EQ
-				if operand2 is None and operator != op.EQ:
+				if val is None and operator != op.EQ:
 					raise FormatError("Null value can be only used in equality")
 
 				# regexp is valid only for strings and blobs
-				if operator == op.REGEXP and val_class not in [str, bytes]:
-					raise FormatError("Values of type " + val_class.__name__ +
+				if operator == op.REGEXP and val.__class__ not in [str, bytes]:
+					raise FormatError("Values of type " + val.__class__.__name__ +
 						" do not support regexp condition")
 				self.leaf = True
 			elif operator in operators:

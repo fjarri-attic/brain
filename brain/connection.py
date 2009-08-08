@@ -97,7 +97,7 @@ def _tupleToSearchCondition(*args, engine):
 	operand1 = (_tupleToSearchCondition(*operand1, engine=engine)
 		if isinstance(operand1, tuple) else Field(engine, operand1))
 	operand2 = (_tupleToSearchCondition(*operand2, engine=engine)
-		if isinstance(operand2, tuple) else operand2)
+		if isinstance(operand2, tuple) else Field(engine, [], operand2))
 
 	return interface.SearchRequest.Condition(operand1, args[1 + shift], operand2, invert)
 

@@ -259,14 +259,11 @@ class _StructureLayer:
 				cond2 + ") as temp", tables1 + tables2, values1 + values2
 
 		# Leaf condition
-		op1 = condition.operand1 # it must be Field
-		op2 = condition.operand2 # it must be some value
+		op1 = condition.operand1 # it must be Field without value
+		op2 = condition.operand2 # it must be Field with value
 
 		# set proper type for the field
-		if op2 is not None:
-			op1.type_str = self._engine.getColumnType(op2)
-		else:
-			op1.type_str = None
+		op1.type_str = op2.type_str
 
 		# If table with given field does not exist, just return empty query
 		if not self._engine.tableExists(op1.name_str):
@@ -288,26 +285,19 @@ class _StructureLayer:
 		tables = []
 		values = []
 
-		if op2 is not None or not condition.invert:
+		# construct comparing condition
+		comp_str = "WHERE " + not_str + " " + self._VALUE_COLUMN + " " + \
+			comparisons[condition.operator] + " ?"
+		values = [op2.db_value]
 
-			# construct comparing condition
-			if op2 is not None:
-				comp_str = "WHERE " + not_str + " " + self._VALUE_COLUMN + " " + \
-					comparisons[condition.operator] + " ?"
-				values = [op2]
-			else:
-				comp_str = ""
+		# construct query
+		result = "SELECT DISTINCT " + self._ID_COLUMN + " FROM {} " + \
+			comp_str + " " + op1.columns_condition
+		tables = [condition.operand1.name_str]
 
-			# construct query
-			result = "SELECT DISTINCT " + self._ID_COLUMN + " FROM {} " + \
-				comp_str + " " + op1.columns_condition
-			tables = [condition.operand1.name_str]
-
-			if condition.invert:
-			# we will add objects that do not even have such field
-				result += " UNION "
-		else:
-			result = ""
+		if condition.invert:
+		# we will add objects that do not even have such field
+			result += " UNION "
 
 		# if we need to invert results, we have to add all objects that do
 		# not have this field explicitly, because they won't be caught by previous query
@@ -529,6 +519,7 @@ class LogicLayer:
 		request, tables, values = self._structure.buildSqlQuery(request.condition)
 		if request is None:
 			return []
+
 		result = self._engine.execute(request, tables, values)
 		list_res = [x[0] for x in result]
 
