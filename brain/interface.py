@@ -70,9 +70,6 @@ class Pointer:
 		return self._db_value
 
 	def __set_db_value(self, db_value):
-		if db_value != self._none_code and not db_value in self._db_to_py:
-			raise StructureError("Not supported DB value: " + repr(db_value))
-
 		self._py_value = None if db_value == self._none_code else self._db_to_py[db_value]()
 		self._db_value = db_value
 
@@ -122,17 +119,6 @@ class Field:
 
 		# cut prefix 'field' from the resulting list
 		return cls(engine, engine.getNameList(name_str)[1:], value)
-
-	def ancestors(self, include_self):
-		"""
-		Iterate through all ancestor fields
-		Yields tuple (ancestor, last removed name part)
-		"""
-		name_copy = self.name[:]
-		last = name_copy.pop() if not include_self else None
-		while len(name_copy) > 0:
-			yield Field(self._engine, name_copy), last
-			last = name_copy.pop()
 
 	def _getListColumnName(self, index):
 		"""Get name of additional list column corresponding to given index"""
@@ -264,17 +250,12 @@ class Field:
 		"""Returns True if field points to element of the list"""
 		return isinstance(self.name[-1], int)
 
-	def pointsToList(self):
-		"""Returns True if field points to list (either mask or single element)"""
-		return not isinstance(self.name[-1], str)
-
 	def getLastListColumn(self):
-		"""Returns name and value of column corresponding to the last name element"""
+		"""
+		Returns name and value of column corresponding to the last name element
 
-		# This function makes sense only if self.pointsToList() is True
-		if not self.pointsToList():
-			raise LogicError("Field should point to list element")
-
+		This function makes sense only if self.pointsToList() is True
+		"""
 		list_elems = self._getListElements()
 		col_num = len(list_elems) - 1 # index of last column
 		col_name = self._getListColumnName(col_num)
@@ -283,12 +264,11 @@ class Field:
 
 	@property
 	def renumber_condition(self):
-		"""Returns condition for renumbering after deletion of this element"""
+		"""
+		Returns condition for renumbering after deletion of this element
 
-		# This function makes sense only if self.pointsToList() is True
-		if not self.pointsToList():
-			raise LogicError("Field should point to list element")
-
+		This function makes sense only if self.pointsToList() is True
+		"""
 		self_copy = Field(self._engine, self.name)
 		self_copy.name[-1] = None
 		return self_copy.columns_condition
@@ -325,10 +305,7 @@ class CreateRequest:
 		self.fields = fields
 
 	def __str__(self):
-		return "{name} for object {id}{data}".format(
-			name=self.__class__.__name__,
-			id=self.id,
-			data=data)
+		return self.__class__.__name__ + " for fields list " + repr(self.fields)
 
 
 class ModifyRequest:
@@ -347,7 +324,7 @@ class ModifyRequest:
 		return "{name} for object {id}{data}".format(
 			name=self.__class__.__name__,
 			id=self.id,
-			data=("" if self.fields is None else ": " + self.fields))
+			data=("" if self.fields is None else ": " + repr(self.fields)))
 
 
 class DeleteRequest:
@@ -364,7 +341,7 @@ class DeleteRequest:
 		return "{name} for object {id}{data}".format(
 			name=self.__class__.__name__,
 			id=self.id,
-			data=("" if self.fields is None else ": " + self.fields))
+			data=("" if self.fields is None else ": " + repr(self.fields)))
 
 
 class ReadRequest:
@@ -381,7 +358,7 @@ class ReadRequest:
 		return "{name} for object {id}{data}".format(
 			name=self.__class__.__name__,
 			id=self.id,
-			data=("" if self.fields is None else ": " + self.fields))
+			data=("" if self.fields is None else ": " + repr(self.fields)))
 
 
 class InsertRequest:
@@ -418,8 +395,8 @@ class InsertRequest:
 		return "{name} for object {id} and path {path}: {data}".format(
 			name=self.__class__.__name__,
 			id=self.id,
-			path=path,
-			data=self.fields)
+			path=self.path,
+			data=repr(self.field_groups))
 
 
 class SearchRequest:
@@ -483,7 +460,7 @@ class ObjectExistsRequest:
 		self.id = id
 
 	def __str__(self):
-		return "{name} for object {id}{data}".format(
+		return "{name} for object {id}".format(
 			name=self.__class__.__name__,
 			id=self.id)
 

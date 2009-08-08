@@ -10,10 +10,6 @@ sys.path.append(os.path.join(scriptdir, ".."))
 class TestRequest(unittest.TestCase):
 	"""Base class for database requests testing"""
 
-	def setUp(self):
-		"""Stub for setUp() so that nobody creates the instance of this class"""
-		raise NotImplementedError
-
 	def prepareStandNoList(self):
 		"""Prepare DB wiht several objects which contain only hashes"""
 		self.id1 = self.conn.create({'name': 'Alex', 'phone': '1111'})

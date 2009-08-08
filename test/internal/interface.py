@@ -43,6 +43,8 @@ class Format(unittest.TestCase):
 		f1 = Field(None, ['test', 1, None], 1)
 		f2 = Field(None, ['test', 1, None], 1)
 		self.assertEqual(f1, f2)
+		self.assertNotEqual(f1, None)
+		self.assertNotEqual(f1, 1)
 
 	def testFieldNonEqNames(self):
 		"""Test == operator for fields with different names"""
@@ -65,7 +67,7 @@ class Format(unittest.TestCase):
 
 	def testRequestWithNoID(self):
 		"""Test that requests throw exceptions when no ID is provided"""
-		field = Field(None, ['fld'], 1)
+		field = Field(None, ['fld', 1], 1)
 		fields = [field]
 		self.assertRaises(brain.FormatError, ModifyRequest, None, field, fields)
 		self.assertRaises(brain.FormatError, ReadRequest, None, field)
@@ -172,6 +174,42 @@ class Format(unittest.TestCase):
 	def testObjectExistsCreation(self):
 		"""Simple test for ObjectExistsRequest constructor"""
 		self.assertRaises(brain.FormatError, ObjectExistsRequest, None)
+
+	def testPointerConstructor(self):
+		"""Check that required set of types can be passed to pointer"""
+		for val in [None, {}, []]:
+			p = Pointer.fromPyValue(val)
+
+		for val in [set(), bytearray(b'a')]:
+			self.assertRaises(FormatError, Pointer.fromPyValue, val)
+
+	def testStrAndRepr(self):
+		"""
+		Tests, intended to make coverage counter happy
+		str() and repr() are not used during normal operations, but I want
+		to keep them for debugging purposes
+		"""
+		temp_id = 1
+		f = Field(None, ['aaa', 1], '1')
+
+		objs = [
+			    CreateRequest([f]),
+			    ModifyRequest(temp_id, f, [f]),
+			    ReadRequest(temp_id, [f]),
+			    InsertRequest(temp_id, f, [[f]]),
+			    DeleteRequest(temp_id, [[f]]),
+			    SearchRequest(SearchRequest.Condition(f, op.EQ, f)),
+			    Pointer.fromPyValue(None),
+			    Pointer.fromPyValue([]),
+			    Pointer.fromPyValue({}),
+			    f,
+			    ObjectExistsRequest(temp_id),
+			    DumpRequest()
+		]
+
+		for obj in objs:
+			s = str(obj)
+			r = repr(obj)
 
 
 def suite():
