@@ -385,11 +385,7 @@ class FakeConnection:
 		if len(path) == 1:
 			del obj[path[0]]
 		else:
-			if path[0] is None:
-				for x in obj:
-					self._deleteAll(obj[x], path[1:])
-			else:
-				self._deleteAll(obj[path[0]], path[1:])
+			self._deleteAll(obj[path[0]], path[1:])
 
 	def create(self, data, path=None):
 		if path is None:
@@ -399,14 +395,9 @@ class FakeConnection:
 		return self._id_counter
 
 	def modify(self, id, value, path=None):
-		if path is None:
-			path = []
 		_saveTo(self._root, id, path, value)
 
 	def insertMany(self, id, path, values):
-		if id not in self._root:
-			self._root[id] = {} if isinstance(path[0], str) else []
-
 		target = self._getPath(self._root, [id] + path[:-1])
 		index = path[-1]
 
@@ -414,18 +405,12 @@ class FakeConnection:
 			for value in values:
 				target.append(value)
 		else:
-			for value in values:
+			for value in reversed(values):
 				target.insert(index, value)
 
 	def deleteMany(self, id, paths=None):
-		if paths is None:
-			del self._root[id]
-		else:
-			for path in paths:
-				self._deleteAll(self._root, [id] + path)
+		for path in paths:
+			self._deleteAll(self._root, [id] + path)
 
 	def read(self, id):
-		if id in self._root:
-			return self._root[id]
-		else:
-			return None
+		return self._root[id]
