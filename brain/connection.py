@@ -37,7 +37,8 @@ def _saveTo(obj, ptr, path, value):
 
 	if len(path) == 0:
 	# if we are in leaf now, store value
-		obj[ptr] = value
+		if (not isinstance(value, list) and not isinstance(value, dict)) or obj[ptr] is None:
+			obj[ptr] = value
 	else:
 	# if not, create required structure and call this function recursively
 		if obj[ptr] is None:
