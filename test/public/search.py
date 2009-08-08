@@ -8,7 +8,7 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import brain
 import brain.op as op
-from functionality.requests import TestRequest
+from public.requests import TestRequest
 
 class Search(TestRequest):
 	"""Test operation of SearchRequest"""

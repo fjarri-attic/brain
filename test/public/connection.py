@@ -9,7 +9,7 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import brain
 import brain.op as op
-from functionality.requests import TestRequest
+from public.requests import TestRequest
 
 class Connection(TestRequest):
 	"""Test different uses of ModifyRequest"""

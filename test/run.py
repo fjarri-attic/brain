@@ -6,8 +6,8 @@ import unittest
 
 import internal.interface
 import internal.engine
-from functionality import delete, insert, modify, read, search, connection
-import functionality
+from public import delete, insert, modify, read, search, connection
+import public
 import helpers
 
 import sys, os.path
@@ -30,8 +30,8 @@ parser.add_option("-v", "--verbosity", action="store", type="int", default=2,
 
 opts, args = parser.parse_args(sys.argv[1:])
 
-def runFunctionalityTests(all_engines=False, all_connections=False, all_storages=False, verbosity=2):
-	"""Start functionality tests suite"""
+def runpublicTests(all_engines=False, all_connections=False, all_storages=False, verbosity=2):
+	"""Start public tests suite"""
 
 	IN_MEMORY = 'memory' # tag for in-memory DB tests
 
@@ -62,7 +62,7 @@ def runFunctionalityTests(all_engines=False, all_connections=False, all_storages
 			suite.addTest(internal.engine.suite(test_tag,
 				engine_tags[tag_str], *args, **kwds))
 
-	# add functionality tests
+	# add public tests
 
 	class XMLRPCGenerator:
 		def __init__(self):
@@ -86,7 +86,7 @@ def runFunctionalityTests(all_engines=False, all_connections=False, all_storages
 					storage_str, args, kwds = storage
 					test_tag = gen + "." + tag_str + "." + storage_str + "." + func_test
 					suite.addTest(unittest.TestLoader().loadTestsFromTestCase(
-						functionality.getParameterized(
+						public.getParameterized(
 						func_tests[func_test].get_class(),
 						test_tag, connection_generators[gen],
 						engine_tags[tag_str],
@@ -104,5 +104,5 @@ def runFunctionalityTests(all_engines=False, all_connections=False, all_storages
 	if opts.all_connections:
 		xmlrpc_srv.stop()
 
-runFunctionalityTests(all_connections=opts.all_connections, all_engines=opts.all_engines,
+runpublicTests(all_connections=opts.all_connections, all_engines=opts.all_engines,
     all_storages=opts.all_storages, verbosity=opts.verbosity)
