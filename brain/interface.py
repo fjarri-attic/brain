@@ -56,11 +56,11 @@ class Pointer:
 
 	def __set_py_value(self, py_value):
 		if isinstance(py_value, dict):
-			self._db_value = '1'
+			self._db_value = 1
 		elif isinstance(py_value, list):
-			self._db_value = '2'
+			self._db_value = 2
 		elif py_value is None:
-			self._db_value = '0'
+			self._db_value = 0
 		else:
 			raise FormatError("Unknown value type: " + py_value.__class__.__name__)
 		self._py_value = py_value
@@ -71,11 +71,11 @@ class Pointer:
 		return self._db_value
 
 	def __set_db_value(self, db_value):
-		if db_value == '1':
+		if db_value == 1:
 			self._py_value = dict()
-		elif db_value == '2':
+		elif db_value == 2:
 			self._py_value = list()
-		elif db_value == '0':
+		elif db_value == 0:
 			self._py_value = None
 		self._db_value = db_value
 

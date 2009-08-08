@@ -176,16 +176,16 @@ class _Sqlite3Engine(_Engine):
 	def getColumnType(self, val):
 		"""Return SQL type for storing given value"""
 		types = {
-			str: "TEXT", int: "INTEGER", float: "FLOAT", bytes: "BLOB",
-			interface.Pointer: "CHAR"
+			str: "TEXT", int: "INTEGER", float: "REAL", bytes: "BLOB",
+			interface.Pointer: "SHORT"
 		}
 		return types[val.__class__]
 
 	def getValueClass(self, type_str):
 		"""Return Python class for the given SQL type"""
 		classes = {
-			"TEXT": str, "INTEGER": int, "FLOAT": float, "BLOB": bytes,
-			"CHAR": interface.Pointer
+			"TEXT": str, "INTEGER": int, "REAL": float, "BLOB": bytes,
+			"SHORT": interface.Pointer
 		}
 		return classes[type_str]
 
@@ -304,14 +304,16 @@ class _PostgreEngine(_Engine):
 	def getColumnType(self, val):
 		"""Return SQL type for storing given value"""
 		types = {
-			str: "TEXT", int: "INT8", float: "FLOAT8", bytes: "BYTEA"
+			str: "TEXT", int: "INT8", float: "FLOAT8", bytes: "BYTEA",
+			interface.Pointer: "INT2"
 		}
 		return types[val.__class__]
 
 	def getValueClass(self, type_str):
 		"""Return Python class for the given SQL type"""
 		classes = {
-			"TEXT": str, "INT8": int, "FLOAT8": float, "BYTEA": bytes
+			"TEXT": str, "INT8": int, "FLOAT8": float, "BYTEA": bytes,
+			"INT2": interface.Pointer
 		}
 		return classes[type_str]
 
