@@ -418,9 +418,9 @@ class LogicLayer:
 		parent = self._structure.getFieldValue(id, Field(self._engine, field.name[:-1]))
 		if len(parent) == 0:
 			return
-		if isinstance(field.name[-1], str) and isinstance(parent[0].value, list):
+		if isinstance(field.name[-1], str) and isinstance(parent[0].py_value, list):
 			raise interface.StructureError("Cannot modify map, when list already exists on this level")
-		elif not isinstance(field.name[-1], str) and isinstance(parent[0].value, dict):
+		elif not isinstance(field.name[-1], str) and isinstance(parent[0].py_value, dict):
 			raise interface.StructureError("Cannot modify list, when map already exists on this level")
 
 	def _setFieldValue(self, id, field):

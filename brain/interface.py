@@ -117,7 +117,7 @@ class Field:
 
 		self._engine = engine
 		self.name = name[:]
-		self.value = value
+		self.py_value = value
 
 	@classmethod
 	def fromNameStr(cls, engine, name_str, value=None):
@@ -141,6 +141,8 @@ class Field:
 		"""Get name of additional list column corresponding to given index"""
 		return "c" + str(index)
 
+	# Property, containing field value type
+
 	def __get_type_str(self):
 		"""Returns string with SQL type for stored value"""
 		return self._engine.getColumnType(self._value)
@@ -150,6 +152,8 @@ class Field:
 		self._value = self._engine.getValueClass(type_str)()
 
 	type_str = property(__get_type_str, __set_type_str)
+
+	# Property, containing value in DB representation
 
 	def __get_db_value(self):
 		if isinstance(self._value, Pointer):
@@ -165,19 +169,21 @@ class Field:
 
 	db_value = property(__get_db_value, __set_db_value)
 
-	def __get_value(self):
+	# Property, containing value in Python representation
+
+	def __get_py_value(self):
 		if isinstance(self._value, Pointer):
 			return self._value.py_value
 		else:
 			return self._value
 
-	def __set_value(self, value):
-		if value is None or value.__class__ in _POINTER_TYPES:
-			self._value = Pointer.fromPyValue(value)
+	def __set_py_value(self, py_value):
+		if py_value is None or py_value.__class__ in _POINTER_TYPES:
+			self._value = Pointer.fromPyValue(py_value)
 		else:
-			self._value = value
+			self._value = py_value
 
-	value = property(__get_value, __set_value)
+	py_value = property(__get_py_value, __set_py_value)
 
 	@property
 	def name_str_no_type(self):
@@ -304,7 +310,7 @@ class Field:
 		if not isinstance(other, Field):
 			return False
 
-		return (self.name == other.name) and (self.value == other.value)
+		return (self.name == other.name) and (self.py_value == other.py_value)
 
 
 #
@@ -433,7 +439,7 @@ class SearchRequest:
 			if operator in comparisons:
 
 				# if node operator is a comparison, it is a leaf of condition tree
-				val = operand2.value
+				val = operand2.py_value
 
 				# Nones only support EQ
 				if val is None and operator != op.EQ:

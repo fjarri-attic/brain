@@ -58,7 +58,7 @@ def _fieldsToTree(fields):
 	res = []
 
 	for field in fields:
-		_saveTo(res, 0, field.name, field.value)
+		_saveTo(res, 0, field.name, field.py_value)
 
 	# get rid of temporary root object and return only its first element
 	return res[0]
