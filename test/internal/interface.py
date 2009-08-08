@@ -61,6 +61,7 @@ class Format(unittest.TestCase):
 	def testCreateRequestEmptyData(self):
 		"""Test that creation request will fail without data provided"""
 		self.assertRaises(FormatError, CreateRequest, None)
+		self.assertRaises(FormatError, CreateRequest, [])
 
 	def testRequestWithNoID(self):
 		"""Test that requests throw exceptions when no ID is provided"""
@@ -133,13 +134,9 @@ class Format(unittest.TestCase):
 			'phone', 'something', '1111'
 		)
 
-	def testWrongValueType(self):
-		"""Test that exception is raised if value type is not supported"""
-		self.assertRaises(brain.FormatError, Field, None, [], bytearray(b'a'))
-
 	def testSearchRequestConditionEqSupportedTypes(self):
 		"""Test that all necessary types are supported for equality check"""
-		classes = [str, int, float, bytes]
+		classes = [str, int, float, bytes, list, dict]
 
 		for cls in classes:
 			c = SearchRequest.Condition(Field(None, ['fld']), op.EQ,
