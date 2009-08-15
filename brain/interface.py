@@ -2,7 +2,7 @@
 
 from . import op
 
-_POINTER_TYPES = [list, dict]
+_POINTER_TYPES = [type(None), list, dict]
 _SUPPORTED_TYPES = [int, str, float, bytes] + _POINTER_TYPES
 
 
@@ -39,8 +39,7 @@ class Pointer:
 	"""Class, representing special type of DB values - Nones and pointers to structures"""
 
 	def __init__(self):
-		self._none_code = 0
-		self._py_to_db = {dict: 1, list: 2}
+		self._py_to_db = {type(None): 0, dict: 1, list: 2}
 		self._db_to_py = {self._py_to_db[key]: key for key in self._py_to_db}
 		self.py_value = None
 
@@ -56,10 +55,10 @@ class Pointer:
 		return self._py_value
 
 	def __set_py_value(self, py_value):
-		if py_value is not None and not py_value.__class__ in self._py_to_db:
+		if type(py_value) not in self._py_to_db:
 			raise FormatError("Not supported Python value: " + repr(py_value))
 
-		self._db_value = self._none_code if py_value is None else self._py_to_db[py_value.__class__]
+		self._db_value = self._py_to_db[type(py_value)]
 		self._py_value = py_value
 
 	py_value = property(__get_py_value, __set_py_value)
@@ -70,7 +69,8 @@ class Pointer:
 		return self._db_value
 
 	def __set_db_value(self, db_value):
-		self._py_value = None if db_value == self._none_code else self._db_to_py[db_value]()
+		self._py_value = None if db_value == self._py_to_db[type(None)] else \
+			self._db_to_py[db_value]()
 		self._db_value = db_value
 
 	db_value = property(__get_db_value, __set_db_value)
@@ -97,7 +97,7 @@ class Field:
 
 		# check that list contains only strings, ints and Nones
 		for elem in name:
-			if elem is not None and elem.__class__ not in [str, int]:
+			if type(elem) not in [type(None), str, int]:
 				raise FormatError("Field name list must contain only integers, strings or Nones")
 
 			# name element should not be an empty string so that
@@ -106,8 +106,8 @@ class Field:
 				raise FormatError("Field name element should not be an empty string")
 
 		# check value type
-		if value is not None and not value.__class__ in _SUPPORTED_TYPES:
-			raise FormatError("Wrong value class: " + str(value.__class__))
+		if type(value) not in _SUPPORTED_TYPES:
+			raise FormatError("Wrong value class: " + str(type(value)))
 
 		self._engine = engine
 		self.name = name[:]
@@ -182,7 +182,7 @@ class Field:
 			return self._value
 
 	def __set_py_value(self, py_value):
-		if py_value is None or py_value.__class__ in _POINTER_TYPES:
+		if type(py_value) in _POINTER_TYPES:
 			self._value = Pointer.fromPyValue(py_value)
 		else:
 			self._value = py_value
@@ -326,7 +326,7 @@ class CreateRequest:
 		self.fields = fields
 
 	def __str__(self):
-		return self.__class__.__name__ + " for fields list " + repr(self.fields)
+		return type(self).__name__ + " for fields list " + repr(self.fields)
 
 
 class ModifyRequest:
@@ -343,7 +343,7 @@ class ModifyRequest:
 
 	def __str__(self):
 		return "{name} for object {id}{data}".format(
-			name=self.__class__.__name__,
+			name=type(self).__name__,
 			id=self.id,
 			data=("" if self.fields is None else ": " + repr(self.fields)))
 
@@ -360,7 +360,7 @@ class DeleteRequest:
 
 	def __str__(self):
 		return "{name} for object {id}{data}".format(
-			name=self.__class__.__name__,
+			name=type(self).__name__,
 			id=self.id,
 			data=("" if self.fields is None else ": " + repr(self.fields)))
 
@@ -377,7 +377,7 @@ class ReadRequest:
 
 	def __str__(self):
 		return "{name} for object {id}{data}".format(
-			name=self.__class__.__name__,
+			name=type(self).__name__,
 			id=self.id,
 			data=("" if self.fields is None else ": " + repr(self.fields)))
 
@@ -414,7 +414,7 @@ class InsertRequest:
 
 	def __str__(self):
 		return "{name} for object {id} and path {path}: {data}".format(
-			name=self.__class__.__name__,
+			name=type(self).__name__,
 			id=self.id,
 			path=self.path,
 			data=repr(self.field_groups))
@@ -441,8 +441,8 @@ class SearchRequest:
 					raise FormatError("Null value can be only used in equality")
 
 				# regexp is valid only for strings and blobs
-				if operator == op.REGEXP and val.__class__ not in [str, bytes]:
-					raise FormatError("Values of type " + val.__class__.__name__ +
+				if operator == op.REGEXP and type(val) not in [str, bytes]:
+					raise FormatError("Values of type " + type(val).__name__ +
 						" do not support regexp condition")
 				self.leaf = True
 			elif operator in operators:
@@ -482,7 +482,7 @@ class ObjectExistsRequest:
 
 	def __str__(self):
 		return "{name} for object {id}".format(
-			name=self.__class__.__name__,
+			name=type(self).__name__,
 			id=self.id)
 
 
@@ -490,12 +490,12 @@ class DumpRequest:
 	"""Request for dumping database contents"""
 
 	def __str__(self):
-		return self.__class__.__name__
+		return type(self).__name__
 
 
 class RepairRequest:
 	"""Request for rebuilding caching tables"""
 
 	def __str__(self):
-		return self.__class__.__name__
+		return type(self).__name__
 

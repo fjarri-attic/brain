@@ -227,7 +227,7 @@ class Connection:
 				request.condition is not None:
 			_propagateInversion(request.condition)
 
-		return handlers[request.__class__], request
+		return handlers[type(request)], request
 
 	def _processRequests(self, requests):
 		"""Start/stop transaction, handle exceptions"""

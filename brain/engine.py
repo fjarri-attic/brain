@@ -183,7 +183,7 @@ class _Sqlite3Engine(_Engine):
 			str: "TEXT", int: "INTEGER", float: "REAL", bytes: "BLOB",
 			interface.Pointer: "SHORT"
 		}
-		return types[val.__class__]
+		return types[type(val)]
 
 	def getValueClass(self, type_str):
 		"""Return Python class for the given SQL type"""
@@ -315,7 +315,7 @@ class _PostgreEngine(_Engine):
 			str: "TEXT", int: "INT8", float: "FLOAT8", bytes: "BYTEA",
 			interface.Pointer: "INT2"
 		}
-		return types[val.__class__]
+		return types[type(val)]
 
 	def getValueClass(self, type_str):
 		"""Return Python class for the given SQL type"""

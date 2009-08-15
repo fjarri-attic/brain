@@ -125,7 +125,7 @@ class RandomAction:
 			'deleteMany': self._constructDeleteArgs
 		}
 
-		if self._obj_contents.__class__ not in [list, dict] or len(self._obj_contents) == 0:
+		if type(self._obj_contents) not in [list, dict] or len(self._obj_contents) == 0:
 			del args_constructors['deleteMany']
 		if not listInData(self._obj_contents):
 			del args_constructors['insertMany']
