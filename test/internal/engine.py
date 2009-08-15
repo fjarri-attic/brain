@@ -272,6 +272,19 @@ class EngineTest(unittest.TestCase):
 			self.engine.getIdType(),
 			self.engine.getColumnType(id1))
 
+	def testGetTablesList(self):
+		"""Check operation of getTablesList()"""
+		test_tables = ['ttt1', 'ttt2', 'ttt3']
+		self.engine.begin()
+		for table in test_tables:
+			self.engine.execute("CREATE TABLE {} (col1 " + self.str_type + ")", [table])
+
+		tables_list = self.engine.getTablesList()
+
+		# there can be DB service tables in list
+		for table in test_tables:
+			self.assertTrue(table in tables_list)
+
 
 def suite(name, engine_tag, *args, **kwds):
 

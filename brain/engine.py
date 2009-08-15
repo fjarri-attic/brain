@@ -167,6 +167,10 @@ class _Sqlite3Engine(_Engine):
 			(name,)).fetchall()
 		return len(res) > 0
 
+	def getTablesList(self):
+		res = self._cur.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+		return [x[0] for x in res]
+
 	def tableIsEmpty(self, name):
 		return self._cur.execute("SELECT COUNT(*) FROM " + self.getSafeName(name)).fetchall()[0][0] == 0
 
@@ -293,6 +297,10 @@ class _PostgreEngine(_Engine):
 	def tableExists(self, name):
 		res = self._conn.prepare("SELECT * FROM pg_tables WHERE tablename=$1")(name)
 		return len(res) > 0
+
+	def getTablesList(self):
+		res = self._conn.prepare("SELECT tablename FROM pg_tables")()
+		return [x[0] for x in res]
 
 	def tableIsEmpty(self, name):
 		return self._conn.prepare("SELECT COUNT(*) FROM " + self.getSafeName(name))()[0][0] == 0
