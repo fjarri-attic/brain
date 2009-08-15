@@ -57,6 +57,57 @@ class _StructureLayer:
 		if not self._engine.tableExists(self._ID_TABLE):
 			self._engine.execute("CREATE table {} " + id_table_spec, [self._ID_TABLE])
 
+	def _deleteSupportTables(self):
+		self._engine.deleteTable(self._ID_TABLE)
+
+	def repairSupportTables(self):
+		"""Recreate support tables according to other information in DB"""
+
+		# if the repair request was created, we cannot rely on existing tables
+		self._deleteSupportTables()
+		self._createSupportTables()
+
+		# search for all field tables in database
+		tables = self._engine.getTablesList()
+
+		# we need to filter out non-field tables
+		tables.remove(self._ID_TABLE)
+		tables = [x for x in tables if Field.isFieldTableName(self._engine, x)]
+
+		# collect info from field tables and create refcounters table in memory
+		refcounters = {}
+		for table in tables:
+			res = self._engine.execute("SELECT id FROM {}", [table])
+			ids = [x[0] for x in res]
+			field = Field.fromNameStr(self._engine, table)
+			name_str_no_type = field.name_str_no_type
+			type_str = field.type_str
+
+			for obj_id in ids:
+				if obj_id not in refcounters:
+					refcounters[obj_id] = {}
+
+				if name_str_no_type not in refcounters[obj_id]:
+					refcounters[obj_id][name_str_no_type] = {}
+
+				if type_str not in refcounters[obj_id][name_str_no_type]:
+					refcounters[obj_id][name_str_no_type][type_str] = 1
+				else:
+					refcounters[obj_id][name_str_no_type][type_str] += 1
+
+		# flatten refcounters hierarchy
+		values = []
+		for obj_id in refcounters:
+			for name_str_no_type in refcounters[obj_id]:
+				for type_str in refcounters[obj_id][name_str_no_type]:
+					values.append([obj_id, name_str_no_type, type_str,
+						refcounters[obj_id][name_str_no_type][type_str]])
+
+		# fill refcounters table
+		for values_list in values:
+			self._engine.execute("INSERT INTO {} VALUES (?, ?, ?, ?)",
+				[self._ID_TABLE], values_list)
+
 	def deleteSpecification(self, id):
 		"""Delete all information about object from specification table"""
 		self._engine.execute("DELETE FROM {} WHERE " + self._ID_COLUMN + "=?",
@@ -150,7 +201,7 @@ class _StructureLayer:
 		# given field (if any) or just construct result list
 		res = []
 		for elem in l:
-			fld = Field.fromNameStr(self._engine, elem[0])
+			fld = Field.fromNameStrNoType(self._engine, elem[0])
 			if field is not None:
 				fld.name[:len(field.name)] = field.name
 			res.append(fld)
@@ -556,3 +607,6 @@ class LogicLayer:
 		ids = self.processSearchRequest(interface.SearchRequest())
 		return {obj_id: self.processReadRequest(interface.ReadRequest(obj_id))
 			for obj_id in ids}
+
+	def processRepairRequest(self, request):
+		self._structure.repairSupportTables()

@@ -114,11 +114,24 @@ class Field:
 		self.py_value = value
 
 	@classmethod
-	def fromNameStr(cls, engine, name_str, value=None):
-		"""Create object using stringified name instead of list"""
+	def fromNameStrNoType(cls, engine, name_str, value=None):
+		"""Create object using stringified name without embedded type instead of list"""
 
 		# cut prefix 'field' from the resulting list
 		return cls(engine, engine.getNameList(name_str)[1:], value)
+
+	@classmethod
+	def fromNameStr(cls, engine, name_str):
+		"""Create object using stringified name instead of list"""
+
+		name_list = engine.getNameList(name_str)
+		name = name_list[2:]
+		type_str = name_list[1]
+
+		obj = cls(engine, name)
+		obj.type_str = type_str
+
+		return obj
 
 	@classmethod
 	def isFieldTableName(cls, engine, name_str):
