@@ -120,6 +120,14 @@ class Field:
 		# cut prefix 'field' from the resulting list
 		return cls(engine, engine.getNameList(name_str)[1:], value)
 
+	@classmethod
+	def isFieldTableName(cls, engine, name_str):
+		"""Returns True if given name resembles name of the field table"""
+
+		# FIXME: this method is not very reliable, because it implies that
+		# engine creates name strings in format "<elem><sep><elem><sep>..."
+		return name_str.startswith(engine.getNameString(['field']))
+
 	def _getListColumnName(self, index):
 		"""Get name of additional list column corresponding to given index"""
 		return "c" + str(index)

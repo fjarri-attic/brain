@@ -7,6 +7,7 @@ sys.path.append(os.path.join(scriptdir, ".."))
 import unittest
 import helpers
 from brain.engine import *
+from brain.interface import Field
 
 
 class EngineTest(unittest.TestCase):
@@ -284,6 +285,12 @@ class EngineTest(unittest.TestCase):
 		# there can be DB service tables in list
 		for table in test_tables:
 			self.assertTrue(table in tables_list)
+
+	def testIsFieldTableName(self):
+		"""Check that Field.isFieldTableName works"""
+		f = Field(self.engine, ['aaa', 1])
+		self.assertTrue(Field.isFieldTableName(self.engine, f.name_str))
+		self.assertFalse(Field.isFieldTableName(self.engine, "blablabla"))
 
 
 def suite(name, engine_tag, *args, **kwds):
