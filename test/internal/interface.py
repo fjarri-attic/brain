@@ -204,7 +204,8 @@ class Format(unittest.TestCase):
 			    Pointer.fromPyValue({}),
 			    f,
 			    ObjectExistsRequest(temp_id),
-			    DumpRequest()
+			    DumpRequest(),
+			    RepairRequest()
 		]
 
 		for obj in objs:

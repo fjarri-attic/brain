@@ -182,6 +182,8 @@ def _transformResults(requests, results):
 			for obj_id in result:
 				result[obj_id] = _fieldsToTree(result[obj_id])
 			res.append(result)
+		elif isinstance(request, interface.RepairRequest):
+			res.append(None)
 
 	return res
 
@@ -208,7 +210,8 @@ class Connection:
 			interface.SearchRequest: self._logic.processSearchRequest,
 			interface.CreateRequest: self._logic.processCreateRequest,
 			interface.ObjectExistsRequest: self._logic.processObjectExistsRequest,
-			interface.DumpRequest: self._logic.processDumpRequest
+			interface.DumpRequest: self._logic.processDumpRequest,
+			interface.RepairRequest: self._logic.processRepairRequest
 		}
 
 		# Prepare handler and request, if necessary
@@ -361,6 +364,11 @@ class Connection:
 	def dump(self):
 		"""Dump the whole database contents"""
 		self._requests.append(interface.DumpRequest())
+
+	@_transacted
+	def repair(self):
+		"""Rebuild caching tables in database"""
+		self._requests.append(interface.RepairRequest())
 
 
 class FakeConnection:

@@ -470,3 +470,11 @@ class DumpRequest:
 
 	def __str__(self):
 		return self.__class__.__name__
+
+
+class RepairRequest:
+	"""Request for rebuilding caching tables"""
+
+	def __str__(self):
+		return self.__class__.__name__
+

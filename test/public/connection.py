@@ -255,6 +255,14 @@ class Connection(TestRequest):
 		"""Check that error is thrown if wrong engine tag is provided"""
 		self.assertRaises(brain.FacadeError, brain.connect, 'wrong_tag')
 
+	def testRepair(self):
+		"""Check that repair request at least does not spoil anything"""
+		self.prepareStandDifferentTypes()
+		data_before = self.conn.dump()
+		self.conn.repair()
+		data_after = self.conn.dump()
+		self.assertEqual(data_before, data_after)
+
 
 def get_class():
 	return Connection
