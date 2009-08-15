@@ -163,27 +163,25 @@ def _propagateInversion(condition):
 def _transformResults(requests, results):
 	"""Transform request results to a user-readable form"""
 	res = []
+
+	return_none = [interface.ModifyRequest, interface.InsertRequest,
+	    interface.DeleteRequest, interface.RepairRequest]
+
+	return_result = [interface.SearchRequest, interface.CreateRequest,
+	    interface.ObjectExistsRequest]
+
 	for result, request in zip(results, requests):
-		if isinstance(request, interface.ReadRequest):
+		request_type = type(request)
+		if request_type in return_none:
+			res.append(None)
+		elif request_type in return_result:
+			res.append(result)
+		elif isinstance(request, interface.ReadRequest):
 			res.append(_fieldsToTree(result))
-		elif isinstance(request, interface.ModifyRequest):
-			res.append(None)
-		elif isinstance(request, interface.InsertRequest):
-			res.append(None)
-		elif isinstance(request, interface.DeleteRequest):
-			res.append(None)
-		elif isinstance(request, interface.SearchRequest):
-			res.append(result)
-		elif isinstance(request, interface.CreateRequest):
-			res.append(result)
-		elif isinstance(request, interface.ObjectExistsRequest):
-			res.append(result)
 		elif isinstance(request, interface.DumpRequest):
 			for obj_id in result:
 				result[obj_id] = _fieldsToTree(result[obj_id])
 			res.append(result)
-		elif isinstance(request, interface.RepairRequest):
-			res.append(None)
 
 	return res
 
