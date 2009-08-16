@@ -7,6 +7,7 @@ see xmlrpchelpers.py for details
 import threading
 import random
 import string
+import inspect
 
 import sys, os.path
 scriptdir, scriptfile = os.path.split(sys.argv[0])
@@ -75,6 +76,36 @@ class _Dispatcher:
 
 	def export_getDefaultEngineTag(self):
 		return brain.getDefaultEngineTag()
+
+	def _listMethods(self):
+		return _CONNECTION_METHODS + ['close', 'getEngineTags', 'getDefaultEngineTag']
+
+	def _findFunction(self, method_name):
+		func = None
+		if method_name in _CONNECTION_METHODS + ['close']:
+			func = getattr(brain.connection.Connection, method_name)
+		elif method_name == 'connect':
+			func = brain.connect
+		elif method_name in ['getEngineTags', 'getDefaultEngineTag']:
+			func = getattr(brain.engine, method_name)
+		return func
+
+	def _methodHelp(self, method_name):
+		func = self._findFunction(method_name)
+
+		if func is None:
+			return None
+
+		return func.__doc__
+
+	def _get_method_argstring(self, method_name):
+		func = self._findFunction(method_name)
+
+		if func is None:
+			return None
+
+		print(func)
+		return inspect.formatargspec(inspect.getargspec(func))
 
 
 class BrainServer:

@@ -15,8 +15,9 @@ users from adding abilities to it. The right way would be to rewrite xmlrpc, and
 will be possibly done in the future
 """
 
-from xmlrpc.server import SimpleXMLRPCServer
-from xmlrpc.client import ServerProxy, Binary, Marshaller, Unmarshaller, Transport, MultiCall, MultiCallIterator
+from xmlrpc.server import DocXMLRPCServer
+from xmlrpc.client import ServerProxy, Binary, Marshaller, Unmarshaller, \
+	Transport, MultiCall, MultiCallIterator
 import xmlrpc.client
 import re
 
@@ -187,6 +188,10 @@ class _KeywordInstance:
 		args=tuple(args)
 		return self._inst._dispatch(method, *args, **kwds)
 
+	def __getattr__(self, name):
+		return getattr(self._inst, name)
+
+
 class _KeywordFunction:
 	"""Wrapper for function calls with keyword arguments, server side"""
 
@@ -200,20 +205,25 @@ class _KeywordFunction:
 		return self._func(*args, **kwds)
 
 
-class MyXMLRPCServer(SimpleXMLRPCServer):
+class MyXMLRPCServer(DocXMLRPCServer):
 	"""Wrapper for XML RPC server, used for DB"""
 
 	def __init__(self, *args, **kwds):
 		kwds['allow_none'] = True
 		kwds['logRequests'] = False
-		SimpleXMLRPCServer.__init__(self, *args, **kwds)
+		DocXMLRPCServer.__init__(self, *args, **kwds)
+
+		self.set_server_title('Brain XML RPC server')
+		self.set_server_name('Brain XML RPC server methods')
 
 		# registering multicall function manually, because we should
 		# remove keyword argument before calling it
-		self.register_function(_KeywordFunction(self.system_multicall), 'system.multicall')
+		multicall = _KeywordFunction(self.system_multicall)
+		multicall.__doc__ = "XML RPC multicall support"
+		self.register_function(multicall, 'system.multicall')
 
 	def register_instance(self, inst):
-		SimpleXMLRPCServer.register_instance(self, _KeywordInstance(inst))
+		DocXMLRPCServer.register_instance(self, _KeywordInstance(inst))
 
 class _MyMultiCallMethod:
 	def __init__(self, call_list, name):
