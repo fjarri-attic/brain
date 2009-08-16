@@ -147,6 +147,7 @@ def _transacted(func):
 			if create_transaction:
 				return obj.commit()[0]
 
+	wrapper.__doc__ = func.__doc__
 	return wrapper
 
 def _propagateInversion(condition):
