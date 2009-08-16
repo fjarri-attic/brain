@@ -17,9 +17,11 @@ import os.path
 from . import interface
 
 def getEngineTags():
+	"""Get list of available engine tags"""
 	return list(_DB_ENGINES.keys())
 
 def getDefaultEngineTag():
+	"""Get tag of the default engine"""
 	return getEngineTags()[0]
 
 def getEngineByTag(tag):
