@@ -104,7 +104,8 @@ class _Dispatcher:
 		if func is None:
 			return None
 
-		return inspect.formatargspec(inspect.getargspec(func))
+		arg_spec = tuple(inspect.getfullargspec(func))
+		return inspect.formatargspec(*arg_spec)
 
 
 class BrainServer:
