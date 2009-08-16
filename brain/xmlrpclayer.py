@@ -104,7 +104,6 @@ class _Dispatcher:
 		if func is None:
 			return None
 
-		print(func)
 		return inspect.formatargspec(inspect.getargspec(func))
 
 
