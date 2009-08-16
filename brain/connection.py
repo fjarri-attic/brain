@@ -3,6 +3,7 @@ Facade for database - contains connect() and Connection class
 """
 
 import functools
+import inspect
 
 from . import interface, logic, engine, op
 from .interface import Field
@@ -73,7 +74,16 @@ def connect(engine_tag, *args, **kwds):
 	if engine_tag not in tags:
 		raise interface.FacadeError("Unknown DB engine: " + str(engine_tag))
 
-	engine_obj = engine.getEngineByTag(engine_tag)(*args, **kwds)
+	engine_class = engine.getEngineByTag(engine_tag)
+
+	# leave only those keyword arguments, which are supported by engine
+	argspec = inspect.getfullargspec(engine_class.__init__)
+	engine_kwds = {}
+	for key in kwds:
+		if key in argspec.args:
+			engine_kwds[key] = kwds[key]
+
+	engine_obj = engine_class(*args, **engine_kwds)
 
 	return Connection(engine_obj)
 

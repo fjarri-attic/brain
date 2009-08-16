@@ -23,14 +23,15 @@ class BrainXMLRPCError(brain.BrainError):
 # methods, calls to which will be forwared to connection object
 _CONNECTION_METHODS = ['create', 'modify', 'read', 'delete', 'insert',
 	'readMany', 'insertMany', 'deleteMany', 'objectExists', 'search',
-	'begin', 'beginSync', 'commit', 'rollback', 'dump']
+	'begin', 'beginSync', 'commit', 'rollback', 'dump', 'repair']
 
 
 class _Dispatcher:
 	"""Handles remote calls on server side, creates sessions and connection objects"""
 
-	def __init__(self):
+	def __init__(self, db_path=None):
 		self._sessions = {}
+		self._db_path = db_path
 		random.seed()
 
 	def _dispatch(self, method, *args, **kwds):
@@ -60,6 +61,8 @@ class _Dispatcher:
 
 	def export_connect(self, *args, **kwds):
 		session_id = "".join(random.sample(string.ascii_letters + string.digits, 8))
+		if self._db_path is not None:
+			kwds['db_path'] = self._db_path
 		self._sessions[session_id] = brain.connect(*args, **kwds)
 		return session_id
 
@@ -77,7 +80,7 @@ class _Dispatcher:
 class BrainServer:
 	"""Class for brain DB server"""
 
-	def __init__(self, port=8000, name=None):
+	def __init__(self, port=8000, name=None, db_path=None):
 
 		# server thread name
 		if name is None:
@@ -85,7 +88,7 @@ class BrainServer:
 
 		self._server = MyXMLRPCServer(("localhost", port))
 		self._server.allow_reuse_address = True
-		self._server.register_instance(_Dispatcher())
+		self._server.register_instance(_Dispatcher(db_path=db_path))
 		self._server_thread = threading.Thread(name=name,
 			target=self._server.serve_forever)
 

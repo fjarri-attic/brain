@@ -98,7 +98,10 @@ class _Engine:
 class _Sqlite3Engine(_Engine):
 	"""Wrapper for Sqlite 3 db engine"""
 
-	def __init__(self, name, open_existing=None):
+	def __init__(self, name, open_existing=None, db_path=None):
+
+		if db_path is not None and name is not None:
+			name = os.path.join(db_path, name)
 
 		if name is None:
 			name = ':memory:'

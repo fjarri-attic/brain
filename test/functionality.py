@@ -2,6 +2,8 @@
 
 import unittest
 import sys
+import tempfile
+import os
 
 import internal.interface
 import internal.engine
@@ -31,8 +33,12 @@ def runFunctionalityTests(all_engines=False, all_connections=False, all_storages
 	else:
 		engine_tags = {brain.getDefaultEngineTag(): None}
 
+	# folder for DBs which are represented by files
+	db_path = tempfile.mkdtemp(prefix='braindb')
+
 	storages = {
-		'sqlite3': [(IN_MEMORY, (None,), {}), ('file', ('test.db',), {'open_existing': 0})],
+		'sqlite3': [(IN_MEMORY, (None,), {}), ('file', ('test.db',),
+			{'open_existing': 0, 'db_path': db_path})],
 		'postgre': [('tempdb', ('tempdb',), {'open_existing': 0,
 			'port': 5432, 'user': 'postgres', 'password': ''})]
 	}
@@ -83,7 +89,7 @@ def runFunctionalityTests(all_engines=False, all_connections=False, all_storages
 	# Run tests
 
 	if all_connections:
-		xmlrpc_srv = brain.BrainServer()
+		xmlrpc_srv = brain.BrainServer(db_path=db_path)
 		xmlrpc_srv.start()
 
 	helpers.TextTestRunner(verbosity=verbosity).run(suite)
