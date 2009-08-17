@@ -66,8 +66,12 @@ def _fieldsToTree(fields):
 	return res[0]
 
 def connect(engine_tag, *args, **kwds):
-	"""Connect to database and return Connection object"""
-
+	"""
+	Connect to database.
+	engine_tag - tag of engine which handles the database layer
+	args and kwds - engine-specific parameters
+	Returns Connection object for local connections or session ID for remote connections.
+	"""
 	tags = engine.getEngineTags()
 	if engine_tag is None:
 		engine_tag = engine.getDefaultEngineTag()
@@ -251,11 +255,17 @@ class Connection:
 		return res
 
 	def close(self):
-		"""Disconnect from database. All uncommitted changes can be lost."""
+		"""
+		Disconnect from database.
+		All uncommitted changes will be lost.
+		"""
 		self._engine.close()
 
 	def begin(self):
-		"""Begin asynchronous transaction"""
+		"""
+		Begin asynchronous transaction.
+		All request results will be returned during commit.
+		"""
 		if not self._transaction:
 			self._transaction = True
 			self._sync = False
@@ -263,7 +273,10 @@ class Connection:
 			raise interface.FacadeError("Transaction is already in progress")
 
 	def beginSync(self):
-		"""Begin synchronous transaction"""
+		"""
+		Begin synchronous transaction.
+		Each request result will be returned instantly.
+		"""
 		if not self._transaction:
 			self._engine.begin()
 			self._transaction = True
@@ -272,7 +285,10 @@ class Connection:
 			raise interface.FacadeError("Transaction is already in progress")
 
 	def commit(self):
-		"""Commit current transaction. Returns results in case of asynchronous transaction"""
+		"""
+		Commit current transaction.
+		Returns results in case of asynchronous transaction.
+		"""
 		if not self._transaction:
 			raise interface.FacadeError("Transaction is not in progress")
 
@@ -302,54 +318,95 @@ class Connection:
 
 	@_transacted
 	def modify(self, id, value, path=None):
-		"""Create modification request and add it to queue"""
+		"""
+		Modify existing object.
+		id - object ID
+		value - data structure to save
+		path - path to place where to save value (root by default)
+		"""
 		if path is None:
 			path = []
 		fields = _flattenHierarchy(value, self._engine)
 		self._requests.append(interface.ModifyRequest(id, Field(self._engine, path), fields))
 
 	def read(self, id, path=None):
-		"""Create read request and add it to queue"""
+		"""
+		Read contents of existing object.
+		id - object ID
+		path - path in object to read from (root by default)
+		"""
 		return self.readMany(id, [path] if path is not None else None)
 
 	@_transacted
 	def readMany(self, id, paths=None):
-		"""Create multiple read request and add it to queue"""
+		"""
+		Read contents of existing object using several paths at once.
+		id - object ID
+		paths - list of paths to read from (result is composed into one structure)
+		"""
 		if paths is not None:
 			paths = [Field(self._engine, path) for path in paths]
 		self._requests.append(interface.ReadRequest(id, paths))
 
 	def insert(self, id, path, value):
-		"""Create insertion request and add it to queue"""
+		"""
+		Insert value into list.
+		id - object ID
+		path - path to insert to (must point to list)
+		value - data structure to insert
+		"""
 		return self.insertMany(id, path, [value])
 
 	@_transacted
 	def insertMany(self, id, path, values):
-		"""Create several values insertion request and add it to queue"""
+		"""
+		Insert several values into list.
+		id - object ID
+		path - path to insert to (must point to list)
+		values - list of data structures to insert
+		"""
 		self._requests.append(interface.InsertRequest(
 			id, Field(self._engine, path),
 			[_flattenHierarchy(value, self._engine) for value in values]))
 
 	def delete(self, id, path=None):
-		"""Create deletion request and add it to queue"""
+		"""
+		Delete existing object or its field.
+		id - object ID
+		path - path to value to delete (delete the whole object by default)
+		"""
 		return self.deleteMany(id, [path] if path is not None else None)
 
 	@_transacted
 	def deleteMany(self, id, paths=None):
-		"""Create many fields deletion request and add it to queue"""
+		"""
+		Delete existing object or some of its fields.
+		id - object ID
+		paths - list of paths to delete
+		"""
 		self._requests.append(interface.DeleteRequest(id,
 			[Field(self._engine, path) for path in paths] if paths is not None else None
 		))
 
 	@_transacted
-	def search(self, *args):
-		"""Create search request and add it to queue"""
-		condition = _tupleToSearchCondition(*args, engine=self._engine)
-		self._requests.append(interface.SearchRequest(condition))
+	def search(self, *condition):
+		"""
+		Search for object with specified fields.
+		condition - ([NOT, ]condition, operator, condition) or
+		([NOT, ]field_name, operator, value)
+		Returns list of object IDs.
+		"""
+		condition_obj = _tupleToSearchCondition(*condition, engine=self._engine)
+		self._requests.append(interface.SearchRequest(condition_obj))
 
 	@_transacted
 	def create(self, data, path=None):
-		"""Create creation request and add it to queue"""
+		"""
+		Create object with specified contents.
+		data - initial contents
+		path - path in object where to store these contents (root by default)
+		Returns new object ID.
+		"""
 		if path is None:
 			path = []
 		fields = _flattenHierarchy(data, self._engine)
@@ -361,17 +418,24 @@ class Connection:
 
 	@_transacted
 	def objectExists(self, id):
-		"""Create request which returns True if object with given ID exists"""
+		"""
+		Check whether object exists.
+		id - object ID
+		Returns True or False.
+		"""
 		self._requests.append(interface.ObjectExistsRequest(id))
 
 	@_transacted
 	def dump(self):
-		"""Dump the whole database contents"""
+		"""
+		Dump the whole database contents.
+		Returns map of object IDs to object contents.
+		"""
 		self._requests.append(interface.DumpRequest())
 
 	@_transacted
 	def repair(self):
-		"""Rebuild caching tables in database"""
+		"""Rebuild caching tables in database using existing contents."""
 		self._requests.append(interface.RepairRequest())
 
 
