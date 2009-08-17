@@ -78,9 +78,12 @@ class _Dispatcher:
 		return brain.getDefaultEngineTag()
 
 	def _listMethods(self):
+		"""Helper for documenting XML RPC server - returns list of instance method"""
 		return _CONNECTION_METHODS + ['close', 'getEngineTags', 'getDefaultEngineTag']
 
 	def _findFunction(self, method_name):
+		"""Returns instance function object by name"""
+
 		func = None
 		if method_name in _CONNECTION_METHODS + ['close']:
 			func = getattr(brain.connection.Connection, method_name)
@@ -91,6 +94,8 @@ class _Dispatcher:
 		return func
 
 	def _methodHelp(self, method_name):
+		"""Helper for documenting XML RPC server - returns method help by name"""
+
 		func = self._findFunction(method_name)
 
 		if func is None:
@@ -99,14 +104,20 @@ class _Dispatcher:
 		return inspect.getdoc(func)
 
 	def _get_method_argstring(self, method_name):
+		"""Helper for documenting XML RPC server - returns method argstring by name"""
+
 		func = self._findFunction(method_name)
 
 		if func is None:
 			return None
 
 		arg_spec = tuple(inspect.getfullargspec(func))
+
+		# replace first argument ('self', because they are the methods
+		# of Connection class) by 'session_id'
 		if method_name in _CONNECTION_METHODS + ['close']:
 			arg_spec[0][0] = 'session_id'
+
 		return inspect.formatargspec(*arg_spec)
 
 
