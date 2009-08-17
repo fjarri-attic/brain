@@ -96,7 +96,7 @@ class _Dispatcher:
 		if func is None:
 			return None
 
-		return func.__doc__
+		return inspect.getdoc(func)
 
 	def _get_method_argstring(self, method_name):
 		func = self._findFunction(method_name)
