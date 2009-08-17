@@ -7,7 +7,7 @@ import inspect
 
 from . import interface, logic, engine, op
 from .interface import Field
-
+from .decorator import decorator
 
 def _flattenHierarchy(data, engine):
 	"""Transform nested dictionaries and lists to a flat list of Field objects"""
@@ -113,42 +113,37 @@ def _tupleToSearchCondition(*args, engine):
 
 	return interface.SearchRequest.Condition(operand1, args[1 + shift], operand2, invert)
 
-def _transacted(func):
+@decorator
+def _transacted(func, obj, *args, **kwds):
 	"""Decorator for transacted methods of Connection"""
 
-	def wrapper(obj, *args, **kwds):
-		"""Function, which handles the transacted method"""
+	if obj._sync:
+	# synchronous transaction is currently in progress
 
-		if obj._sync:
-		# synchronous transaction is currently in progress
+		func(obj, *args, **kwds) # add request to list
 
-			func(obj, *args, **kwds) # add request to list
+		# try to process request, rollback on error
+		try:
+			handler, request = obj._prepareRequest(obj._requests[0])
+			res = handler(request)
+			processed = _transformResults(obj._requests, [res])
+		except:
+			obj.rollback()
+			raise
+		finally:
+			obj._requests = []
 
-			# try to process request, rollback on error
-			try:
-				handler, request = obj._prepareRequest(obj._requests[0])
-				res = handler(request)
-				processed = _transformResults(obj._requests, [res])
-			except:
-				obj.rollback()
-				raise
-			finally:
-				obj._requests = []
+		return processed[0]
+	else:
+	# no transaction or asynchronous transaction
 
-			return processed[0]
-		else:
-		# no transaction or asynchronous transaction
+		# if no transaction, create a new one
+		create_transaction = not obj._transaction
 
-			# if no transaction, create a new one
-			create_transaction = not obj._transaction
-
-			if create_transaction: obj.begin()
-			func(obj, *args, **kwds)
-			if create_transaction:
-				return obj.commit()[0]
-
-	wrapper.__doc__ = func.__doc__
-	return wrapper
+		if create_transaction: obj.begin()
+		func(obj, *args, **kwds)
+		if create_transaction:
+			return obj.commit()[0]
 
 def _propagateInversion(condition):
 	"""Propagate inversion flags to the leafs of condition tree"""

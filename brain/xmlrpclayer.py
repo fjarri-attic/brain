@@ -105,6 +105,8 @@ class _Dispatcher:
 			return None
 
 		arg_spec = tuple(inspect.getfullargspec(func))
+		if method_name in _CONNECTION_METHODS + ['close']:
+			arg_spec[0][0] = 'session_id'
 		return inspect.formatargspec(*arg_spec)
 
 
