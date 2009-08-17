@@ -79,7 +79,8 @@ class _Dispatcher:
 
 	def _listMethods(self):
 		"""Helper for documenting XML RPC server - returns list of instance method"""
-		return _CONNECTION_METHODS + ['close', 'getEngineTags', 'getDefaultEngineTag']
+		return _CONNECTION_METHODS + ['connect', 'close',
+			'getEngineTags', 'getDefaultEngineTag']
 
 	def _findFunction(self, method_name):
 		"""Returns instance function object by name"""
