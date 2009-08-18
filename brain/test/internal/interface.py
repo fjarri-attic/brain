@@ -2,13 +2,9 @@
 
 import unittest
 
-import sys, os.path
-scriptdir, scriptfile = os.path.split(sys.argv[0])
-sys.path.append(os.path.join(scriptdir, ".."))
-
 import brain
 import brain.op as op
-import helpers
+import brain.test.helpers as helpers
 from brain.interface import *
 
 

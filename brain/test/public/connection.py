@@ -3,13 +3,9 @@
 import unittest
 import copy
 
-import sys, os.path
-scriptdir, scriptfile = os.path.split(sys.argv[0])
-sys.path.append(os.path.join(scriptdir, ".."))
-
 import brain
 import brain.op as op
-from public.requests import TestRequest
+from brain.test.public.requests import TestRequest
 
 class Connection(TestRequest):
 	"""Test different uses of ModifyRequest"""

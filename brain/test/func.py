@@ -5,15 +5,11 @@ import sys
 import tempfile
 import os
 
-import internal.interface
-import internal.engine
+import brain.test.helpers as helpers
+import brain.test.internal.interface as interface
+import brain.test.internal.engine as engine
+import brain.test.public as public
 from public import delete, insert, modify, read, search, connection
-import public
-import helpers
-
-import sys, os.path
-scriptdir, scriptfile = os.path.split(sys.argv[0])
-sys.path.append(os.path.join(scriptdir, ".."))
 
 import brain
 
@@ -25,7 +21,7 @@ def runFunctionalityTests(all_engines=False, all_connections=False, all_storages
 	IN_MEMORY = 'memory' # tag for in-memory DB tests
 
 	suite = helpers.NamedTestSuite()
-	suite.addTest(internal.interface.suite())
+	suite.addTest(interface.suite())
 
 	if all_engines:
 		engine_tags = brain.getEngineTags()
@@ -52,7 +48,7 @@ def runFunctionalityTests(all_engines=False, all_connections=False, all_storages
 		for storage in storages[tag_str]:
 			storage_str, args, kwds = storage
 			test_tag = tag_str + "." + storage_str
-			suite.addTest(internal.engine.suite(test_tag,
+			suite.addTest(engine.suite(test_tag,
 				engine_tags[tag_str], *args, **kwds))
 
 	# add functionality tests

@@ -1,11 +1,8 @@
 """Unit tests for database enginr layer"""
 
-import sys, os.path
-scriptdir, scriptfile = os.path.split(sys.argv[0])
-sys.path.append(os.path.join(scriptdir, ".."))
-
 import unittest
-import helpers
+
+import brain.test.helpers as helpers
 from brain.engine import *
 from brain.interface import Field
 
