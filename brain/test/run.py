@@ -3,7 +3,7 @@
 import optparse
 import sys
 
-import functionality
+import func
 import fuzz
 
 # Parser settings
@@ -45,7 +45,7 @@ if mode not in modes:
 opts, args = parser.parse_args(args)
 
 if mode == 'func':
-	functionality.runFunctionalityTests(all_connections=opts.all_connections,
+	func.runFunctionalityTests(all_connections=opts.all_connections,
 		all_engines=opts.all_engines, all_storages=opts.all_storages,
 		verbosity=opts.verbosity)
 elif mode == 'fuzz':
