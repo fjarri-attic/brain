@@ -94,6 +94,18 @@ class _Dispatcher:
 			func = getattr(brain.engine, method_name)
 		return func
 
+	def _constructEnginesList(self):
+		"""Returns the description of constructor arguments for all available engines"""
+
+		tags = brain.getEngineTags()
+		res = ""
+		for tag in tags:
+			engine_class = brain.engine.getEngineByTag(tag)
+			arg_spec = tuple(inspect.getfullargspec(engine_class.__init__))
+			arg_str = inspect.formatargspec(*arg_spec)
+			res += tag + ": " + arg_str + "\n"
+		return res
+
 	def _methodHelp(self, method_name):
 		"""Helper for documenting XML RPC server - returns method help by name"""
 
@@ -102,7 +114,12 @@ class _Dispatcher:
 		if func is None:
 			return None
 
-		return inspect.getdoc(func)
+		func_help = inspect.getdoc(func)
+
+		if method_name == "getEngineTags":
+			return func_help + "\nEngine constructors:\n" + self._constructEnginesList()
+		else:
+			return func_help
 
 	def _get_method_argstring(self, method_name):
 		"""Helper for documenting XML RPC server - returns method argstring by name"""
