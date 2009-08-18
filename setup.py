@@ -1,9 +1,14 @@
-from distutils.core import setup
+try:
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
+
+VERSION = '0.0.11'
 
 setup(
 	name='brain',
 	packages=['brain', 'brain.test', 'brain.test.public', 'brain.test.internal'],
-	version='0.0.11',
+	version=VERSION,
 	author='Bogdan Opanchuk',
 	author_email='bg@bk.ru',
 	url='http://github.com/Manticore/brain',
