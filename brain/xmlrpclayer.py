@@ -98,12 +98,15 @@ class _Dispatcher:
 		"""Returns the description of constructor arguments for all available engines"""
 
 		tags = brain.getEngineTags()
+		default_tag = brain.getDefaultEngineTag()
+
 		res = ""
 		for tag in tags:
 			engine_class = brain.engine.getEngineByTag(tag)
 			arg_spec = tuple(inspect.getfullargspec(engine_class.__init__))
 			arg_str = inspect.formatargspec(*arg_spec)
-			res += tag + ": " + arg_str + "\n"
+			default = " (default)" if tag == default_tag else ""
+			res += tag + default + ": " + arg_str + "\n"
 		return res
 
 	def _methodHelp(self, method_name):
