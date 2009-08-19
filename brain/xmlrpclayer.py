@@ -24,7 +24,7 @@ class BrainXMLRPCError(brain.BrainError):
 # methods, calls to which will be forwared to connection object
 _CONNECTION_METHODS = ['create', 'modify', 'read', 'delete', 'insert',
 	'readMany', 'insertMany', 'deleteMany', 'objectExists', 'search',
-	'begin', 'beginSync', 'commit', 'rollback', 'dump', 'repair']
+	'begin', 'beginSync', 'beginAsync', 'commit', 'rollback', 'dump', 'repair']
 
 
 class _Dispatcher:
@@ -142,7 +142,7 @@ class _Dispatcher:
 		return inspect.formatargspec(*arg_spec)
 
 
-class BrainServer:
+class Server:
 	"""Class for brain DB server"""
 
 	def __init__(self, port=8000, name=None, db_path=None):
@@ -167,7 +167,7 @@ class BrainServer:
 		self._server_thread.join()
 
 
-class BrainClient:
+class Client:
 	"""Class for brain DB client"""
 
 	def __init__(self, addr):
@@ -211,20 +211,23 @@ class _RemoteConnection:
 			method = getattr(self._client, name)
 			return wrapper_session
 
+	def begin(self, sync):
+		if self._transaction:
+			raise FacadeError("Transaction is already in progress")
+
+		if sync:
+			self.__getattr__('beginSync')()
+		else:
+			self._multicall = MyMultiCall(self._client, self._session_id)
+			self._multicall.beginAsync()
+
+		self._transaction = True
+
 	def beginSync(self):
-		if self._transaction:
-			raise FacadeError("Transaction is already in progress")
+		self.begin(sync=True)
 
-		self.__getattr__('beginSync')()
-		self._transaction = True
-
-	def begin(self):
-		if self._transaction:
-			raise FacadeError("Transaction is already in progress")
-
-		self._multicall = MyMultiCall(self._client, self._session_id)
-		self._multicall.begin()
-		self._transaction = True
+	def beginAsync(self):
+		self.begin(sync=False)
 
 	def rollback(self):
 		if not self._transaction:

@@ -144,7 +144,7 @@ def _transacted(func, obj, *args, **kwds):
 		# if no transaction, create a new one
 		create_transaction = not obj._transaction
 
-		if create_transaction: obj.begin()
+		if create_transaction: obj.beginAsync()
 		func(obj, *args, **kwds)
 		if create_transaction:
 			return obj.commit()[0]
@@ -261,28 +261,30 @@ class Connection:
 		"""
 		self._engine.close()
 
-	def begin(self):
+	def begin(self, sync):
+		"""Begin synchronous or asynchronous transaction."""
+		if not self._transaction:
+			if sync:
+				self._engine.begin()
+
+			self._transaction = True
+			self._sync = sync
+		else:
+			raise interface.FacadeError("Transaction is already in progress")
+
+	def beginAsync(self):
 		"""
 		Begin asynchronous transaction.
 		All request results will be returned during commit.
 		"""
-		if not self._transaction:
-			self._transaction = True
-			self._sync = False
-		else:
-			raise interface.FacadeError("Transaction is already in progress")
+		self.begin(sync=False)
 
 	def beginSync(self):
 		"""
 		Begin synchronous transaction.
 		Each request result will be returned instantly.
 		"""
-		if not self._transaction:
-			self._engine.begin()
-			self._transaction = True
-			self._sync = True
-		else:
-			raise interface.FacadeError("Transaction is already in progress")
+		self.begin(sync=True)
 
 	def commit(self):
 		"""

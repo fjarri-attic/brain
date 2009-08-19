@@ -38,7 +38,7 @@ class Connection(TestRequest):
 		data2 = {'name': 'Roy', 'friends': ['Ned', 'Mark']}
 
 		# create two objects
-		self.conn.begin()
+		self.conn.beginAsync()
 		self.conn.create(data1)
 		self.conn.create(data2)
 		results = self.conn.commit()
@@ -54,7 +54,7 @@ class Connection(TestRequest):
 		"""Check asynchronous transaction rollback"""
 		self.prepareStandNoList()
 
-		self.conn.begin()
+		self.conn.beginAsync()
 		self.conn.modify(self.id1, 'Zed', ['name'])
 		self.conn.rollback()
 
@@ -66,7 +66,7 @@ class Connection(TestRequest):
 		"""Check that asynchronous transaction is rolled back completely on error"""
 		self.prepareStandSimpleList()
 
-		self.conn.begin()
+		self.conn.beginAsync()
 		self.conn.modify(self.id2, 'RRR', ['tracks', 'fld']) # this will raise an exception
 		self.conn.modify(self.id1, 'Zed', ['name'])
 		self.assertRaises(brain.StructureError, self.conn.commit)
@@ -82,7 +82,7 @@ class Connection(TestRequest):
 		data = {'name': 'Earl', 'friends': ['Cat', 'Dog']}
 
 		# test all possible requests
-		self.conn.begin()
+		self.conn.beginAsync()
 		self.conn.modify(self.id1, 'Zed', ['name'])
 		self.conn.create(data)
 		self.conn.read(self.id2)
@@ -158,13 +158,13 @@ class Connection(TestRequest):
 
 	def testBeginDuringTransaction(self):
 		"""Check that begin() raises proper exception when transaction is in progress"""
-		self.conn.begin()
-		self.assertRaises(brain.FacadeError, self.conn.begin)
+		self.conn.beginAsync()
+		self.assertRaises(brain.FacadeError, self.conn.beginAsync)
 		self.assertRaises(brain.FacadeError, self.conn.beginSync)
 		self.conn.commit()
 
 		self.conn.beginSync()
-		self.assertRaises(brain.FacadeError, self.conn.begin)
+		self.assertRaises(brain.FacadeError, self.conn.beginAsync)
 		self.assertRaises(brain.FacadeError, self.conn.beginSync)
 		self.conn.commit()
 
