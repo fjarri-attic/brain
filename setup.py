@@ -3,20 +3,13 @@ try:
 except ImportError:
     from distutils.core import setup
 
+import os.path
+import sys
+
 VERSION = '0.0.12'
 
-DOCUMENTATION = r"""
-Brain DDB package
-=============================================================
-
-.. contents::
-
-Overview
-------------------------------------------------
-
-This package is an abstraction layer over SQL engines which makes relational databases
-look like document ones.
-"""
+scriptdir, script= os.path.split(sys.argv[0])
+DOCUMENTATION = open(os.path.join(scriptdir, 'documentation.rst')).read()
 
 setup(
 	name='brain',
