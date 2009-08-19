@@ -169,6 +169,34 @@ Therefore ``commit()`` returned both their results as a list.
 XML RPC layer
 ~~~~~~~~~~~~~
 
+Brain has embedded XML RPC server and client. First, we will create and start server:
+
+ >>> srv = brain.Server()
+ >>> srv.start()
+
+Now server is active on localhost, port 8000 (by default). It is executed in its own thread,
+so start() returns immediately. If you enter http://localhost:8000 in your browser, you
+will get a page with list of functions the server supports.
+
+Then we should create the client - either in this session, in other process or even on
+the other computer:
+
+ >>> cl = brain.Client('http://localhost:8000')
+
+And client object gives us the ability to create connections. The format of its ``connection()``
+method is the same as for ``brain.connect()``:
+
+ >>> conn = cl.connect(None, None)
+
+This connection object behaves exactly the same as the object returned by brain.connect().
+You can try all examples from previous sections - they all should work. In the end you
+should close the connection and stop server:
+
+ >>> conn.close()
+ >>> srv.stop()
+
+Unlike ``start()``, ``stop()`` waits for server to shut down.
+
 Reference
 ---------
 
