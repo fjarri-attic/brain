@@ -200,7 +200,88 @@ Unlike ``start()``, ``stop()`` waits for server to shut down.
 Reference
 ---------
 
-connect
+Known limitations
+~~~~~~~~~~~~~~~~~
+
+Value limitations:
+ * Currently the following Python types are supported: None, int, float, str and bytes.
+ * Integers are limited to 8 bytes (by DB engines) and to 4 bytes by XML RPC protocol.
+
+Structure limitations:
+ * Each object can contain arbitrarily combined values, lists and dictionaries.
+ * Structure depth is not limited theoretically, but in practice it is - by DB engine.
+ * Lists and dictionaries can be empty.
+ * Dictionary keys should have string type.
+
+connect()
+~~~~~~~~~
+
+Connect to the database (or create the new one).
+
+``connect(engine_tag, *args, **kwds)``
+
+``engine_tag``:
+  String, specifying the DB engine to use. Can be obtained by ``getEngineTags()``.
+  If equal to ``None``, the default tag is used; its value can be obtained using ``getDefaultEngineTag()``.
+
+``args``, ``kwds``:
+  Engine-specific parameters. See `Engines` section for further information.
+
+Returns ``Connection`` object.
+
+Connection, RemoteConnection
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+These objects represent the connection to the database. They have exactly the same public interface,
+so only connection methods will be described.
+
+Engines
 ~~~~~~~
 
-Entry for connect()
+Currently two engines are supported:
+
+**sqlite3**:
+  SQLite 3 engine, built in Python 3.
+
+  ``(name, open_existing=None, db_path=None)``
+
+  ``name``:
+    Database file name. If equal to ``None``, in-memory database is created.
+
+  ``open_existing``:
+    Ignored if ``name`` is equal to None.
+
+    If equal to True, existing database file will be opened or an exception will be raised if it
+    does not exist.
+
+    If equal to False, new database file will be created (in place of the existing one, if
+    necessary)
+
+    If equal to None, existing database will be opened or the new one will be created, if
+    the database file does not exist.
+
+  ``db_path``:
+    If is not None, will be concatenated (using platform-specific path join) with ``name``
+
+**postgre**:
+  Postgre 8 engine. Will be used if `py-postgresql <http://python.projects.postgresql.org>`_ is installed.
+
+  ``(name, open_existing=None, host='localhost', port=5432, user='postgres', password='', connection_limit=-1)``
+
+  ``name``:
+    Database name.
+
+  ``open_existing``:
+    Same logic as for SQLite3 engine
+
+  ``host``:
+    Postgre server name
+
+  ``port``:
+    Postgre server port
+
+  ``user``, ``password``:
+    Credentials for connecting to Postgre server
+
+  ``connection_limit``:
+    Connection limit for newly created database. Unlimited by default.
