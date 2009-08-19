@@ -55,7 +55,7 @@ def runFunctionalityTests(all_engines=False, all_connections=False, all_storages
 
 	class XMLRPCGenerator:
 		def __init__(self):
-			self._client = brain.BrainClient('http://localhost:8000')
+			self._client = brain.Client('http://localhost:8000')
 
 		def __getattr__(self, name):
 			return getattr(self._client, name)
@@ -85,7 +85,7 @@ def runFunctionalityTests(all_engines=False, all_connections=False, all_storages
 	# Run tests
 
 	if all_connections:
-		xmlrpc_srv = brain.BrainServer(db_path=db_path)
+		xmlrpc_srv = brain.Server(db_path=db_path)
 		xmlrpc_srv.start()
 
 	helpers.TextTestRunner(verbosity=verbosity).run(suite)
