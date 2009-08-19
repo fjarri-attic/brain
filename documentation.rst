@@ -3,10 +3,10 @@ Brain - DDB-like front-end for SQL engines
 
 .. contents::
 
-Overview
---------
+Documentation is under construction
+-----------------------------------
 
-This is an overview
+Just give me a few days.
 
 Quick start
 -----------
