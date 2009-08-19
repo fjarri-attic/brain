@@ -11,8 +11,11 @@ This is an overview
 Quick start
 -----------
 
-This section will show only the basic usage examples. For exhaustive information please consult
+This section will show only the simple usage examples. For exhaustive information please consult
 the reference entries for corresponding functions.
+
+Basic functions
+~~~~~~~~~~~~~~~
 
 First, import the module:
 
@@ -20,7 +23,7 @@ First, import the module:
 
  >>> import brain
 
-Then we will need to connect to existing database or create the new one. 
+Then we will need to connect to existing database or create the new one.
 In this example we will use the default DB engine (sqlite3) and in-memory database.
 First None stands for so called "engine tag" (which identifies DB engine to use),
 and the second one stands for DB name (which is mandatory for sqlite3 engine).
@@ -66,7 +69,7 @@ type or data structure) and the third one is the "path" to some place inside obj
 is a list, whose elements can be strings, integers or Nones. String element corresponds to key
 in dictionary, integer to list index, and None to list mask.
 
-You may have noticed that the second object contains a list. New elements can be added 
+You may have noticed that the second object contains a list. New elements can be added
 to list in two ways - either using modify() with path, specifying list index to create,
 or inserting new element to some place in list:
 
@@ -82,7 +85,7 @@ or inserting new element to some place in list:
  >>> print(conn.read(id2))
  {'list': [4, 1, 2, 'some_value', 3, 5], 'id1': 1}
 
-First action creates the element with index 3 in list; note that it is expanded automatically. 
+First action creates the element with index 3 in list; note that it is expanded automatically.
 Second action inserts the new element to the beginning of the list. Third action inserts
 the new element to the end of the list.
 
@@ -117,7 +120,7 @@ Connection should be closed using close() after it is not longer needed. In case
 in-memory database, of course, all data will be lost after call to close().
 
 Transaction support
--------------------
+~~~~~~~~~~~~~~~~~~~
 
 One of the main advantages of using the developed SQL engine as a back-end is the
 ACID compatibility. As a result, brain front-end has full transaction support too.
@@ -127,17 +130,68 @@ each request (create, modify, insert and so on) implicitly. In case of some unde
 error, this transaction is rolled back, so the request cannot be completed partially.
 
 There are two types of transactions - synchronous and asynchronous. During the
-synchronous transaction you get request results instantly; during asynchronous transaction
+synchronous transaction you get request results instantly; during the asynchronous one
 requests do not return any results - all results are returned by commit() as a list.
 
-Synchronous transaction
-~~~~~~~~~~~~~~~~~~~~~~~
+Let's illustrate this by several simple examples. First, connect to database and
+create some objects.
 
+.. code-block:: python
 
+ >>> import brain
+ >>> conn = brain.connect(None, None)
+ >>> id1 = conn.create({'a': 1, 'b': 2})
+ >>> id2 = conn.create({'c': 3, 'd': 4})
 
+For each of two create()'s above transactions were started and committed implicitly
+(because there were not any active transactions at the moment). Now we will create synchronous
+transaction explicitly:
+
+.. code-block:: python
+
+ >>> conn.beginSync()
+ >>> conn.modify(id1, 10, ['a'])
+ >>> print(conn.read(id1))
+ {'a': 10, 'b': 2}
+ >>> conn.commit()
+ >>> print(conn.read(id1))
+ {'a': 10, 'b': 2}
+
+Note that during synchronous transaction modifications become visible instantly. Now
+consider the similar operation inside a transaction, but this time we will roll it back:
+
+.. code-block:: python
+
+ >>> conn.beginSync()
+ >>> conn.modify(id1, 20, ['a'])
+ >>> print(conn.read(id1))
+ {'a': 20, 'b': 2}
+ >>> conn.rollback()
+ >>> print(conn.read(id1))
+ {'a': 10, 'b': 2}
+
+Like in the previous example, modification instantly becomes visible, but after the rollback
+it is gone.
+
+Asynchronous transactions are slightly different. During the transaction requests will not
+return values, because they are not, in fact, executed - they are stored inside the connection
+object and passed to DB engine in one single package when commit() is called. If the user
+changes his mind and calls rollback(), all this package is simply discarded.
+
+.. code-block::python
+
+ >>> conn.beginAsync()
+ >>> conn.modify(id1, 0, ['a'])
+ >>> conn.read(id1)
+ >>> print(conn.commit())
+ [None, {'a': 0, 'b': 2}]
+
+In the example above there were two requests inside a transaction; first one, modify()
+does not return anything, and the second one, read(), returned object contents.
+Therefore commit() returned both their results as a list.
 
 XML RPC layer
--------------
+~~~~~~~~~~~~~
 
 Reference
 ---------
