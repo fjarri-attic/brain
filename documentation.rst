@@ -213,8 +213,10 @@ Structure limitations:
  * Lists and dictionaries can be empty.
  * Dictionary keys should have string type.
 
-connect()
-~~~~~~~~~
+.. _connect():
+
+brain.connect()
+~~~~~~~~~~~~~~~
 
 Connect to the database (or create the new one).
 
@@ -235,7 +237,7 @@ Connection, RemoteConnection
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 These objects represent the connection to the database. They have exactly the same public interface,
-so only connection methods will be described.
+so only Connection methods will be described.
 
 Currently the following connection methods are available:
 
@@ -277,6 +279,8 @@ will be raised.
 Connection.beginAsync()
 ~~~~~~~~~~~~~~~~~~~~~~~
 
+This function is an alias for `begin()`_ (equals to ``begin(sync=False)``)
+
 Start asynchronous transaction. During the asynchronous transaction requests to database
 are not processed, just stored inside the connection. Correspondingly, actual database
 transaction is not started. When `commit()`_ is called, database transaction is created,
@@ -288,7 +292,15 @@ of remote operations (one XML RPC multicall is faster than several single calls)
 But, of course, this method is less convenient than the synchronous 
 or implicit transaction.
 
-This function is an alias for `begin()`_ (equals to ``begin(sync=False)``)
+Example:
+
+ >>> id1 = conn.create({'name': 'Bob'})
+ >>> conn.beginAsync()
+ >>> conn.modify(id1, 'Carl', ['name'])
+ >>> print(conn.read(id1))
+ None
+ >>> print(conn.commit())
+ [None, {'name': 'Carl'}]
 
 **Arguments**: ``beginAsync()``
 
@@ -297,6 +309,8 @@ This function is an alias for `begin()`_ (equals to ``begin(sync=False)``)
 Connection.beginSync()
 ~~~~~~~~~~~~~~~~~~~~~~
 
+This function is an alias for `begin()`_ (equals to ``begin(sync=True)``)
+
 Start synchronous transaction. During the synchronous transaction request results are available
 instantly (for the same connection object), so one can perfomr complex actions inside
 one transaction. On the downside, actual database transaction is opened all the time,
@@ -304,7 +318,14 @@ probably locking the database (depends on the engine). In case of remote connect
 synchronous transaction means that there will be several requests/responses performed,
 slowing down transaction processing.
 
-This function is an alias for `begin()`_ (equals to ``begin(sync=True)``)
+Example:
+
+ >>> id1 = conn.create({'name': 'Bob'})
+ >>> conn.beginSync()
+ >>> conn.modify(id1, 'Carl', ['name'])
+ >>> print(conn.read(id1))
+ {'name': 'Carl'}
+ >>> conn.commit()
 
 **Arguments**: ``beginSync()``
 
@@ -334,6 +355,17 @@ Connection.rollback()
 Roll current transaction back. If transaction is not in progress, `FacadeError`_ will be raised.
 
 **Arguments**: ``rollback()``
+
+.. _FacadeError:
+
+Exceptions
+~~~~~~~~~~
+
+Following exceptions can be thrown by API:
+
+ ``brain.FacadeError``: 
+   Signals about the error in high-level wrappers. Can be caused by incorrect 
+   calls to `begin()`_ \\ `commit()`_ \\ `rollback()`_, incorrect engine tag and so on.
 
 Engines
 ~~~~~~~
