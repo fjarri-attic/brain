@@ -47,7 +47,7 @@ These objects can be read from database:
 You can see that the object ID is, in fact, a simple integer. It is true for sqlite3 engine,
 but each engine can use its own ID format.
 
-The next function is modify(); it allows us to change the contents of the object.
+The next function is `modify()`_; it allows us to change the contents of the object.
 
  >>> conn.modify(id1, 2, ['a'])
  >>> data1 = conn.read(id1)
@@ -60,7 +60,7 @@ is a list, whose elements can be strings, integers or Nones. String element corr
 in dictionary, integer to list index, and None to list mask.
 
 You may have noticed that the second object contains a list. New elements can be added
-to list in two ways - either using ``modify()`` with path, specifying list index to create,
+to list in two ways - either using `modify()`_ with path, specifying list index to create,
 or inserting new element to some place in list:
 
  >>> conn.modify(id2, 3, ['list', 3])
@@ -88,7 +88,7 @@ has list under 'list' key in dictionary, which, in turn has the first element eq
 Search request supports nested conditions and several types of comparisons (including regexps).
 See its reference page for more information.
 
-The last basic function is ``delete()``. It can delete the whole objects, or its parts
+The last basic function is `delete()`_. It can delete the whole objects, or its parts
 (dictionary keys or list elements).
 
  >>> print(conn.objectExists(id1))
@@ -100,8 +100,8 @@ The last basic function is ``delete()``. It can delete the whole objects, or its
  >>> print(conn.read(id2))
  {'id1': 1}
 
-Connection should be closed using ``close()`` after it is not longer needed. In case of
-in-memory database, of course, all data will be lost after call to ``close()``.
+Connection should be closed using `close()`_ after it is not longer needed. In case of
+in-memory database, of course, all data will be lost after call to `close()`_.
 
 Transaction support
 ~~~~~~~~~~~~~~~~~~~
@@ -115,7 +115,7 @@ error, this transaction is rolled back, so the request cannot be completed parti
 
 There are two types of transactions - synchronous and asynchronous. During the
 synchronous transaction you get request results instantly; during the asynchronous one
-requests do not return any results - all results are returned by ``commit()`` as a list.
+requests do not return any results - all results are returned by `commit()`_ as a list.
 
 Let's illustrate this by several simple examples. First, connect to database and
 create some objects.
@@ -125,7 +125,7 @@ create some objects.
  >>> id1 = conn.create({'a': 1, 'b': 2})
  >>> id2 = conn.create({'c': 3, 'd': 4})
 
-For each of two ``create()``'s above transactions were started and committed implicitly
+For each of two `create()`_'s above transactions were started and committed implicitly
 (because there were not any active transactions at the moment). Now we will create synchronous
 transaction explicitly:
 
@@ -153,8 +153,8 @@ it is gone.
 
 Asynchronous transactions are slightly different. During the transaction requests will not
 return values, because they are not, in fact, executed - they are stored inside the connection
-object and passed to DB engine in one single package when ``commit()`` is called. If the user
-changes his mind and calls ``rollback()``, all this package is simply discarded.
+object and passed to DB engine in one single package when `commit()`_ is called. If the user
+changes his mind and calls `rollback()`_, all this package is simply discarded.
 
  >>> conn.beginAsync()
  >>> conn.modify(id1, 0, ['a'])
@@ -162,9 +162,9 @@ changes his mind and calls ``rollback()``, all this package is simply discarded.
  >>> print(conn.commit())
  [None, {'a': 0, 'b': 2}]
 
-In the example above there were two requests inside a transaction; first one, ``modify()``
-does not return anything, and the second one, ``read()``, returned object contents.
-Therefore ``commit()`` returned both their results as a list.
+In the example above there were two requests inside a transaction; first one, `modify()`_
+does not return anything, and the second one, `read()`_, returned object contents.
+Therefore `commit()`_ returned both their results as a list.
 
 XML RPC layer
 ~~~~~~~~~~~~~
@@ -175,7 +175,7 @@ Brain has embedded XML RPC server and client. First, we will create and start se
  >>> srv.start()
 
 Now server is active on localhost, port 8000 (by default). It is executed in its own thread,
-so start() returns immediately. If you enter http://localhost:8000 in your browser, you
+so `start()`_ returns immediately. If you enter http://localhost:8000 in your browser, you
 will get a page with list of functions the server supports.
 
 Then we should create the client - either in this session, in other process or even on
@@ -183,19 +183,19 @@ the other computer:
 
  >>> cl = brain.Client('http://localhost:8000')
 
-And client object gives us the ability to create connections. The format of its ``connection()``
-method is the same as for ``brain.connect()``:
+And client object gives us the ability to create connections. The format of its ``connect()``
+method is the same as for `brain.connect()`_:
 
  >>> conn = cl.connect(None, None)
 
-This connection object behaves exactly the same as the object returned by brain.connect().
+This object behaves exactly the same as the `Connection`_ object returned by `brain.connect()`_.
 You can try all examples from previous sections - they all should work. In the end you
 should close the connection and stop server:
 
  >>> conn.close()
  >>> srv.stop()
 
-Unlike ``start()``, ``stop()`` waits for server to shut down.
+Unlike `start()`_, `stop()`_ waits for server to shut down.
 
 Reference
 ---------
@@ -218,22 +218,81 @@ connect()
 
 Connect to the database (or create the new one).
 
-``connect(engine_tag, *args, **kwds)``
+**Arguments**: ``connect(engine_tag, *args, **kwds)``
 
 ``engine_tag``:
-  String, specifying the DB engine to use. Can be obtained by ``getEngineTags()``.
-  If equal to ``None``, the default tag is used; its value can be obtained using ``getDefaultEngineTag()``.
+  String, specifying the DB engine to use. Can be obtained by `getEngineTags()`_.
+  If equal to ``None``, the default tag is used; its value can be obtained using `getDefaultEngineTag()`_.
 
 ``args``, ``kwds``:
-  Engine-specific parameters. See `Engines` section for further information.
+  Engine-specific parameters. See `Engines`_ section for further information.
 
-Returns ``Connection`` object.
+**Returns** `Connection`_ object.
+
+.. _Connection:
 
 Connection, RemoteConnection
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 These objects represent the connection to the database. They have exactly the same public interface,
 so only connection methods will be described.
+
+Currently the following connection methods are available:
+
+ * `begin()`_
+ * `beginAsync()`_
+ * `beginSync()`_
+ * `close()`_
+ * `commit()`_
+ * `create()`_
+ * `delete()`_
+ * `deleteMany()`_
+ * `dump()`_
+ * `insert()`_
+ * `insertMany()`_
+ * `modify()`_
+ * `objectExists()`_
+ * `read()`_
+ * `readMany()`_
+ * `repair()`_
+ * `rollback()`_
+ * `search()`_
+
+begin()
+~~~~~~~
+Start database transaction.
+
+**Arguments**: ``begin(sync)``
+
+``sync``:
+  Boolean value, specifying whether transaction should be synchronous or not
+  (see `beginSync()`_ or `beginAsync()`_ correspondingly for details)
+
+beginAsync()
+~~~~~~~~~~~~
+Start asynchronous transaction. During the asynchronous transaction requests to database
+are not processed, just stored inside the connection. Correspondingly, actual database
+transaction is not started. When `commit()`_ is called, database transaction is created,
+and all of requests are being processed at once, and their results are returned from
+`commit()`_ as a list.
+
+This decreases the time database is locked by the transaction and increases the speed 
+of remote operations (one XML RPC multicall is faster than several single calls). 
+But, of course, this method is less convenient than the synchronous 
+or implicit transaction.
+
+**Arguments**: ``beginAsync()``
+
+beginSync()
+~~~~~~~~~~~
+Start synchronous transaction. During the synchronous transaction request results are available
+instantly (for the same connection object), so one can perfomr complex actions inside
+one transaction. On the downside, actual database transaction is opened all the time,
+probably locking the database (depends on the engine). In case of remote connection,
+synchronous transaction means that there will be several requests/responses performed,
+slowing down transaction processing.
+
+**Arguments**: ``beginSync()``
 
 Engines
 ~~~~~~~
@@ -243,7 +302,7 @@ Currently two engines are supported:
 **sqlite3**:
   SQLite 3 engine, built in Python 3.
 
-  ``(name, open_existing=None, db_path=None)``
+  **Arguments**: ``(name, open_existing=None, db_path=None)``
 
   ``name``:
     Database file name. If equal to ``None``, in-memory database is created.
@@ -266,7 +325,7 @@ Currently two engines are supported:
 **postgre**:
   Postgre 8 engine. Will be used if `py-postgresql <http://python.projects.postgresql.org>`_ is installed.
 
-  ``(name, open_existing=None, host='localhost', port=5432, user='postgres', password='', connection_limit=-1)``
+  **Arguments**: ``(name, open_existing=None, host='localhost', port=5432, user='postgres', password='', connection_limit=-1)``
 
   ``name``:
     Database name.
