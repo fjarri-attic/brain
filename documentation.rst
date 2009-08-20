@@ -258,9 +258,13 @@ Currently the following connection methods are available:
  * `rollback()`_
  * `search()`_
 
-begin()
-~~~~~~~
-Start database transaction.
+.. _begin():
+
+Connection.begin()
+~~~~~~~~~~~~~~~~~~
+
+Start database transaction. If transaction is already in progress, `FacadeError`_ 
+will be raised.
 
 **Arguments**: ``begin(sync)``
 
@@ -268,8 +272,11 @@ Start database transaction.
   Boolean value, specifying whether transaction should be synchronous or not
   (see `beginSync()`_ or `beginAsync()`_ correspondingly for details)
 
-beginAsync()
-~~~~~~~~~~~~
+.. _beginAsync():
+
+Connection.beginAsync()
+~~~~~~~~~~~~~~~~~~~~~~~
+
 Start asynchronous transaction. During the asynchronous transaction requests to database
 are not processed, just stored inside the connection. Correspondingly, actual database
 transaction is not started. When `commit()`_ is called, database transaction is created,
@@ -281,10 +288,15 @@ of remote operations (one XML RPC multicall is faster than several single calls)
 But, of course, this method is less convenient than the synchronous 
 or implicit transaction.
 
+This function is an alias for `begin()`_ (equals to ``begin(sync=False)``)
+
 **Arguments**: ``beginAsync()``
 
-beginSync()
-~~~~~~~~~~~
+.. _beginSync():
+
+Connection.beginSync()
+~~~~~~~~~~~~~~~~~~~~~~
+
 Start synchronous transaction. During the synchronous transaction request results are available
 instantly (for the same connection object), so one can perfomr complex actions inside
 one transaction. On the downside, actual database transaction is opened all the time,
@@ -292,7 +304,36 @@ probably locking the database (depends on the engine). In case of remote connect
 synchronous transaction means that there will be several requests/responses performed,
 slowing down transaction processing.
 
+This function is an alias for `begin()`_ (equals to ``begin(sync=True)``)
+
 **Arguments**: ``beginSync()``
+
+.. _close():
+
+Connection.close()
+~~~~~~~~~~~~~~~~~~
+
+Close connection to the database. All uncommitted changes will be lost.
+
+**Arguments**: ``close()``
+
+.. _commit():
+
+Connection.commit()
+~~~~~~~~~~~~~~~~~~~
+
+Commit current transaction. If transaction is not in progress, `FacadeError`_ will be raised.
+
+**Arguments**: ``commit()``
+
+.. _rollback():
+
+Connection.rollback()
+~~~~~~~~~~~~~~~~~~~~~
+
+Roll current transaction back. If transaction is not in progress, `FacadeError`_ will be raised.
+
+**Arguments**: ``rollback()``
 
 Engines
 ~~~~~~~
