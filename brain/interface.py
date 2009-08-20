@@ -30,6 +30,9 @@ class FacadeError(BrainError):
 	"""Signals an error in facade layer"""
 	pass
 
+class EngineError(BrainError):
+	"""Signals an error in DB engine wrapper"""
+	pass
 
 #
 # Classes

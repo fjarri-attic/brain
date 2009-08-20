@@ -111,7 +111,7 @@ class _Sqlite3Engine(_Engine):
 			if open_existing == 1:
 			# do not create DB if it does not exist
 				if not os.path.exists(name):
-					raise Exception(name + " was not found")
+					raise interface.EngineError(name + " was not found")
 			elif open_existing == 0:
 			# recreate DB even if such file already exists
 				if os.path.exists(name):
@@ -223,10 +223,10 @@ class _PostgreEngine(_Engine):
 		port=5432, user='postgres', password='', connection_limit=-1):
 
 		if name is None:
-			raise Exception("Database name must be specified")
+			raise interface.EngineError("Database name must be specified")
 
 		if not isinstance(connection_limit, int):
-			raise Exception("Connection limit must be an integer")
+			raise interface.EngineError("Connection limit must be an integer")
 
 		conn = postgresql.open(user=user,
 			password=password, host=host, port=port)
@@ -238,7 +238,7 @@ class _PostgreEngine(_Engine):
 		if open_existing == 1:
 		# do not create DB if it does not exist
 			if not db_exists:
-				raise Exception(name + " was not found")
+				raise interface.EngineError(name + " was not found")
 		elif open_existing == 0:
 		# recreate DB even if such file already exists
 			if db_exists:
