@@ -76,21 +76,21 @@ class Delete(TestRequest):
 		"""Test deletion from the middle of the list"""
 		self.prepareStandSimpleList()
 		self.conn.delete(self.id1, ['tracks', 1])
-		res = self.conn.read(self.id1, ['tracks', None])
+		res = self.conn.readByMask(self.id1, ['tracks', None])
 		self.assertEqual(res, {'tracks': ['Track 1', 'Track 3']})
 
 	def testSimpleListFromBeginning(self):
 		"""Test deletion from the beginning of the list"""
 		self.prepareStandSimpleList()
 		self.conn.delete(self.id1, ['tracks', 0])
-		res = self.conn.read(self.id1, ['tracks', None])
+		res = self.conn.readByMask(self.id1, ['tracks', None])
 		self.assertEqual(res, {'tracks': ['Track 2', 'Track 3']})
 
 	def testSimpleListFromEnd(self):
 		"""Test deletion from the end of the list"""
 		self.prepareStandSimpleList()
 		self.conn.delete(self.id1, ['tracks', 2])
-		res = self.conn.read(self.id1, ['tracks', None])
+		res = self.conn.readByMask(self.id1, ['tracks', None])
 		self.assertEqual(res, {'tracks': ['Track 1', 'Track 2']})
 
 	def testNestedListFromMiddle(self):
@@ -99,14 +99,14 @@ class Delete(TestRequest):
 		self.conn.delete(self.id2, ['tracks', 1])
 
 		# Check that deletion and reenumeration occurred
-		res = self.conn.read(self.id2, ['tracks', None, 'Name'])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'Name'])
 		self.assertEqual(res, {'tracks': [
 			{'Name': 'Track 1 name'},
 			{'Name': 'Track 3 name'}
 		]})
 
 		# Check that nested list is intact and reenumeration occurred in it too
-		res = self.conn.read(self.id2, ['tracks', None, 'Authors', None])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
 		self.assertEqual(res, {'tracks': [
 			{'Authors': ['Carl II', 'Dan']},
 			{'Authors': ['Rob']}
@@ -118,14 +118,14 @@ class Delete(TestRequest):
 		self.conn.delete(self.id2, ['tracks', 0])
 
 		# Check that deletion and reenumeration occurred
-		res = self.conn.read(self.id2, ['tracks', None, 'Name'])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'Name'])
 		self.assertEqual(res, {'tracks': [
 			{'Name': 'Track 2 name'},
 			{'Name': 'Track 3 name'}
 		]})
 
 		# Check that nested list is intact and reenumeration occurred in it too
-		res = self.conn.read(self.id2, ['tracks', None, 'Authors', None])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
 		self.assertEqual(res, {'tracks': [
 			{'Authors': ['Alex']}, {'Authors': ['Rob']}
 		]})
@@ -136,14 +136,14 @@ class Delete(TestRequest):
 		self.conn.delete(self.id2, ['tracks', 2])
 
 		# Check that deletion and reenumeration occurred
-		res = self.conn.read(self.id2, ['tracks', None, 'Name'])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'Name'])
 		self.assertEqual(res, {'tracks': [
 			{'Name': 'Track 1 name'},
 			{'Name': 'Track 2 name'}
 		]})
 
 		# Check that nested list is intact and reenumeration occurred in it too
-		res = self.conn.read(self.id2, ['tracks', None, 'Authors', None])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
 		self.assertEqual(res, {'tracks': [
 			{'Authors': ['Carl II', 'Dan']},
 			{'Authors': ['Alex']}
@@ -153,7 +153,7 @@ class Delete(TestRequest):
 		"""Test deletion using list mask, leaf list"""
 		self.prepareStandNestedList()
 		self.conn.delete(self.id2, ['tracks', 0, 'Authors', None])
-		res = self.conn.read(self.id2, ['tracks', None, 'Authors', None])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
 		self.assertEqual(res, {'tracks': [
 			None, {'Authors': ['Alex']}, {'Authors': ['Rob']}
 		]})
@@ -162,7 +162,7 @@ class Delete(TestRequest):
 		"""Test deletion using list mask, non-leaf list"""
 		self.prepareStandNestedList()
 		self.conn.delete(self.id2, ['tracks', None, 'Authors', 0])
-		res = self.conn.read(self.id2, ['tracks', None, 'Authors', None])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
 		self.assertEqual(res, {'tracks': [{'Authors': ['Dan']}]})
 
 	def testFromListKeepsNeighbors(self):
@@ -172,7 +172,7 @@ class Delete(TestRequest):
 		"""
 		self.prepareStandNestedList()
 		self.conn.delete(self.id2, ['tracks', 0, 'Authors', 0])
-		res = self.conn.read(self.id2, ['tracks', None, 'Authors', 0])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', 0])
 		self.assertEqual(res, {'tracks': [
 			{'Authors': ['Dan']},
 			{'Authors': ['Alex']},
@@ -222,7 +222,7 @@ class Delete(TestRequest):
 		"""Check that values of different types can be deleted at once by mask"""
 		self.prepareStandDifferentTypes()
 		self.conn.delete(self.id1, ['meta', None])
-		res = self.conn.read(self.id1, ['meta', None])
+		res = self.conn.readByMask(self.id1, ['meta', None])
 		self.assertEqual(res, [])
 
 	def testNoneValue(self):
@@ -240,14 +240,14 @@ class Delete(TestRequest):
 		# is defined; but it is not the last name element, so the field really
 		# does not point to list
 		self.conn.delete(self.id1, ['tracks', 0, 'Name'])
-		res = self.conn.read(self.id1, ['tracks', None, 'Name'])
+		res = self.conn.readByMask(self.id1, ['tracks', None, 'Name'])
 		self.assertEqual(res, {'tracks': [None, {'Name': 'Track 2 name'}]})
 
 	def testSubTree(self):
 		"""Check that one can delete a subtree at once"""
 		self.prepareStandDifferentTypes()
 		self.conn.delete(self.id1, ['tracks', 0])
-		res = self.conn.read(self.id1, ['tracks', None])
+		res = self.conn.readByMask(self.id1, ['tracks', None])
 		self.assertEqual(res, {'tracks': [{
 			'Name': 'Track 2 name',
 			'Length': 350.0,

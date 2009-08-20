@@ -17,25 +17,25 @@ class Read(TestRequest):
 	def testSomeFields(self):
 		"""Check the operation of reading some chosen fields"""
 		self.prepareStandNoList()
-		res = self.conn.read(self.id1, ['name'])
+		res = self.conn.readByMask(self.id1, ['name'])
 		self.assertEqual(res, {'name': 'Alex'})
 
 	def testNonExistingField(self):
 		"""Check that non-existent field is ignored during read"""
 		self.prepareStandNoList()
-		res = self.conn.read(self.id1, ['age'])
+		res = self.conn.readByMask(self.id1, ['age'])
 		self.assertEqual(res, [])
 
 	def testAddedList(self):
 		"""Check that list values can be read"""
 		self.prepareStandSimpleList()
-		res = self.conn.read(self.id1, ['tracks', None])
+		res = self.conn.readByMask(self.id1, ['tracks', None])
 		self.assertEqual(res, {'tracks': ['Track 1', 'Track 2', 'Track 3']})
 
 	def testAddedListComplexCondition(self):
 		"""Check that read request works properly when some list positions are defined"""
 		self.prepareStandNestedList()
-		res = self.conn.read(self.id1, ['tracks', None, 'Authors', 0])
+		res = self.conn.readByMask(self.id1, ['tracks', None, 'Authors', 0])
 		self.assertEqual(res, {'tracks': [
 			{'Authors': ['Alex']},
 			{'Authors': ['Carl I']}
@@ -44,7 +44,7 @@ class Read(TestRequest):
 	def testFromMiddleLevelList(self):
 		"""Check that one can read from list in the middle of the hierarchy"""
 		self.prepareStandNestedList()
-		res = self.conn.read(self.id1, ['tracks', None, 'Name'])
+		res = self.conn.readByMask(self.id1, ['tracks', None, 'Name'])
 		self.assertEqual(res, {'tracks': [
 			{'Name': 'Track 1 name'},
 			{'Name': 'Track 2 name'}
@@ -59,7 +59,7 @@ class Read(TestRequest):
 	def testSeveralTypesAtOnce(self):
 		"""Check that different values of types can be read at once by mask"""
 		self.prepareStandDifferentTypes()
-		res = self.conn.read(self.id1, ['meta', None])
+		res = self.conn.readByMask(self.id1, ['meta', None])
 		self.assertEqual(res, {'meta': [
 			'Pikeman', 'Archer', 1, 2, 4.0, 5.0, b'Gryphon', b'Swordsman'
 		]})
@@ -67,7 +67,7 @@ class Read(TestRequest):
 	def testSubTree(self):
 		"""Check that subtree can be read at once"""
 		self.prepareStandNestedList()
-		res = self.conn.read(self.id1, ['tracks', 0, 'Authors'])
+		res = self.conn.readByMask(self.id1, ['tracks', 0, 'Authors'])
 		self.assertEqual(res, {'tracks': [
 			{'Authors': ['Alex', 'Bob']}
 		]})
@@ -75,7 +75,7 @@ class Read(TestRequest):
 	def testSubTreesByMask(self):
 		"""Check that several subtrees can be read at once by mask"""
 		self.prepareStandNestedList()
-		res = self.conn.read(self.id1, ['tracks', None, 'Authors'])
+		res = self.conn.readByMask(self.id1, ['tracks', None, 'Authors'])
 		self.assertEqual(res, {'tracks': [
 			{'Authors': ['Alex', 'Bob']},
 			{'Authors': ['Carl I']}
@@ -84,7 +84,7 @@ class Read(TestRequest):
 	def testComplexStructure(self):
 		"""Check that complex structure can be read at once"""
 		self.prepareStandDifferentTypes()
-		res = self.conn.read(self.id1, ['tracks'])
+		res = self.conn.readByMask(self.id1, ['tracks'])
 		self.assertEqual(res, {'tracks': [
 			{'Name': 'Track 1 name', 'Length': 300, 'Volume': 29.4,
 				'Authors': ['Alex', 'Bob'],
@@ -97,7 +97,7 @@ class Read(TestRequest):
 	def testSeveralComplexStructures(self):
 		"""Check that several complex structures can be read at once"""
 		self.prepareStandDifferentTypes()
-		res = self.conn.readMany(self.id1, [['tracks', None, 'Name'],
+		res = self.conn.readByMasks(self.id1, [['tracks', None, 'Name'],
 			['tracks', None, 'Authors', None]])
 		self.assertEqual(res, {'tracks': [
 			{'Name': 'Track 1 name', 'Authors': ['Alex', 'Bob']},
@@ -114,6 +114,24 @@ class Read(TestRequest):
 		obj = self.conn.create(data)
 		res = self.conn.read(obj)
 		self.assertEqual(res, data)
+
+	def testReadFromPath(self):
+		"""Check that structure can be read from path"""
+		self.prepareStandDifferentTypes()
+		res = self.conn.read(self.id1, ['tracks', 0, 'Authors'])
+		self.assertEqual(res, ['Alex', 'Bob'])
+
+	def testReadFromPathByMask(self):
+		"""Check that path and masks parameters work simultaneously"""
+		self.prepareStandDifferentTypes()
+		res = self.conn.read(self.id1, ['tracks'], [[None, 'Authors']])
+		self.assertEqual(res, [{'Authors': ['Alex', 'Bob']}, {'Authors': ['Carl', 'Dan']}])
+
+	def testReadFromNonExistentPath(self):
+		"""Check that attempt to read from non-existent path raises LogicError"""
+		self.prepareStandNoList()
+		self.assertRaises(brain.LogicError, self.conn.read,
+			self.id1, ['blablabla'])
 
 
 def get_class():

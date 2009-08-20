@@ -13,7 +13,7 @@ class Insert(TestRequest):
 		"""Check insertion to the middle of simple list"""
 		self.prepareStandSimpleList()
 		self.conn.insertMany(self.id1, ['tracks', 1], ['Track 4', 'Track 5'])
-		res = self.conn.read(self.id1, ['tracks', None])
+		res = self.conn.readByMask(self.id1, ['tracks', None])
 		self.assertEqual(res, {'tracks': [
 			'Track 1', 'Track 4', 'Track 5', 'Track 2', 'Track 3'
 		]})
@@ -22,7 +22,7 @@ class Insert(TestRequest):
 		"""Check insertion to the beginning of simple list"""
 		self.prepareStandSimpleList()
 		self.conn.insertMany(self.id1, ['tracks', 0], ['Track 4', 'Track 5'])
-		res = self.conn.read(self.id1, ['tracks', None])
+		res = self.conn.readByMask(self.id1, ['tracks', None])
 		self.assertEqual(res, {'tracks': [
 			'Track 4', 'Track 5', 'Track 1', 'Track 2', 'Track 3'
 		]})
@@ -31,7 +31,7 @@ class Insert(TestRequest):
 		"""Check insertion to the end of simple list"""
 		self.prepareStandSimpleList()
 		self.conn.insertMany(self.id1, ['tracks', None], ['Track 4', 'Track 5'])
-		res = self.conn.read(self.id1, ['tracks', None])
+		res = self.conn.readByMask(self.id1, ['tracks', None])
 		self.assertEqual(res, {'tracks': [
 			'Track 1', 'Track 2', 'Track 3', 'Track 4', 'Track 5'
 		]})
@@ -43,7 +43,7 @@ class Insert(TestRequest):
 			{'Name': 'Track 4 name'}, {'Name': 'Track 5 name'}
 		])
 
-		res = self.conn.read(self.id2, ['tracks', None, 'Name'])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'Name'])
 		self.assertEqual(res, {'tracks': [
 			{'Name': 'Track 1 name'},
 			{'Name': 'Track 4 name'},
@@ -52,7 +52,7 @@ class Insert(TestRequest):
 			{'Name': 'Track 3 name'}
 		]})
 
-		res = self.conn.read(self.id2, ['tracks', None, 'Authors', None])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
 		self.assertEqual(res, {'tracks': [
 			{'Authors': ['Carl II', 'Dan']},
 			None,
@@ -68,7 +68,7 @@ class Insert(TestRequest):
 			{'Name': 'Track 4 name'}, {'Name': 'Track 5 name'}
 		])
 
-		res = self.conn.read(self.id2, ['tracks', None, 'Name'])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'Name'])
 		self.assertEqual(res, {'tracks': [
 			{'Name': 'Track 4 name'},
 			{'Name': 'Track 5 name'},
@@ -77,7 +77,7 @@ class Insert(TestRequest):
 			{'Name': 'Track 3 name'}
 		]})
 
-		res = self.conn.read(self.id2, ['tracks', None, 'Authors', None])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
 		self.assertEqual(res, {'tracks': [
 			None,
 			None,
@@ -93,7 +93,7 @@ class Insert(TestRequest):
 			{'Name': 'Track 4 name'}, {'Name': 'Track 5 name'}
 		])
 
-		res = self.conn.read(self.id2, ['tracks', None, 'Name'])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'Name'])
 		self.assertEqual(res, {'tracks': [
 			{'Name': 'Track 1 name'},
 			{'Name': 'Track 2 name'},
@@ -102,7 +102,7 @@ class Insert(TestRequest):
 			{'Name': 'Track 5 name'}
 		]})
 
-		res = self.conn.read(self.id2, ['tracks', None, 'Authors', None])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
 		self.assertEqual(res, {'tracks': [
 			{'Authors': ['Carl II', 'Dan']},
 			{'Authors': ['Alex']},
@@ -113,7 +113,7 @@ class Insert(TestRequest):
 		"""Test insertion of the data tree to the beginning of nested list"""
 		self.prepareStandNestedList()
 		self.conn.insert(self.id2, ['tracks', 0], {'Authors': ['Earl', 'Fred']})
-		res = self.conn.read(self.id2, ['tracks', None, 'Name'])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'Name'])
 		self.assertEqual(res, {'tracks': [
 			None,
 			{'Name': 'Track 1 name'},
@@ -121,7 +121,7 @@ class Insert(TestRequest):
 			{'Name': 'Track 3 name'}
 		]})
 
-		res = self.conn.read(self.id2, ['tracks', None, 'Authors', None])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
 		self.assertEqual(res, {'tracks': [
 			{'Authors': ['Earl', 'Fred']},
 			{'Authors': ['Carl II', 'Dan']},
@@ -133,14 +133,14 @@ class Insert(TestRequest):
 		"""Test insertion of the data tree to the end of nested list"""
 		self.prepareStandNestedList()
 		self.conn.insert(self.id2, ['tracks', None], {'Authors': ['Earl', 'Fred']})
-		res = self.conn.read(self.id2, ['tracks', None, 'Name'])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'Name'])
 		self.assertEqual(res, {'tracks': [
 			{'Name': 'Track 1 name'},
 			{'Name': 'Track 2 name'},
 			{'Name': 'Track 3 name'}
 		]})
 
-		res = self.conn.read(self.id2, ['tracks', None, 'Authors', None])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
 		self.assertEqual(res, {'tracks': [
 			{'Authors': ['Carl II', 'Dan']},
 			{'Authors': ['Alex']},
@@ -156,7 +156,7 @@ class Insert(TestRequest):
 			['tracks', 1, 'Authors', None],
 			['Yngwie', 'Zack'])
 
-		res = self.conn.read(self.id2, ['tracks', None, 'Authors', None])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
 		self.assertEqual(res, {'tracks': [
 			{'Authors': ['Carl II', 'Dan']},
 			{'Authors': ['Alex', 'Yngwie', 'Zack']},
@@ -171,7 +171,7 @@ class Insert(TestRequest):
 			['tracks', 2, 'Authors', None],
 			['Earl', 'Fred'])
 
-		res = self.conn.read(self.id2, ['tracks', None, 'Authors', None])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
 		self.assertEqual(res, {'tracks': [
 			None,
 			None,
@@ -185,7 +185,7 @@ class Insert(TestRequest):
 		"""
 		self.prepareStandDifferentTypes()
 		self.conn.insertMany(self.id1, ['meta', 2], ['Monk', 2, 10.0])
-		res = self.conn.read(self.id1, ['meta', None])
+		res = self.conn.readByMask(self.id1, ['meta', None])
 		self.assertEqual(res, {'meta': [
 			'Pikeman', 'Archer','Monk', 2,
 			10.0, 1, 2, 4.0, 5.0, b'Gryphon', b'Swordsman'

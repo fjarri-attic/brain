@@ -90,7 +90,7 @@ class Modify(TestRequest):
 		self.prepareStandSimpleList()
 		self.conn.modify(self.id1, 'Track 4', ['tracks', 3])
 		self.conn.modify(self.id1, 'Track 5', ['tracks', 4])
-		res = self.conn.read(self.id1, ['tracks', None])
+		res = self.conn.readByMask(self.id1, ['tracks', None])
 		self.assertEqual(res, {'tracks': [
 			'Track 1', 'Track 2', 'Track 3', 'Track 4', 'Track 5']})
 

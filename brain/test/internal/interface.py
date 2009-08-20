@@ -70,6 +70,14 @@ class Format(unittest.TestCase):
 		self.assertRaises(brain.FormatError, DeleteRequest, None, field)
 		self.assertRaises(brain.FormatError, InsertRequest, None, field, [fields])
 
+	# Additional checks for ReadRequest
+
+	def testReadRequestNotDeterminedPath(self):
+		"""Test that ReadRequest requires determined path"""
+		self.assertRaises(brain.FormatError, ReadRequest,
+			'1', Field(None, ['test', None, 1]),
+			[[Field(None, ['test'], 1)]])
+
 	# Additional checks for InsertRequest
 
 	def testInsertRequestNotDeterminedTarget(self):
@@ -191,7 +199,7 @@ class Format(unittest.TestCase):
 		objs = [
 			    CreateRequest([f]),
 			    ModifyRequest(temp_id, f, [f]),
-			    ReadRequest(temp_id, [f]),
+			    ReadRequest(temp_id, f, [f]),
 			    InsertRequest(temp_id, f, [[f]]),
 			    DeleteRequest(temp_id, [[f]]),
 			    SearchRequest(SearchRequest.Condition(f, op.EQ, f)),

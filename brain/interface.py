@@ -356,7 +356,7 @@ class DeleteRequest:
 	def __init__(self, id, fields=None):
 
 		if id is None:
-			raise FormatError("Cannot modify undefined object")
+			raise FormatError("Cannot delete undefined object")
 
 		self.id = id
 		self.fields = fields
@@ -370,19 +370,27 @@ class DeleteRequest:
 
 class ReadRequest:
 	"""Request for reading existing object or its fields"""
-	def __init__(self, id, fields=None):
+	def __init__(self, id, path=None, masks=None):
 
 		if id is None:
-			raise FormatError("Cannot modify undefined object")
+			raise FormatError("Cannot read undefined object")
+
+		# path should be determined
+		if path is not None:
+			for elem in path.name:
+				if elem is None:
+					raise FormatError("Path should not have None parts in name")
 
 		self.id = id
-		self.fields = fields
+		self.path = path
+		self.masks = masks
 
 	def __str__(self):
-		return "{name} for object {id}{data}".format(
+		return "{name} for object {id}{path}{masks}".format(
 			name=type(self).__name__,
 			id=self.id,
-			data=("" if self.fields is None else ": " + repr(self.fields)))
+			path="" if self.path is None else (", path: " + repr(self.path)),
+			masks="" if self.masks is None else ", masks: " + repr(self.masks))
 
 
 class InsertRequest:

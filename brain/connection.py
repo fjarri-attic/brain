@@ -331,24 +331,41 @@ class Connection:
 		fields = _flattenHierarchy(value, self._engine)
 		self._requests.append(interface.ModifyRequest(id, Field(self._engine, path), fields))
 
-	def read(self, id, path=None):
-		"""
-		Read contents of existing object.
-		id - object ID
-		path - path in object to read from (root by default)
-		"""
-		return self.readMany(id, [path] if path is not None else None)
-
 	@_transacted
-	def readMany(self, id, paths=None):
+	def read(self, id, path=None, masks=None):
 		"""
-		Read contents of existing object using several paths at once.
+		Read data structure from the object.
 		id - object ID
-		paths - list of paths to read from (result is composed into one structure)
+		path - path to read from (root by default)
+		masks - if specified, read only paths which start with one of given masks
 		"""
-		if paths is not None:
-			paths = [Field(self._engine, path) for path in paths]
-		self._requests.append(interface.ReadRequest(id, paths))
+		if masks is not None:
+			masks = [Field(self._engine, mask) for mask in masks]
+
+		if path is not None:
+			path = Field(self._engine, path)
+			if masks is not None:
+				for mask in masks:
+					mask.name = path.name + mask.name
+
+		self._requests.append(interface.ReadRequest(id,
+			path=path, masks=masks))
+
+	def readByMask(self, id, mask=None):
+		"""
+		Read contents of existing object, filtered by mask.
+		id - object ID
+		mask - if specified, read only paths which start with this mask
+		"""
+		return self.read(id, path=None, masks=[mask] if mask is not None else None)
+
+	def readByMasks(self, id, masks=None):
+		"""
+		Read contents of existing object, filtered by several masks.
+		id - object ID
+		masks - if specified, read only paths which start with one of given masks
+		"""
+		return self.read(id, path=None, masks=masks)
 
 	def insert(self, id, path, value):
 		"""

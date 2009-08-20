@@ -542,20 +542,34 @@ class LogicLayer:
 		if not self._structure.objectExists(request.id):
 			raise interface.LogicError("Object " + str(request.id) + " does not exist")
 
-		# if list of fields was not given, read all object's fields
-		if request.fields is None:
-			fields = self._structure.getFieldsList(request.id)
+		if request.path is not None:
+			types = self._structure.getValueTypes(request.id, request.path)
+			if len(types) == 0:
+				raise interface.LogicError("Object " + str(request.id) +
+					" does not have field " + str(request.path))
+
+		# if list of masks was not given, read all object's fields starting from path
+		if request.masks is None:
+			fields = self._structure.getFieldsList(request.id, request.path)
 		else:
 			res = []
-			for field in request.fields:
-				res += self._structure.getFieldsList(request.id, field)
+			for mask in request.masks:
+				if request.path is None or \
+						mask.name[:len(request.path.name)] == request.path.name:
+					res += self._structure.getFieldsList(request.id, mask)
 			fields = res
 
+		# read values
 		result_list = []
 		for field in fields:
 			for type in self._structure.getValueTypes(request.id, field):
 				field.type_str = type
 				result_list += self._structure.getFieldValue(request.id, field)
+
+		# remove root path from values
+		if request.path is not None:
+			for field in result_list:
+				del field.name[:len(request.path.name)]
 
 		return result_list
 
