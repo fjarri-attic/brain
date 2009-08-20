@@ -249,17 +249,19 @@ def _runTests(objects, actions, verbosity):
 				raise Exception("Functionality error")
 
 
-def runFuzzTest(objects=1, actions=100, verbosity=2, seed=None):
+def runFuzzTest(objects=1, actions=100, verbosity=2, seed=0):
 	"""Main test function. Start test, terminate on first exception"""
 
 	print("Fuzz test")
-	print(str(objects) + " objects, " + str(actions) + " actions" +
-		((", seed: " + str(seed)) if seed is not None else ""))
 
-	if seed is not None:
+	if seed != 0:
 		random.seed(seed)
+		state = "seed: " + str(seed)
 	else:
 		random.seed()
+		state = "random seed"
+
+	print(str(objects) + " objects, " + str(actions) + " actions, " + state)
 
 	print("=" * 70)
 	time1 = time.time()
