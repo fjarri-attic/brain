@@ -356,7 +356,18 @@ Roll current transaction back. If transaction is not in progress, `FacadeError`_
 
 **Arguments**: ``rollback()``
 
+Path
+~~~~
+
+Path to some value in object is a list, which can contain only strings, integers and Nones.
+Empty list means the root level of an object; string stands for dictionary key and interger
+stands for position in list. None is used in several special cases: to specify that `insert()`_
+should perform insertion at the end of the list or to server as mask during deletion from
+lists (see `delete()`_ for details).
+
 .. _FacadeError:
+
+.. _EngineError:
 
 Exceptions
 ~~~~~~~~~~
@@ -366,6 +377,9 @@ Following exceptions can be thrown by API:
  ``brain.FacadeError``: 
    Signals about the error in high-level wrappers. Can be caused by incorrect 
    calls to `begin()`_ \\ `commit()`_ \\ `rollback()`_, incorrect engine tag and so on.
+
+ ``brain.EngineError``:
+   Signals about an error in DB engine wrapper.
 
 Engines
 ~~~~~~~
@@ -383,8 +397,8 @@ Currently two engines are supported:
   ``open_existing``:
     Ignored if ``name`` is equal to None.
 
-    If equal to True, existing database file will be opened or an exception will be raised if it
-    does not exist.
+    If equal to True, existing database file will be opened or `EngineError`_ 
+    will be raised if it does not exist.
 
     If equal to False, new database file will be created (in place of the existing one, if
     necessary)
@@ -396,9 +410,11 @@ Currently two engines are supported:
     If is not None, will be concatenated (using platform-specific path join) with ``name``
 
 **postgre**:
-  Postgre 8 engine. Will be used if `py-postgresql <http://python.projects.postgresql.org>`_ is installed.
+  Postgre 8 engine. Will be used if `py-postgresql <http://python.projects.postgresql.org>`_ 
+  is installed.
 
-  **Arguments**: ``(name, open_existing=None, host='localhost', port=5432, user='postgres', password='', connection_limit=-1)``
+  **Arguments**: ``(name, open_existing=None, host='localhost', port=5432, user='postgres', 
+  password='', connection_limit=-1)``
 
   ``name``:
     Database name.
