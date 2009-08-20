@@ -208,7 +208,7 @@ class Insert(TestRequest):
 
 	def testInsertToMap(self):
 		"""
-		Regression test for bug, whe one could insert data to map,
+		Regression test for bug, when one could insert data to map,
 		creating mixed list-map structure
 		"""
 		obj = self.conn.create({'key': [1, 2, 3]})
