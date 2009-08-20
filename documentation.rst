@@ -375,11 +375,11 @@ Delete the whole object or some of its fields. If an element of list is deleted,
 other list elements are shifted correspondingly.
 
 **Arguments**:
-  ``delete(self, id, path=None)``
+  ``delete(id, path=None)``
 
-  ``deleteMany(self, id, paths=None)``
+  ``deleteMany(id, paths=None)``
 
-**Note**: ``delete(self, id, path)`` is an alias for ``deleteMany(self, id, [path])``
+**Note**: ``delete(id, path)`` is an alias for ``deleteMany(id, [path])``
 
   ``id``:
     Target object ID.
@@ -426,6 +426,45 @@ Get all database contents.
  >>> id2 = conn.create({'key': 'val'})
  >>> print(conn.dump())
  {1: [1, 2, 3], 2: {'key': 'val'}}
+
+.. _insert():
+
+.. _insertMany():
+
+insert(), insertMany()
+======================
+
+Insert given data to list in object.
+
+**Arguments**:
+  ``insert(id, path, value)``
+
+  ``insertMany(id, path, values)``
+
+**Note**: ``insert(id, path, value)`` is an alias for ``insert(id, path, [value])``
+
+  ``id``:
+    Target object ID.
+
+  ``path``:
+    `Path`_ to insert to. Should point to list element (i.e., end with integer or ``None``) and
+    be determined (except for, probably, the last element). If the last element is ``None``,
+    insertion will be performed to the end of the list.
+
+  ``value``:
+    Data to insert - should be a supported data structure.
+
+**Remarks**:
+  * If target object does not have the field, which ``path`` is pointing to, it will be created.
+
+  * If ``path`` points to dictionary key, `FormatError`_ will be raised.
+
+  * If dictionary already exists at the place which ``path`` is pointing to, `StructureError`_
+    will be raised.
+
+**Example**:
+
+
 
 rollback()
 ==========
