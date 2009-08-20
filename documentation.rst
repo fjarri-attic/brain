@@ -1,3 +1,4 @@
+==========================================
 Brain - DDB-like front-end for SQL engines
 ==========================================
 
@@ -261,10 +262,8 @@ Currently the following connection methods are available:
  * `rollback()`_
  * `search()`_
 
-.. _begin():
-
-Connection.begin()
-~~~~~~~~~~~~~~~~~~
+begin()
+=======
 
 Start database transaction. If transaction is already in progress, `FacadeError`_
 will be raised.
@@ -275,10 +274,8 @@ will be raised.
   Boolean value, specifying whether transaction should be synchronous or not
   (see `beginSync()`_ or `beginAsync()`_ correspondingly for details)
 
-.. _beginAsync():
-
-Connection.beginAsync()
-~~~~~~~~~~~~~~~~~~~~~~~
+beginAsync()
+============
 
 This function is an alias for `begin()`_ (equals to ``begin(sync=False)``)
 
@@ -305,10 +302,8 @@ or implicit transaction.
  >>> print(conn.commit())
  [None, {'name': 'Carl'}]
 
-.. _beginSync():
-
-Connection.beginSync()
-~~~~~~~~~~~~~~~~~~~~~~
+beginSync()
+===========
 
 This function is an alias for `begin()`_ (equals to ``begin(sync=True)``)
 
@@ -330,28 +325,22 @@ slowing down transaction processing.
  {'name': 'Carl'}
  >>> conn.commit()
 
-.. _close():
-
-Connection.close()
-~~~~~~~~~~~~~~~~~~
+close()
+=======
 
 Close connection to the database. All uncommitted changes will be lost.
 
 **Arguments**: ``close()``
 
-.. _commit():
-
-Connection.commit()
-~~~~~~~~~~~~~~~~~~~
+commit()
+========
 
 Commit current transaction. If transaction is not in progress, `FacadeError`_ will be raised.
 
 **Arguments**: ``commit()``
 
-.. _create():
-
-Connection.create()
-~~~~~~~~~~~~~~~~~~~
+create()
+========
 
 Create new object in database.
 
@@ -379,8 +368,8 @@ Create new object in database.
 
 .. _deleteMany():
 
-Connection.delete(), Connection.deleteMany()
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+delete(), deleteMany()
+======================
 
 Delete the whole object or some of its fields. If an element of list is deleted,
 other list elements are shifted correspondingly.
@@ -422,10 +411,24 @@ other list elements are shifted correspondingly.
  >>> print(conn.read(id1))
  {'Tracks': [{'Name': 'track 1'}, {'Name': 'track 2'}]}
 
-.. _rollback():
+dump()
+======
 
-Connection.rollback()
-~~~~~~~~~~~~~~~~~~~~~
+Get all database contents.
+
+**Arguments**: ``dump()``
+
+**Returns**: dictionary {object ID: object contents}
+
+**Example**:
+
+ >>> id1 = conn.create([1, 2, 3])
+ >>> id2 = conn.create({'key': 'val'})
+ >>> print(conn.dump())
+ {1: [1, 2, 3], 2: {'key': 'val'}}
+
+rollback()
+==========
 
 Roll current transaction back. If transaction is not in progress, `FacadeError`_ will be raised.
 
