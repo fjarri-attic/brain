@@ -595,6 +595,13 @@ class LogicLayer:
 					field.name[col_num] = counter
 				counter += 1
 
+		# check that dictionary does not already exists at the place
+		# where request.path is pointing to
+		parent = self._structure.getFieldValue(request.id,
+			Field(self._engine, request.path.name[:-1]))
+		if len(parent) > 0 and parent[0].py_value == dict():
+			raise interface.StructureError("Cannot insert to the dictionary")
+
 		target_col = len(request.path.name) - 1 # last column in name of target field
 
 		max = self._structure.getMaxListIndex(request.id, request.path)

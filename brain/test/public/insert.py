@@ -206,6 +206,15 @@ class Insert(TestRequest):
 		data['key1'][0].insert(0, to_add)
 		self.assertEqual(res, data)
 
+	def testInsertToMap(self):
+		"""
+		Regression test for bug, whe one could insert data to map,
+		creating mixed list-map structure
+		"""
+		obj = self.conn.create({'key': [1, 2, 3]})
+		self.assertRaises(brain.StructureError, self.conn.insert,
+			obj, [0], 'val')
+
 
 def get_class():
 	return Insert
