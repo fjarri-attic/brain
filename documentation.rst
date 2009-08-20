@@ -229,7 +229,7 @@ Connect to the database (or create the new one).
 ``args``, ``kwds``:
   Engine-specific parameters. See `Engines`_ section for further information.
 
-**Returns** `Connection`_ object.
+**Returns**: `Connection`_ object.
 
 .. _Connection:
 
@@ -255,7 +255,8 @@ Currently the following connection methods are available:
  * `modify()`_
  * `objectExists()`_
  * `read()`_
- * `readMany()`_
+ * `readByMask()`_
+ * `readByMasks()`_
  * `repair()`_
  * `rollback()`_
  * `search()`_
@@ -265,7 +266,7 @@ Currently the following connection methods are available:
 Connection.begin()
 ~~~~~~~~~~~~~~~~~~
 
-Start database transaction. If transaction is already in progress, `FacadeError`_ 
+Start database transaction. If transaction is already in progress, `FacadeError`_
 will be raised.
 
 **Arguments**: ``begin(sync)``
@@ -287,12 +288,14 @@ transaction is not started. When `commit()`_ is called, database transaction is 
 and all of requests are being processed at once, and their results are returned from
 `commit()`_ as a list.
 
-This decreases the time database is locked by the transaction and increases the speed 
-of remote operations (one XML RPC multicall is faster than several single calls). 
-But, of course, this method is less convenient than the synchronous 
+This decreases the time database is locked by the transaction and increases the speed
+of remote operations (one XML RPC multicall is faster than several single calls).
+But, of course, this method is less convenient than the synchronous
 or implicit transaction.
 
-Example:
+**Arguments**: ``beginAsync()``
+
+**Example**:
 
  >>> id1 = conn.create({'name': 'Bob'})
  >>> conn.beginAsync()
@@ -301,8 +304,6 @@ Example:
  None
  >>> print(conn.commit())
  [None, {'name': 'Carl'}]
-
-**Arguments**: ``beginAsync()``
 
 .. _beginSync():
 
@@ -318,7 +319,9 @@ probably locking the database (depends on the engine). In case of remote connect
 synchronous transaction means that there will be several requests/responses performed,
 slowing down transaction processing.
 
-Example:
+**Arguments**: ``beginSync()``
+
+**Example**:
 
  >>> id1 = conn.create({'name': 'Bob'})
  >>> conn.beginSync()
@@ -326,8 +329,6 @@ Example:
  >>> print(conn.read(id1))
  {'name': 'Carl'}
  >>> conn.commit()
-
-**Arguments**: ``beginSync()``
 
 .. _close():
 
@@ -347,6 +348,80 @@ Commit current transaction. If transaction is not in progress, `FacadeError`_ wi
 
 **Arguments**: ``commit()``
 
+.. _create():
+
+Connection.create()
+~~~~~~~~~~~~~~~~~~~
+
+Create new object in database.
+
+**Arguments**: ``create(self, data, path=None)``
+
+``data``:
+  Initial object contents. Can be either a value of allowed type, list or dictionary.
+
+``path``:
+  If defined, specifies the `path`_ where ``data`` will be stored (if equal to ``None``,
+  data is stored in root). Should be determined.
+
+**Returns**: object ID
+
+**Example**:
+
+ >>> id1 = conn.create([1, 2, 3])
+ >>> print(conn.read(id1))
+ [1, 2, 3]
+ >>> id2 = conn.create([1, 2, 3], ['key'])
+ >>> print(conn.read(id2))
+ {'key': [1, 2, 3]}
+
+.. _delete():
+
+.. _deleteMany():
+
+Connection.delete(), Connection.deleteMany()
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Delete the whole object or some of its fields. If an element of list is deleted,
+other list elements are shifted correspondingly.
+
+**Arguments**:
+  ``delete(self, id, path=None)``
+
+  ``deleteMany(self, id, paths=None)``
+
+**Note**: ``delete(self, id, path)`` is an alias for ``deleteMany(self, id, [path])``
+
+  ``id``:
+    Target object ID.
+
+  ``paths``:
+    List of `paths`_. If given, is used as the set of masks, specifying fields to delete.
+    If ``None``, the whole object will be deleted.
+
+**Example**:
+
+* Deletion of the whole object
+
+ >>> id1 = conn.create([1, 2, 3])
+ >>> conn.delete(id1)
+ >>> print(conn.objectExists(id1))
+ False
+
+* Deletion of specific field
+
+ >>> id1 = conn.create([1, 2, 3])
+ >>> conn.delete(id1, [1])
+ >>> print(conn.read(id1))
+ [1, 3]
+
+* Deletion by mask
+
+ >>> id1 = conn.create({'Tracks': [{'Name': 'track 1', 'Length': 240}, {'Name': 'track 2', 'Length': 300}]})
+ >>> conn.delete(id1, ['Tracks', None, 'Length'])
+ >>> print(conn.read(id1))
+ {'Tracks': [{'Name': 'track 1'}, {'Name': 'track 2'}]}
+
 .. _rollback():
 
 Connection.rollback()
@@ -356,14 +431,26 @@ Roll current transaction back. If transaction is not in progress, `FacadeError`_
 
 **Arguments**: ``rollback()``
 
+.. _paths:
+
 Path
 ~~~~
 
 Path to some value in object is a list, which can contain only strings, integers and Nones.
 Empty list means the root level of an object; string stands for dictionary key and interger
 stands for position in list. None is used in several special cases: to specify that `insert()`_
-should perform insertion at the end of the list or to server as mask during deletion from
-lists (see `delete()`_ for details).
+should perform insertion at the end of the list or as a mask for `delete()`_ and `read()`_.
+
+If path does not contain Nones, it is called *determined*.
+
+**Example**:
+
+ >>> id1 = conn.create({'Tracks': [{'Name': 'track 1', 'Length': 240},
+ ... {'Name': 'track 2', 'Length': 300}]})
+ >>> print(conn.read(id1, ['Tracks', 0, 'Name']))
+ track 1
+ >>> print(conn.readByMask(id1, ['Tracks', None, 'Length']))
+ {'Tracks': [{'Length': 240}, {'Length': 300}]}
 
 .. _FacadeError:
 
@@ -374,8 +461,8 @@ Exceptions
 
 Following exceptions can be thrown by API:
 
- ``brain.FacadeError``: 
-   Signals about the error in high-level wrappers. Can be caused by incorrect 
+ ``brain.FacadeError``:
+   Signals about the error in high-level wrappers. Can be caused by incorrect
    calls to `begin()`_ \\ `commit()`_ \\ `rollback()`_, incorrect engine tag and so on.
 
  ``brain.EngineError``:
@@ -397,7 +484,7 @@ Currently two engines are supported:
   ``open_existing``:
     Ignored if ``name`` is equal to None.
 
-    If equal to True, existing database file will be opened or `EngineError`_ 
+    If equal to True, existing database file will be opened or `EngineError`_
     will be raised if it does not exist.
 
     If equal to False, new database file will be created (in place of the existing one, if
@@ -410,10 +497,10 @@ Currently two engines are supported:
     If is not None, will be concatenated (using platform-specific path join) with ``name``
 
 **postgre**:
-  Postgre 8 engine. Will be used if `py-postgresql <http://python.projects.postgresql.org>`_ 
+  Postgre 8 engine. Will be used if `py-postgresql <http://python.projects.postgresql.org>`_
   is installed.
 
-  **Arguments**: ``(name, open_existing=None, host='localhost', port=5432, user='postgres', 
+  **Arguments**: ``(name, open_existing=None, host='localhost', port=5432, user='postgres',
   password='', connection_limit=-1)``
 
   ``name``:
