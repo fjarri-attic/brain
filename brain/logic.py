@@ -599,11 +599,12 @@ class LogicLayer:
 		# where request.path is pointing to
 		parent_field = Field(self._engine, request.path.name[:-1])
 		parent = self._structure.getFieldValue(request.id, parent_field)
+		types = self._structure.getValueTypes(request.id, parent_field)
 
 		if len(parent) == 0:
 			# try to autovivify list
-			parent_field.py_value = list()
-			self._modifyFields(request.id, Field(self._engine, []), [parent_field])
+			new_val = Field(self._engine, [], list())
+			self._modifyFields(request.id, parent_field, [new_val])
 		elif parent[0].py_value != list():
 			raise interface.StructureError("Cannot insert to non-list")
 
