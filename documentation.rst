@@ -464,7 +464,37 @@ Insert given data to list in object.
 
 **Example**:
 
+ >>> id1 = conn.create({'key': [1, 2, 3]})
 
+* Insertion to the beginning
+
+ >>> conn.insert(id1, ['key', 0], 0)
+ >>> print(conn.read(id1))
+ {'key': [0, 1, 2, 3]}
+
+* Insertion to the end
+
+ >>> conn.insert(id1, ['key', None], 4)
+ >>> print(conn.read(id1))
+ {'key': [0, 1, 2, 3, 4]}
+
+* Autovivification
+
+ >>> conn.insert(id1, ['key2', None], 50)
+ >>> print(conn.read(id1))
+ {'key2': [50], 'key': [0, 1, 2, 3, 4]}
+
+* Insert several values at once
+
+ >>> conn.insertMany(id1, ['key2', None], [51, 52, 53])
+ >>> print(conn.read(id1))
+ {'key2': [50, 51, 52, 53], 'key': [0, 1, 2, 3, 4]}
+
+* Insert data structure
+
+ >>> conn.insert(id1, ['key2', None], {'subkey': 'val'})
+ >>> print(conn.read(id1))
+ {'key2': [50, 51, 52, 53, {'subkey': 'val'}], 'key': [0, 1, 2, 3, 4]}
 
 rollback()
 ==========
