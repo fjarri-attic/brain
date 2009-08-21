@@ -597,10 +597,15 @@ class LogicLayer:
 
 		# check that dictionary does not already exists at the place
 		# where request.path is pointing to
-		parent = self._structure.getFieldValue(request.id,
-			Field(self._engine, request.path.name[:-1]))
-		if len(parent) > 0 and parent[0].py_value == dict():
-			raise interface.StructureError("Cannot insert to the dictionary")
+		parent_field = Field(self._engine, request.path.name[:-1])
+		parent = self._structure.getFieldValue(request.id, parent_field)
+
+		if len(parent) == 0:
+			# try to autovivify list
+			parent_field.py_value = list()
+			self._modifyFields(request.id, Field(self._engine, []), [parent_field])
+		elif parent[0].py_value != list():
+			raise interface.StructureError("Cannot insert to non-list")
 
 		target_col = len(request.path.name) - 1 # last column in name of target field
 

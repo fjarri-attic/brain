@@ -215,6 +215,16 @@ class Insert(TestRequest):
 		self.assertRaises(brain.StructureError, self.conn.insert,
 			obj, [0], 'val')
 
+	def testWrongAutovivification(self):
+		"""
+		Regression test for bug when autovivified path during insert
+		spoiled database structure
+		"""
+		obj = self.conn.create({'key': [1, 2, 3]})
+		self.conn.insert(obj, ['key', 'key2', 0], 'val')
+		res = self.conn.read(obj)
+		self.assertEqual(res, {'key': {'key2': ['val']}})
+
 
 def get_class():
 	return Insert
