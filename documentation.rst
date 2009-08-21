@@ -362,7 +362,7 @@ Create new object in database.
  >>> id1 = conn.create([1, 2, 3])
  >>> print(conn.read(id1))
  [1, 2, 3]
- 
+
 * Creation with path
 
  >>> id2 = conn.create([1, 2, 3], ['key'])
