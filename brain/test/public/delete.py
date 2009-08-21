@@ -191,7 +191,7 @@ class Delete(TestRequest):
 		self.assertEqual(res, [])
 
 		# check that we can create this table back
-		self.conn.modify(self.id3, '22', ['age'])
+		self.conn.modify(self.id3, ['age'], '22')
 
 		res = self.conn.search(['age'], op.EQ, '22')
 		self.assertEqual(res, [self.id3])
@@ -209,7 +209,7 @@ class Delete(TestRequest):
 		self.assertEqual(res, [])
 
 		# add this value back
-		self.conn.modify(self.id1, 'Blablabla', ['tracks', 2, 'Lyrics', 0])
+		self.conn.modify(self.id1, ['tracks', 2, 'Lyrics', 0], 'Blablabla')
 		res = self.conn.search(['tracks', None, 'Lyrics', None], op.EQ, 'Blablabla')
 		self.assertEqual(res, [self.id1])
 
@@ -282,7 +282,7 @@ class Delete(TestRequest):
 		"""
 		obj = self.conn.create({'aaa': [1, 2, 3], 'bbb': 'ccc'})
 		self.conn.delete(obj, ['aaa'])
-		self.conn.modify(obj, [1], ['aaa'])
+		self.conn.modify(obj, ['aaa'], [1])
 
 		# insert value to the end of the list; if information
 		# about the original list was not removed from the database,
@@ -298,7 +298,7 @@ class Delete(TestRequest):
 		in parent list, it is handled correctly
 		"""
 		obj = self.conn.create({'key': 777})
-		self.conn.modify(obj, [1, 2, [None]], ['key'])
+		self.conn.modify(obj, ['key'], [1, 2, [None]])
 
 		# this request should renumber listsizes table too
 		self.conn.delete(obj, ['key', 0])

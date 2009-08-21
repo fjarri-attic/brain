@@ -20,7 +20,7 @@ class Modify(TestRequest):
 		"""Check that None or empty structure can be stored in object"""
 		for data in [{}, [], None]:
 			obj = self.conn.create({'fld': 1})
-			self.conn.modify(obj, data)
+			self.conn.modify(obj, None, data)
 			res = self.conn.read(obj)
 			self.assertEqual(res, data)
 
@@ -44,19 +44,19 @@ class Modify(TestRequest):
 	def testModificationNoCheck(self):
 		"""Check object modification"""
 		self.prepareStandNoList()
-		self.conn.modify(self.id1, 'Zack', ['name'])
+		self.conn.modify(self.id1, ['name'], 'Zack')
 
 	def testModification(self):
 		"""Object modification with results checking"""
 		self.prepareStandNoList()
-		self.conn.modify(self.id1, 'Zack', ['name'])
+		self.conn.modify(self.id1, ['name'], 'Zack')
 		res = self.conn.search(['name'], op.EQ, 'Zack')
 		self.assertEqual(res, [self.id1])
 
 	def testModificationAddsField(self):
 		"""Check that object modification can add a new field"""
 		self.prepareStandNoList()
-		self.conn.modify(self.id1, '66', ['age'])
+		self.conn.modify(self.id1, ['age'], '66')
 		res = self.conn.search(['age'], op.EQ, '66')
 		self.assertEqual(res, [self.id1])
 
@@ -65,7 +65,7 @@ class Modify(TestRequest):
 		self.prepareStandNoList()
 
 		# Add new field to object
-		self.conn.modify(self.id1, '66', ['age'])
+		self.conn.modify(self.id1, ['age'], '66')
 
 		# Delete object. If specification was not updated,
 		# new field is still in database
@@ -81,15 +81,15 @@ class Modify(TestRequest):
 	def testModificationPreservesFields(self):
 		"""Check that modification preserves existing fields"""
 		self.prepareStandNoList()
-		self.conn.modify(self.id2, 'Zack', ['name'])
+		self.conn.modify(self.id2, ['name'], 'Zack')
 		res = self.conn.search(['phone'], op.EQ, '2222')
 		self.assertEqual(res, [self.id2])
 
 	def testListAdditions(self):
 		"""Regression test for erroneous modify results for lists"""
 		self.prepareStandSimpleList()
-		self.conn.modify(self.id1, 'Track 4', ['tracks', 3])
-		self.conn.modify(self.id1, 'Track 5', ['tracks', 4])
+		self.conn.modify(self.id1, ['tracks', 3], 'Track 4')
+		self.conn.modify(self.id1, ['tracks', 4], 'Track 5')
 		res = self.conn.readByMask(self.id1, ['tracks', None])
 		self.assertEqual(res, {'tracks': [
 			'Track 1', 'Track 2', 'Track 3', 'Track 4', 'Track 5']})
@@ -97,34 +97,34 @@ class Modify(TestRequest):
 	def testModificationAddsList(self):
 		"""Check that modification request creates necessary hierarchy"""
 		self.prepareStandNestedList()
-		self.conn.modify(self.id1, 'Blablabla', ['tracks', 2, 'Lyrics', 0])
+		self.conn.modify(self.id1, ['tracks', 2, 'Lyrics', 0], 'Blablabla')
 
 	def testListOnTopOfMap(self):
 		"""Check that list cannot be created if map exists on the same level"""
 		self.prepareStandNestedList()
 		self.assertRaises(brain.StructureError, self.conn.modify,
-			self.id1, 'Blablabla', ['tracks', 2, 0])
+			self.id1, ['tracks', 2, 0], 'Blablabla')
 
 	def testMapOnTopOfList(self):
 		"""Check that map cannot be created if list exists on the same level"""
 		self.prepareStandNestedList()
 		self.assertRaises(brain.StructureError, self.conn.modify,
-			self.id1, 'Blablabla', ['tracks', 'some_name'])
+			self.id1, ['tracks', 'some_name'], 'Blablabla')
 
 	def testListOnTopOfRootMap(self):
 		"""Check that root list cannot be created if map exists on the same level"""
 		obj = self.conn.create({'name': 'Alex', 'age': 22})
-		self.assertRaises(brain.StructureError, self.conn.modify, obj, 2, [0])
+		self.assertRaises(brain.StructureError, self.conn.modify, obj, [0], 2)
 
 	def testMapOnTopOfRootList(self):
 		"""Check that root map cannot be created if list exists on the same level"""
 		obj = self.conn.create(['abc', 'def'])
-		self.assertRaises(brain.StructureError, self.conn.modify, obj, 2, ['ghi'])
+		self.assertRaises(brain.StructureError, self.conn.modify, obj, ['ghi'], 2)
 
 	def testModificationAddsNewField(self):
 		"""Check that modification can add totally new field to object"""
 		self.prepareStandNoList()
-		self.conn.modify(self.id1, 'Mr', ['title'])
+		self.conn.modify(self.id1, ['title'], 'Mr')
 		res = self.conn.search(['title'], op.EQ, 'Mr')
 		self.assertEqual(res, [self.id1])
 
@@ -151,7 +151,7 @@ class Modify(TestRequest):
 			if obj is None:
 				obj = self.conn.create(value, [fld])
 			else:
-				self.conn.modify(obj, value, [fld])
+				self.conn.modify(obj, [fld], value)
 
 			res = self.conn.read(obj)
 			self.assertEqual(res, {fld: value})
@@ -187,7 +187,7 @@ class Modify(TestRequest):
 		data = {'fld2': {'fld3': 2, 'fld4': 'a'}}
 
 		obj = self.conn.create({fld: 'val1'})
-		self.conn.modify(obj, data, [fld])
+		self.conn.modify(obj, [fld], data)
 		res = self.conn.read(obj)
 		self.assertEqual(res, {fld: data})
 
@@ -197,7 +197,7 @@ class Modify(TestRequest):
 		data = {'fld3': 2}
 
 		obj = self.conn.create({fld: ['val1', 'val2']})
-		self.conn.modify(obj, data, [fld, 1])
+		self.conn.modify(obj, [fld, 1], data)
 		res = self.conn.read(obj)
 		self.assertEqual(res, {fld: ['val1', data]})
 
@@ -207,7 +207,7 @@ class Modify(TestRequest):
 		data = [2]
 
 		obj = self.conn.create({fld: ['val1', 'val2']})
-		self.conn.modify(obj, data, [fld, 1])
+		self.conn.modify(obj, [fld, 1], data)
 		res = self.conn.read(obj)
 		self.assertEqual(res, {fld: ['val1', data]})
 
@@ -224,7 +224,7 @@ class Modify(TestRequest):
 		value types when modifying value in list
 		"""
 		obj = self.conn.create({'fld1': [1, 'a']})
-		self.conn.modify(obj, 2, ['fld1', 1])
+		self.conn.modify(obj, ['fld1', 1], 2)
 		res = self.conn.read(obj)
 		self.assertEqual(res, {'fld1': [1, 2]})
 
@@ -246,7 +246,7 @@ class Modify(TestRequest):
 		data = {'key': [1, 'elem1']}
 		to_add = {'to_add': None}
 		obj = self.conn.create(data)
-		self.conn.modify(obj, to_add, ['key', 0])
+		self.conn.modify(obj, ['key', 0], to_add)
 		res = self.conn.read(obj)
 		data['key'][0] = to_add
 		self.assertEqual(res, data)
@@ -260,7 +260,7 @@ class Modify(TestRequest):
 		data = {'key': [[None], [77, None]]}
 		to_add = 'aaa'
 		obj = self.conn.create(data)
-		self.conn.modify(obj, to_add, ['key', 1, 1])
+		self.conn.modify(obj, ['key', 1, 1], to_add)
 		res = self.conn.read(obj)
 		data['key'][1][1] = to_add
 		self.assertEqual(res, data)
@@ -271,7 +271,7 @@ class Modify(TestRequest):
 		conficts removal logic, when child fields were not deleted on modification.
 		"""
 		obj = self.conn.create({'key': [['aaa']]})
-		self.conn.modify(obj, 'bbb', ['key', 0])
+		self.conn.modify(obj, ['key', 0], 'bbb')
 		res = self.conn.read(obj)
 		self.assertEqual(res, {'key': ['bbb']})
 
@@ -283,7 +283,7 @@ class Modify(TestRequest):
 		data = {'kkk': {'key2': 1}}
 		to_add = ['list_val']
 		obj = self.conn.create(data)
-		self.conn.modify(obj, to_add, ['kkk'])
+		self.conn.modify(obj, ['kkk'], to_add)
 		data['kkk'] = to_add
 		res = self.conn.read(obj)
 		self.assertEqual(res, data)
@@ -296,10 +296,10 @@ class Modify(TestRequest):
 		obj = self.conn.create({'aaa': [1, 2, 3]})
 
 		# replace list by value
-		self.conn.modify(obj, 'bbb', ['aaa'])
+		self.conn.modify(obj, ['aaa'], 'bbb')
 
 		# replace value by new list
-		self.conn.modify(obj, [1], ['aaa'])
+		self.conn.modify(obj, ['aaa'], [1])
 
 		# insert value to the end of the list; if information
 		# about the original list was not removed from the database,

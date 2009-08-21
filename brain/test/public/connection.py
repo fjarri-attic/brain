@@ -26,7 +26,7 @@ class Connection(TestRequest):
 		# this should raise a error, because we are trying
 		# to create map where there is already a list
 		self.assertRaises(brain.StructureError, self.conn.modify,
-			obj, 2, ['friends', 'fld'])
+			obj, ['friends', 'fld'], 2)
 
 		res = self.conn.read(obj)
 		self.assertEqual(res, data)
@@ -55,7 +55,7 @@ class Connection(TestRequest):
 		self.prepareStandNoList()
 
 		self.conn.beginAsync()
-		self.conn.modify(self.id1, 'Zed', ['name'])
+		self.conn.modify(self.id1, ['name'], 'Zed')
 		self.conn.rollback()
 
 		# self.id1 should have remained unchanged
@@ -67,8 +67,8 @@ class Connection(TestRequest):
 		self.prepareStandSimpleList()
 
 		self.conn.beginAsync()
-		self.conn.modify(self.id2, 'RRR', ['tracks', 'fld']) # this will raise an exception
-		self.conn.modify(self.id1, 'Zed', ['name'])
+		self.conn.modify(self.id2, ['tracks', 'fld'], 'RRR') # this will raise an exception
+		self.conn.modify(self.id1, ['name'], 'Zed')
 		self.assertRaises(brain.StructureError, self.conn.commit)
 
 		# self.id1 should have remained unchanged
@@ -83,7 +83,7 @@ class Connection(TestRequest):
 
 		# test all possible requests
 		self.conn.beginAsync()
-		self.conn.modify(self.id1, 'Zed', ['name'])
+		self.conn.modify(self.id1, ['name'], 'Zed')
 		self.conn.create(data)
 		self.conn.read(self.id2)
 		self.conn.search(['name'], op.EQ, 'Zed')
@@ -131,7 +131,7 @@ class Connection(TestRequest):
 		self.prepareStandNoList()
 
 		self.conn.beginSync()
-		self.conn.modify(self.id1, {'name': 'Zack'})
+		self.conn.modify(self.id1, None, {'name': 'Zack'})
 		self.conn.rollback()
 
 		# check that rollback really occurred
@@ -143,11 +143,11 @@ class Connection(TestRequest):
 		self.prepareStandSimpleList()
 
 		self.conn.beginSync()
-		self.conn.modify(self.id2, {'name': 'Alex'})
+		self.conn.modify(self.id2, None, {'name': 'Alex'})
 
 		# this will raise an exception
 		self.assertRaises(brain.StructureError, self.conn.modify,
-			self.id1, 0, ['tracks', 'fld'])
+			self.id1, ['tracks', 'fld'], 0)
 
 		# check that transaction already ended
 		self.assertRaises(brain.FacadeError, self.conn.rollback)

@@ -319,12 +319,12 @@ class Connection:
 			self._requests = []
 
 	@_transacted
-	def modify(self, id, value, path=None):
+	def modify(self, id, path, value):
 		"""
 		Modify existing object.
 		id - object ID
+		path - path to place where to save value
 		value - data structure to save
-		path - path to place where to save value (root by default)
 		"""
 		if path is None:
 			path = []
