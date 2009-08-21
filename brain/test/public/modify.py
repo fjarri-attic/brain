@@ -98,6 +98,8 @@ class Modify(TestRequest):
 		"""Check that modification request creates necessary hierarchy"""
 		self.prepareStandNestedList()
 		self.conn.modify(self.id1, ['tracks', 2, 'Lyrics', 0], 'Blablabla')
+		res = self.conn.read(self.id1, ['tracks', 2, 'Lyrics'])
+		self.assertEqual(res, ['Blablabla'])
 
 	def testListOnTopOfMap(self):
 		"""Check that list cannot be created if map exists on the same level"""
@@ -308,6 +310,16 @@ class Modify(TestRequest):
 		self.conn.insert(obj, ['aaa', None], 2)
 		res = self.conn.read(obj)
 		self.assertEqual(res, {'aaa': [1, 2]})
+
+	def testDeleteDuringAutovivification(self):
+		"""
+		Check that old value is properly deleted after
+		structure is saved on top of value
+		"""
+		obj = self.conn.create({'key': 1})
+		self.conn.modify(obj, ['key', 1], 2)
+		res = self.conn.read(obj)
+		self.assertEqual(res, {'key': [None, 2]})
 
 
 def get_class():
