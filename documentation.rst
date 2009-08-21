@@ -50,13 +50,13 @@ but each engine can use its own ID format.
 
 The next function is `modify()`_; it allows us to change the contents of the object.
 
- >>> conn.modify(id1, 2, ['a'])
+ >>> conn.modify(id1, ['a'], 2)
  >>> data1 = conn.read(id1)
  >>> print(data1)
  {'a': 2, 'b': 1.345}
 
-Its first argument is object ID, second one is the value to store (can be either some simple
-type or data structure) and the third one is the "path" to some place inside object. Path
+Its first argument is object ID, second one is is the `path`_ to some place inside object and
+the third one is the value to store (can be either some simple type or data structure). Path
 is a list, whose elements can be strings, integers or Nones. String element corresponds to key
 in dictionary, integer to list index, and None to list mask.
 
@@ -64,7 +64,7 @@ You may have noticed that the second object contains a list. New elements can be
 to list in two ways - either using `modify()`_ with path, specifying list index to create,
 or inserting new element to some place in list:
 
- >>> conn.modify(id2, 3, ['list', 3])
+ >>> conn.modify(id2, ['list', 3], 3)
  >>> print(conn.read(id2))
  {'list': [1, 2, 'some_value', 3], 'id1': 1}
  >>> conn.insert(id2, ['list', 0], 4)
@@ -131,7 +131,7 @@ For each of two `create()`_'s above transactions were started and committed impl
 transaction explicitly:
 
  >>> conn.beginSync()
- >>> conn.modify(id1, 10, ['a'])
+ >>> conn.modify(id1, ['a'], 10)
  >>> print(conn.read(id1))
  {'a': 10, 'b': 2}
  >>> conn.commit()
@@ -142,7 +142,7 @@ Note that during synchronous transaction modifications become visible instantly.
 consider the similar operation inside a transaction, but this time we will roll it back:
 
  >>> conn.beginSync()
- >>> conn.modify(id1, 20, ['a'])
+ >>> conn.modify(id1, ['a'], 20)
  >>> print(conn.read(id1))
  {'a': 20, 'b': 2}
  >>> conn.rollback()
@@ -158,7 +158,7 @@ object and passed to DB engine in one single package when `commit()`_ is called.
 changes his mind and calls `rollback()`_, all this package is simply discarded.
 
  >>> conn.beginAsync()
- >>> conn.modify(id1, 0, ['a'])
+ >>> conn.modify(id1, ['a'], 0)
  >>> conn.read(id1)
  >>> print(conn.commit())
  [None, {'a': 0, 'b': 2}]
@@ -296,7 +296,7 @@ or implicit transaction.
 
  >>> id1 = conn.create({'name': 'Bob'})
  >>> conn.beginAsync()
- >>> conn.modify(id1, 'Carl', ['name'])
+ >>> conn.modify(id1, ['name'], 'Carl')
  >>> print(conn.read(id1))
  None
  >>> print(conn.commit())
@@ -320,7 +320,7 @@ slowing down transaction processing.
 
  >>> id1 = conn.create({'name': 'Bob'})
  >>> conn.beginSync()
- >>> conn.modify(id1, 'Carl', ['name'])
+ >>> conn.modify(id1, ['name'], 'Carl')
  >>> print(conn.read(id1))
  {'name': 'Carl'}
  >>> conn.commit()
@@ -357,9 +357,14 @@ Create new object in database.
 
 **Example**:
 
+* Creation without path
+
  >>> id1 = conn.create([1, 2, 3])
  >>> print(conn.read(id1))
  [1, 2, 3]
+ 
+* Creation with path
+
  >>> id2 = conn.create([1, 2, 3], ['key'])
  >>> print(conn.read(id2))
  {'key': [1, 2, 3]}
@@ -381,12 +386,12 @@ other list elements are shifted correspondingly.
 
 **Note**: ``delete(id, path)`` is an alias for ``deleteMany(id, [path])``
 
-  ``id``:
-    Target object ID.
+``id``:
+  Target object ID.
 
-  ``paths``:
-    List of `paths`_. If given, is used as the set of masks, specifying fields to delete.
-    If ``None``, the whole object will be deleted.
+``paths``:
+  List of `paths`_. If given, is used as the set of masks, specifying fields to delete.
+  If ``None``, the whole object will be deleted.
 
 **Example**:
 
@@ -443,16 +448,16 @@ Insert given data to list in object.
 
 **Note**: ``insert(id, path, value)`` is an alias for ``insert(id, path, [value])``
 
-  ``id``:
-    Target object ID.
+``id``:
+  Target object ID.
 
-  ``path``:
-    `Path`_ to insert to. Should point to list element (i.e., end with integer or ``None``) and
-    be determined (except for, probably, the last element). If the last element is ``None``,
-    insertion will be performed to the end of the list.
+``path``:
+  `Path`_ to insert to. Should point to list element (i.e., end with integer or ``None``) and
+  be determined (except for, probably, the last element). If the last element is ``None``,
+  insertion will be performed to the end of the list.
 
-  ``value``:
-    Data to insert - should be a supported data structure.
+``value``:
+  Data to insert - should be a supported data structure.
 
 **Remarks**:
   * If target object does not have the field, which ``path`` is pointing to, it will be created.
@@ -495,6 +500,26 @@ Insert given data to list in object.
  >>> conn.insert(id1, ['key2', None], {'subkey': 'val'})
  >>> print(conn.read(id1))
  {'key2': [50, 51, 52, 53, {'subkey': 'val'}], 'key': [0, 1, 2, 3, 4]}
+
+modify()
+========
+
+Modify or create field in object.
+
+**Arguments**: ``modify(id, path, value)``
+
+``id``:
+  Target object ID.
+
+``path``:
+  Path where to store data.
+
+``value``:
+  Data to save at target path.
+
+**Example**:
+
+
 
 rollback()
 ==========
