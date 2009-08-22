@@ -3,8 +3,9 @@ Next release: 0.1.0
 
 * (done) make ``path`` mandatory for ``modify()``
 * (done) add ``remove_conflicts`` parameter for ``modify()`` and ``insert()``
-* (in progress) write proper documentation, save changelog to file in repository
-* (in progress) perform code review, rename public functions if necessary
+* (done) save changelog to file in repository
+* (in progress) write proper documentation
+* (in progress) perform code review
 
 Future
 ======
