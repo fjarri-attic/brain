@@ -1,6 +1,7 @@
 Next release: 0.1.0
 ===================
 
+* (done) ``BrainServer`` and ``BrainClient`` renamed to ``Server`` and ``Client``
 * (done) make ``path`` mandatory for ``modify()``
 * (done) add ``remove_conflicts`` parameter for ``modify()`` and ``insert()``
 * (done) save changelog to file in repository
