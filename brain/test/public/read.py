@@ -133,6 +133,13 @@ class Read(TestRequest):
 		self.assertRaises(brain.LogicError, self.conn.read,
 			self.id1, ['blablabla'])
 
+	def testReadPathAndMasks(self):
+		"""Check that path and masks arguments ofr read() work simultaneously"""
+		obj = self.conn.create({'tracks': [{'Name': 'track 1', 'Length': 240},
+			{'Name': 'track 2', 'Length': 300}]})
+		res = self.conn.read(obj, ['tracks'], [[None, 'Length']])
+		self.assertEqual(res, [{'Length': 240}, {'Length': 300}])
+
 
 def get_class():
 	return Read
