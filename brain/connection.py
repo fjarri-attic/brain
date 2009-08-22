@@ -145,7 +145,13 @@ def _transacted(func, obj, *args, **kwds):
 		create_transaction = not obj._transaction
 
 		if create_transaction: obj.beginAsync()
-		func(obj, *args, **kwds)
+
+		try:
+			func(obj, *args, **kwds)
+		except:
+			obj.rollback()
+			raise
+
 		if create_transaction:
 			return obj.commit()[0]
 
