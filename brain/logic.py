@@ -312,7 +312,11 @@ class _StructureLayer:
 
 		# If table with given field does not exist, just return empty query
 		if not self._engine.tableExists(op1.name_str):
-			return None, None, None
+			if condition.invert:
+				return "SELECT DISTINCT " + self._ID_COLUMN + " FROM {}", \
+					[self._ID_TABLE], []
+			else:
+				return None, None, None
 
 		not_str = " NOT " if condition.invert else " "
 

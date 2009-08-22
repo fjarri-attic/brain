@@ -91,15 +91,14 @@ class Search(TestRequest):
 		"""Check that condition on non-existent field works with And operator"""
 		self.prepareStandNoList()
 
-		# Second part of the condition should return empty list,
-		# so the whole result should be empty too
+		# Second part of the condition should return list of all objects
 		res = self.conn.search(
 			(['phone'], op.EQ, '1111'),
 			op.AND,
 			(op.NOT, ['blablabla'], op.EQ, '22')
 		)
 
-		self.assertEqual(res, [])
+		self.assertEqual(res, [self.id1, self.id5])
 
 		# Same test, but now non-existent field goes first
 		res = self.conn.search(
@@ -108,21 +107,22 @@ class Search(TestRequest):
 			(['phone'], op.EQ, '1111')
 		)
 
-		self.assertEqual(res, [])
+		self.assertEqual(res, [self.id1, self.id5])
 
 	def testNonExistentFieldInOrCondition(self):
 		"""Check that condition on non-existent field works with Or operator"""
 		self.prepareStandNoList()
 
-		# Second part of the condition should return empty list,
-		# so the whole result should be equal to the result of the first part
+		all = [self.id1, self.id2, self.id3, self.id4, self.id5]
+
+		# Second part of the condition should return list of all objects
 		res = self.conn.search(
 			(['phone'], op.EQ, '1111'),
 			op.OR,
 			(op.NOT, ['blablabla'], op.EQ, '22')
 		)
 
-		self.assertSameElements(res, [self.id1, self.id5])
+		self.assertSameElements(res, all)
 
 		# Same test, but now non-existent field goes first
 		res = self.conn.search(
@@ -131,7 +131,7 @@ class Search(TestRequest):
 			(['phone'], op.EQ, '1111')
 		)
 
-		self.assertSameElements(res, [self.id1, self.id5])
+		self.assertSameElements(res, all)
 
 	def testNonExistentFieldInBothParts(self):
 		"""
@@ -145,7 +145,7 @@ class Search(TestRequest):
 			(op.NOT, ['blablabla'], op.EQ, '22')
 		)
 
-		self.assertSameElements(res, [])
+		self.assertSameElements(res, [self.id1, self.id2, self.id3, self.id4, self.id5])
 
 	def testListOneLevel(self):
 		"""Check searching in simple lists"""
