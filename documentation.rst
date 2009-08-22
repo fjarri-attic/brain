@@ -214,10 +214,109 @@ Structure limitations:
  * Lists and dictionaries can be empty.
  * Dictionary keys should have string type.
 
-.. _connect():
+.. _brain.connect():
 
-brain.connect()
-~~~~~~~~~~~~~~~
+Path
+~~~~
+
+Path to some value in object is a list, which can contain only strings, integers and Nones.
+Empty list means the root level of an object; string stands for dictionary key and interger
+stands for position in list. None is used in several special cases: to specify that `insert()`_
+should perform insertion at the end of the list or as a mask for `delete()`_ and `read()`_.
+
+If path does not contain Nones, it is called *determined*.
+
+**Example**:
+
+ >>> id1 = conn.create({'Tracks': [{'Name': 'track 1', 'Length': 240},
+ ... {'Name': 'track 2', 'Length': 300}]})
+ >>> print(conn.read(id1, ['Tracks', 0, 'Name']))
+ track 1
+ >>> print(conn.readByMask(id1, ['Tracks', None, 'Length']))
+ {'Tracks': [{'Length': 240}, {'Length': 300}]}
+
+.. _FacadeError:
+
+.. _EngineError:
+
+.. _StructureError:
+
+.. _FormatError:
+
+Exceptions
+~~~~~~~~~~
+
+Following exceptions can be thrown by API:
+
+ ``brain.FacadeError``:
+   Signals about the error in high-level wrappers. Can be caused by incorrect
+   calls to `begin()`_ \\ `commit()`_ \\ `rollback()`_, incorrect engine tag and so on.
+
+ ``brain.EngineError``:
+   Signals about an error in DB engine wrapper.
+
+ ``brain.StructureError``:
+   Signals about error in object/database structure - for example, conflicting fields.
+
+ ``brain.FormatError``:
+   Wrong format of supplied data: path is not a list, or have elements of wrong type,
+   data has values of wrong type and so on.
+
+Engines
+~~~~~~~
+
+Currently two engines are supported:
+
+**sqlite3**:
+  SQLite 3 engine, built in Python 3.
+
+  **Arguments**: ``(name, open_existing=None, db_path=None)``
+
+  ``name``:
+    Database file name. If equal to ``None``, in-memory database is created.
+
+  ``open_existing``:
+    Ignored if ``name`` is equal to None.
+
+    If equal to True, existing database file will be opened or `EngineError`_
+    will be raised if it does not exist.
+
+    If equal to False, new database file will be created (in place of the existing one, if
+    necessary)
+
+    If equal to None, existing database will be opened or the new one will be created, if
+    the database file does not exist.
+
+  ``db_path``:
+    If is not None, will be concatenated (using platform-specific path join) with ``name``
+
+**postgre**:
+  Postgre 8 engine. Will be used if `py-postgresql <http://python.projects.postgresql.org>`_
+  is installed.
+
+  **Arguments**: ``(name, open_existing=None, host='localhost', port=5432, user='postgres',
+  password='', connection_limit=-1)``
+
+  ``name``:
+    Database name.
+
+  ``open_existing``:
+    Same logic as for SQLite3 engine
+
+  ``host``:
+    Postgre server name
+
+  ``port``:
+    Postgre server port
+
+  ``user``, ``password``:
+    Credentials for connecting to Postgre server
+
+  ``connection_limit``:
+    Connection limit for newly created database. Unlimited by default.
+
+connect()
+~~~~~~~~~
 
 Connect to the database (or create the new one).
 
@@ -231,6 +330,46 @@ Connect to the database (or create the new one).
   Engine-specific parameters. See `Engines`_ section for further information.
 
 **Returns**: `Connection`_ object.
+
+getDefaultEngineTag()
+~~~~~~~~~~~~~~~~~~~~~
+
+Get engine tag, which will be used if ``None`` is specified as engine tag in `connect()`_.
+
+**Arguments**: ``getDefaultEngineTag()``
+
+**Returns**: default engine tag.
+
+getEngineTags()
+~~~~~~~~~~~~~~~
+
+Get available engine tags.
+
+**Arguments**: ``getEngineTags()``
+
+**Returns**: list of engine tags.
+
+.. _operators:
+
+.. _brain.op:
+
+op
+~~
+
+This submodule contains operator definitions for `search()`_ request:
+
+* inversion operator ``NOT`` - can be used in all conditions.
+
+* logical operators ``OR`` and ``AND`` - can be used to link simple conditions.
+
+* comparison operators ``EQ`` (equal to), ``REGEXP``, ``LT`` (lower than), ``LTE`` (lower than or equal to),
+  ``GT`` (greater than) and ``GTE`` (greater than or equal to) - can be used in simple conditions.
+
+  * ``EQ`` can be used for all value types.
+
+  * ``REGEXP`` can be used only for strings. It should support POSIX regexps.
+
+  * ``LT``, ``LTE``, ``GT`` and ``GTE`` can be used for integers and floats.
 
 .. _Connection:
 
@@ -634,6 +773,74 @@ in turn, is an alias for ``read(id, None, masks)``.
  >>> print(conn.read(id1, ['tracks'], [[None, 'Length']]))
  [{'Length': 240}, {'Length': 300}]
 
+repair()
+========
+
+Internal database structure includes some redundant tables, which are used to increase
+database performance. This function can restore them based on actual field data stored in
+database. It can be used when database requests (even `read()`_) are returning strange
+errors with long call stack. These internal tables can be spoiled either by errors in logic
+or because of some errors in underlying SQL engine.
+
+**Arguments**: ``repair()``
+
+search()
+========
+
+Search for objects in database which satisfy given conditions.
+
+**Arguments**: ``search(condition)``
+
+``condition``:
+  Tuple ([``brain.op.NOT``, ]``condition``, logical_operator, ``condition``) or
+  ([``brain.op.NOT``, ]`path`_, comparison_operator, value). Logical_operator and
+  comparison_operator - any `operators`_. Value should be a scalar of supported
+  type. Note that different values support different type of comparisons;
+  see `brain.op`_ reference for details.
+
+  If condition uses path, not existing in some object, condition is considered
+  to be false for this object if it does not contain ``brain.op.NOT`` and true
+  otherwise.
+
+**Returns**: list of object IDs, satisfying given conditions.
+
+**Example**:
+
+ >>> id1 = conn.create({'name': 'Alex', 'age': 22})
+ >>> id2 = conn.create({'name': 'Bob', 'height': 180, 'age': 25})
+ >>> id3 = conn.create({'name': 'Carl', 'height': 170, 'age': 26})
+ >>> import brain.op as op
+
+* Simple condition
+
+ >>> print(conn.search(['name'], op.EQ, 'Alex') == [id1])
+ True
+
+* Compound condition
+
+ >>> print(conn.search((['name'], op.EQ, 'Alex'), op.AND, (op.NOT, ['name'], op.EQ, 'Carl')) == [id1, id2])
+ False
+
+* Compound condition with negative
+
+ >>> print(conn.search((['name'], op.EQ, 'Alex'), op.OR, (op.NOT, ['name'], op.EQ, 'Carl')) == [id1, id2])
+ True
+
+* Condition with non-equality
+
+ >>> print(conn.search(['age'], op.GT, 25) == [id3])
+ True
+
+* Condition with non-existent field
+
+ >>> print(conn.search((['name'], op.EQ, 'Alex'), op.AND, (['weight'], op.GT, 0)) == [])
+ True
+
+* Condition with non-existent field and negative
+
+ >>> print(conn.search((['name'], op.EQ, 'Alex'), op.AND, (op.NOT, ['weight'], op.GT, 0)) == [id1])
+ True
+
 rollback()
 ==========
 
@@ -642,102 +849,3 @@ Roll current transaction back. If transaction is not in progress, `FacadeError`_
 **Arguments**: ``rollback()``
 
 .. _paths:
-
-Path
-~~~~
-
-Path to some value in object is a list, which can contain only strings, integers and Nones.
-Empty list means the root level of an object; string stands for dictionary key and interger
-stands for position in list. None is used in several special cases: to specify that `insert()`_
-should perform insertion at the end of the list or as a mask for `delete()`_ and `read()`_.
-
-If path does not contain Nones, it is called *determined*.
-
-**Example**:
-
- >>> id1 = conn.create({'Tracks': [{'Name': 'track 1', 'Length': 240},
- ... {'Name': 'track 2', 'Length': 300}]})
- >>> print(conn.read(id1, ['Tracks', 0, 'Name']))
- track 1
- >>> print(conn.readByMask(id1, ['Tracks', None, 'Length']))
- {'Tracks': [{'Length': 240}, {'Length': 300}]}
-
-.. _FacadeError:
-
-.. _EngineError:
-
-.. _StructureError:
-
-.. _FormatError:
-
-Exceptions
-~~~~~~~~~~
-
-Following exceptions can be thrown by API:
-
- ``brain.FacadeError``:
-   Signals about the error in high-level wrappers. Can be caused by incorrect
-   calls to `begin()`_ \\ `commit()`_ \\ `rollback()`_, incorrect engine tag and so on.
-
- ``brain.EngineError``:
-   Signals about an error in DB engine wrapper.
-
- ``brain.StructureError``:
-   Signals about error in object/database structure - for example, conflicting fields.
-
- ``brain.FormatError``:
-   Wrong format of supplied data: path is not a list, or have elements of wrong type,
-   data has values of wrong type and so on.
-
-Engines
-~~~~~~~
-
-Currently two engines are supported:
-
-**sqlite3**:
-  SQLite 3 engine, built in Python 3.
-
-  **Arguments**: ``(name, open_existing=None, db_path=None)``
-
-  ``name``:
-    Database file name. If equal to ``None``, in-memory database is created.
-
-  ``open_existing``:
-    Ignored if ``name`` is equal to None.
-
-    If equal to True, existing database file will be opened or `EngineError`_
-    will be raised if it does not exist.
-
-    If equal to False, new database file will be created (in place of the existing one, if
-    necessary)
-
-    If equal to None, existing database will be opened or the new one will be created, if
-    the database file does not exist.
-
-  ``db_path``:
-    If is not None, will be concatenated (using platform-specific path join) with ``name``
-
-**postgre**:
-  Postgre 8 engine. Will be used if `py-postgresql <http://python.projects.postgresql.org>`_
-  is installed.
-
-  **Arguments**: ``(name, open_existing=None, host='localhost', port=5432, user='postgres',
-  password='', connection_limit=-1)``
-
-  ``name``:
-    Database name.
-
-  ``open_existing``:
-    Same logic as for SQLite3 engine
-
-  ``host``:
-    Postgre server name
-
-  ``port``:
-    Postgre server port
-
-  ``user``, ``password``:
-    Credentials for connecting to Postgre server
-
-  ``connection_limit``:
-    Connection limit for newly created database. Unlimited by default.
