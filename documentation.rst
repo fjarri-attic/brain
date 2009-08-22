@@ -597,6 +597,10 @@ If path does not contain Nones, it is called *determined*.
 
 .. _EngineError:
 
+.. _StructureError:
+
+.. _FormatError:
+
 Exceptions
 ~~~~~~~~~~
 
@@ -608,6 +612,13 @@ Following exceptions can be thrown by API:
 
  ``brain.EngineError``:
    Signals about an error in DB engine wrapper.
+
+ ``brain.StructureError``:
+   Signals about error in object/database structure - for example, conflicting fields.
+
+ ``brain.FormatError``:
+   Wrong format of supplied data: path is not a list, or have elements of wrong type,
+   data has values of wrong type and so on.
 
 Engines
 ~~~~~~~
