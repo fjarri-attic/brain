@@ -565,6 +565,75 @@ Modify or create field in object.
  >>> print(conn.read(id1))
  {'key': {'key2': 'val'}}
 
+objectExists()
+==============
+
+Check if object with given ID exists.
+
+**Arguments**: ``objectExists(id)``
+
+``id``:
+  Object ID.
+
+**Returns**: True if object with given ID exists, False otherwise.
+
+.. _read():
+
+.. _readByMask():
+
+.. _readByMasks():
+
+read(), readByMask, readByMasks()
+=================================
+
+Read contents of given object.
+
+**Arguments**
+  ``read(id, path=None, masks=None)``
+
+  ``readByMask(id, mask=None)``
+
+  ``readByMasks(id, masks=None)``
+
+**Note**: ``readByMask(id, mask)`` is an alias for ``readByMasks(id, [mask])`` and ``readByMasks(id, masks)``,
+in turn, is an alias for ``read(id, None, masks)``.
+
+``id``:
+  Target object ID.
+
+``path``:
+  `Path`_ to read from. Read from root by default.
+
+``masks``:
+  List of `paths`_; all results which do not have one of them in the beginning, will be filtered out.
+  Masks are relative to ``path``.
+
+**Returns**: resulting data structure.
+
+**Example**:
+
+ >>> id1 = conn.create({'tracks': [{'Name': 'track 1', 'Length': 240}, {'Name': 'track 2', 'Length': 300}]})
+
+* Read the whole object
+
+ >>> print(conn.read(id1))
+ {'tracks': [{'Length': 240, 'Name': 'track 1'}, {'Length': 300, 'Name': 'track 2'}]}
+
+* Read from given path
+
+ >>> print(conn.read(id1, ['tracks', 0]))
+ {'Length': 240, 'Name': 'track 1'}
+
+* Read by mask
+
+ >>> print(conn.readByMask(id1, ['tracks', None, 'Length']))
+ {'tracks': [{'Length': 240}, {'Length': 300}]}
+
+* Read from path, filter by mask. Note that mask is relative.
+
+ >>> print(conn.read(id1, ['tracks'], [[None, 'Length']]))
+ [{'Length': 240}, {'Length': 300}]
+
 rollback()
 ==========
 
