@@ -849,3 +849,8 @@ Roll current transaction back. If transaction is not in progress, `FacadeError`_
 **Arguments**: ``rollback()``
 
 .. _paths:
+
+Server
+~~~~~~
+
+XML RPC server for database. Based on Python built-in ``xmlrpc.server.DocXMLRPCServer``.
