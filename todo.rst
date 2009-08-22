@@ -54,3 +54,9 @@ Policy for conflicts removal
 
 Add ability to set as a parameter to connection the default value of ``remove_conflicts``.
 Currently it is set to False so that database conflicts do not pass unnoticed.
+
+Doctests from documentation
+---------------------------
+
+Make doctests from all examples in documentation in order to avoid embarassment if
+they stop working after some change.
