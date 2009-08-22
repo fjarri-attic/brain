@@ -539,13 +539,31 @@ Modify or create field in object.
 
   If ``remove_conflicts`` equals ``True``, all conflicting fields are deleted. In other words,
   modify() is guaranteed to finish successfully and the result of ``read(id, path)`` is
-  guaranteed to equal ``value``.
+  guaranteed to be equal to ``value``.
 
   If ``remove_conflicts`` equals ``False``, `StructureError` is raised if conflict is found.
 
 **Example**:
 
+ >>> id1 = conn.create({'key': 'val'})
 
+* Simple modification
+
+ >>> conn.modify(id1, ['key'], 'new_val')
+ >>> print(conn.read(id1))
+ {'key': 'new_val'}
+
+* Save data structure in place of value
+
+ >>> conn.modify(id1, ['key'], [1, 2])
+ >>> print(conn.read(id1))
+ {'key': [1, 2]}
+
+* Implicitly transform list remove ``[1, 2]`` using ``remove_conflicts``
+
+ >>> conn.modify(id1, ['key', 'key2'], 'val', remove_conflicts=True)
+ >>> print(conn.read(id1))
+ {'key': {'key2': 'val'}}
 
 rollback()
 ==========
