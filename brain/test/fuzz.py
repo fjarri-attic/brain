@@ -135,8 +135,8 @@ class RandomAction:
 		return (str(self) if verbosity > 3 else self._method)
 
 	def _constructModifyArgs(self):
-		self._args = (getRandomData(MAX_DEPTH),
-			getRandomDefinitePath(self._obj_contents))
+		self._args = (getRandomDefinitePath(self._obj_contents),
+			getRandomData(MAX_DEPTH))
 
 	def _constructInsertArgs(self):
 		elems = random.randint(1, MAX_ELEMENTS_NUM)

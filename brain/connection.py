@@ -497,10 +497,10 @@ class FakeConnection:
 		_saveTo(self._root, self._id_counter, path, data)
 		return self._id_counter
 
-	def modify(self, id, value, path=None):
+	def modify(self, id, path, value, remove_conflicts=False):
 		_saveTo(self._root, id, path, value)
 
-	def insertMany(self, id, path, values):
+	def insertMany(self, id, path, values, remove_conflicts=False):
 		target = self._getPath(self._root, [id] + path[:-1])
 		index = path[-1]
 
