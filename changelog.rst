@@ -90,19 +90,3 @@ Added support for insertion and deletion requests in nested lists.
 * added function for restoring database integrity (specification/refcounters table and
   listsizes table can be rebuilt using other DB contents)
 * added setuptools info and registered in pypi
-
-0.1.0 (planned)
----------------
-
-* write proper documentation, save changelog to file in repository
-* perform code review, rename public functions if necessary
-
-TODO
-====
-
-* add XML RPC secure server and client (via HTTPS) and rewrite existing
-  XML RPC server in order to avoid hacks (patch for python was sent, waiting for decision)
-* add support for cross-references in text values, which will be resolved and
-  auto-updated at the database level
-* add strict/non-strict modes for database, when valid structure is enforced by database or by caller correspondingly
-* add performance tests, analyze performance data
