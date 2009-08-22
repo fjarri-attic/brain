@@ -442,11 +442,12 @@ insert(), insertMany()
 Insert given data to list in object.
 
 **Arguments**:
-  ``insert(id, path, value)``
+  ``insert(id, path, value, remove_conflicts=False)``
 
-  ``insertMany(id, path, values)``
+  ``insertMany(id, path, values, remove_conflicts=False)``
 
-**Note**: ``insert(id, path, value)`` is an alias for ``insert(id, path, [value])``
+**Note**: ``insert(id, path, value, remove_conflicts)`` is an alias for
+``insert(id, path, [value], remove_conflicts)``
 
 ``id``:
   Target object ID.
@@ -458,6 +459,10 @@ Insert given data to list in object.
 
 ``value``:
   Data to insert - should be a supported data structure.
+
+``remove_conflicts``
+  See the description of this parameter for `modify()`_. ``insert()`` tries to perform
+  ``modify(id, path, [], remove_conflicts)`` before doing any actions.
 
 **Remarks**:
   * If target object does not have the field, which ``path`` is pointing to, it will be created.
@@ -483,30 +488,36 @@ Insert given data to list in object.
  >>> print(conn.read(id1))
  {'key': [0, 1, 2, 3, 4]}
 
-* Autovivification
+* Autovivification, no conflicts
 
  >>> conn.insert(id1, ['key2', None], 50)
  >>> print(conn.read(id1))
  {'key2': [50], 'key': [0, 1, 2, 3, 4]}
 
+* Autovivification, remove conflicts
+
+ >>> conn.insert(id1, ['key2', 'key3', None], 50, remove_conflicts=True)
+ >>> print(conn.read(id1))
+ {'key2': {'key3': [50]}, 'key': [0, 1, 2, 3, 4]}
+
 * Insert several values at once
 
  >>> conn.insertMany(id1, ['key2', None], [51, 52, 53])
  >>> print(conn.read(id1))
- {'key2': [50, 51, 52, 53], 'key': [0, 1, 2, 3, 4]}
+ {'key2': {'key3': [50, 51, 52, 53]}, 'key': [0, 1, 2, 3, 4]}
 
 * Insert data structure
 
- >>> conn.insert(id1, ['key2', None], {'subkey': 'val'})
+ >>> conn.insert(id1, ['key2', 'key3', None], {'subkey': 'val'})
  >>> print(conn.read(id1))
- {'key2': [50, 51, 52, 53, {'subkey': 'val'}], 'key': [0, 1, 2, 3, 4]}
+ {'key2': {'key3': [50, 51, 52, 53, {'subkey': 'val'}]}, 'key': [0, 1, 2, 3, 4]}
 
 modify()
 ========
 
 Modify or create field in object.
 
-**Arguments**: ``modify(id, path, value)``
+**Arguments**: ``modify(id, path, value, remove_conflicts=False)``
 
 ``id``:
   Target object ID.
@@ -516,6 +527,21 @@ Modify or create field in object.
 
 ``value``:
   Data to save at target path.
+
+``remove_conflicts``:
+  Determines the way conflicts of ``path`` with existing data structure are handled. Possible conflicts are:
+
+  * ``path`` points to dictionary, when list already exists on the same level
+
+  * ``path`` points to list, when dictionary already exists on the same level
+
+  * ``path`` points to list or dictionary, when scalar value already exists on the same level
+
+  If ``remove_conflicts`` equals ``True``, all conflicting fields are deleted. In other words,
+  modify() is guaranteed to finish successfully and the result of ``read(id, path)`` is
+  guaranteed to equal ``value``.
+
+  If ``remove_conflicts`` equals ``False``, `StructureError` is raised if conflict is found.
 
 **Example**:
 
