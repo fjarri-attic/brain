@@ -62,3 +62,8 @@ Doctests from documentation
 
 Make doctests from all examples in documentation in order to avoid embarassment if
 they stop working after some change.
+
+Long search conditions
+----------------------
+
+Add support for something like (cond, AND, cond, AND, cond).
