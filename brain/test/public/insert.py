@@ -231,6 +231,20 @@ class Insert(TestRequest):
 		res = self.conn.read(obj)
 		self.assertEqual(res, {'key': [1, 2, 3], 'key2': ['val']})
 
+	def testInsertWithRemovingConflicts(self):
+		"""Simple test to check that remove_conflicts option works"""
+		obj = self.conn.create({'key': [1, 2, 3]})
+		self.conn.insert(obj, ['key', 'key2', None], 'val', True)
+		res = self.conn.read(obj)
+		self.assertEqual(res, {'key': {'key2': ['val']}})
+
+	def testRemoveConflictsPreservesFields(self):
+		"""Check that remove_conflicts option keeps non-conflicting fields"""
+		obj = self.conn.create({'key': [1, 2, 3]})
+		self.conn.insert(obj, ['key2', 'key3', None], 'val', True)
+		res = self.conn.read(obj)
+		self.assertEqual(res, {'key2': {'key3': ['val']}, 'key': [1, 2, 3]})
+
 
 def get_class():
 	return Insert
