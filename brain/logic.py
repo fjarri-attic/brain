@@ -436,6 +436,21 @@ class _StructureLayer:
 
 		return max if max != -1 else None
 
+	def objectHasField(self, id, field):
+		"""Returns True if object has given field (with any type of value)"""
+		types = self.getValueTypes(id, field)
+		field_copy = Field(self._engine, field.name)
+		for type in types:
+			field_copy.type_str = type
+			res = self._engine.execute("SELECT " + self._ID_COLUMN +
+				" FROM {} WHERE " + self._ID_COLUMN + "=?" +
+				field_copy.columns_condition,
+				[field_copy.name_str], [id])
+			if len(res) > 0:
+				return True
+
+		return False
+
 
 class LogicLayer:
 	"""Class, representing DDB logic"""
@@ -455,18 +470,34 @@ class LogicLayer:
 			for fld in self._structure.getFieldsList(id, field, exclude_self=False):
 				self._structure.deleteValues(id, fld)
 
-	def _checkForConflicts(self, id, field):
+	def _checkForConflicts(self, id, field, remove_conflicts):
 		"""
 		Check that adding this field does not break the database structure, namely:
 		given field can either contain value, or list, or map, not several at once
 		"""
-		parent = self._structure.getFieldValue(id, Field(self._engine, field.name[:-1]))
-		if len(parent) == 0:
-			return
-		if isinstance(field.name[-1], str) and isinstance(parent[0].py_value, list):
-			raise interface.StructureError("Cannot modify map, when list already exists on this level")
-		elif not isinstance(field.name[-1], str) and isinstance(parent[0].py_value, dict):
-			raise interface.StructureError("Cannot modify list, when map already exists on this level")
+		name_copy = list(reversed(field.name))
+		tmp_field = Field(self._engine, [])
+		while len(name_copy) > 0:
+			next = name_copy.pop()
+			types = self._structure.getValueTypes(id, tmp_field)
+			values = []
+			for type in types:
+				tmp_field.type_str = type
+				values += self._structure.getFieldValue(id, tmp_field)
+			if len(values) == 0:
+				return
+			values = [value.py_value for value in values]
+
+			next_is_str = isinstance(next, str)
+			if not (next_is_str and dict() in values) and not (not next_is_str and list() in values):
+				if remove_conflicts:
+					for fld in self._structure.getFieldsList(id, tmp_field, exclude_self=False):
+						self._structure.deleteValues(id, fld)
+					return
+				else:
+					raise interface.StructureError("Path " + repr(tmp_field.name + [next]) +
+						" conflicts with existing structure")
+			tmp_field.name.append(next)
 
 	def _setFieldValue(self, id, field):
 		"""Set value of given field"""
@@ -501,16 +532,16 @@ class LogicLayer:
 			# shift numbers of all elements in list
 			self._structure.renumberList(id, target_field, fld, shift)
 
-	def _modifyFields(self, id, path, fields):
+	def _modifyFields(self, id, path, fields, remove_conflicts):
 		"""Store values of given fields"""
 
-		if len(self._structure.getValueTypes(id, path)) > 0:
+		if self._structure.objectHasField(id, path):
 		# path already exists, delete it and all its children
 			for field in self._structure.getFieldsList(id, path, exclude_self=False):
 				self._structure.deleteValues(id, field, path.columns_condition)
-		elif len(path.name) > 0:
+		else:
 		# path does not exist and is not root - check for list/map conflicts
-			self._checkForConflicts(id, path)
+			self._checkForConflicts(id, path, remove_conflicts)
 
 		# store field values
 		for field in fields:
@@ -519,11 +550,12 @@ class LogicLayer:
 
 	def processCreateRequest(self, request):
 		new_id = self._engine.getNewId()
-		self._modifyFields(new_id, interface.Field(self._engine, []), request.fields)
+		self._modifyFields(new_id, interface.Field(self._engine, []), request.fields, True)
 		return new_id
 
 	def processModifyRequest(self, request):
-		self._modifyFields(request.id, request.path, request.fields)
+		self._modifyFields(request.id, request.path,
+			request.fields, request.remove_conflicts)
 
 	def processDeleteRequest(self, request):
 
@@ -604,7 +636,8 @@ class LogicLayer:
 		if len(parent) == 0:
 			# try to autovivify list
 			new_val = Field(self._engine, [], list())
-			self._modifyFields(request.id, parent_field, [new_val])
+			self._modifyFields(request.id, parent_field,
+				[new_val], remove_conflicts=request.remove_conflicts)
 		elif parent[0].py_value != list():
 			raise interface.StructureError("Cannot insert to non-list")
 

@@ -65,10 +65,10 @@ class Format(unittest.TestCase):
 		"""Test that requests throw exceptions when no ID is provided"""
 		field = Field(None, ['fld', 1], 1)
 		fields = [field]
-		self.assertRaises(brain.FormatError, ModifyRequest, None, field, fields)
+		self.assertRaises(brain.FormatError, ModifyRequest, None, field, fields, True)
 		self.assertRaises(brain.FormatError, ReadRequest, None, field)
 		self.assertRaises(brain.FormatError, DeleteRequest, None, field)
-		self.assertRaises(brain.FormatError, InsertRequest, None, field, [fields])
+		self.assertRaises(brain.FormatError, InsertRequest, None, field, [fields], True)
 
 	# Additional checks for ReadRequest
 
@@ -84,19 +84,19 @@ class Format(unittest.TestCase):
 		"""Test that InsertRequest requires determined target"""
 		self.assertRaises(brain.FormatError, InsertRequest,
 			'1', Field(None, ['test', None, 1]),
-			[[Field(None, ['test'], 1)]])
+			[[Field(None, ['test'], 1)]], True)
 
 	def testInsertRequestTargetPointsToMap(self):
 		"""Test that InsertRequest requires target pointing to list"""
 		self.assertRaises(brain.FormatError, InsertRequest,
 			'1', Field(None, ['test', 1, 'aaa']),
-			[[Field(None, ['test'], 1)]])
+			[[Field(None, ['test'], 1)]], True)
 
 	def testInsertRequestNotDeterminedField(self):
 		"""Test that InsertRequest requires determined fields to insert"""
 		self.assertRaises(brain.FormatError, InsertRequest,
 			'1', Field(None, ['test', 1, 2]),
-			[[Field(None, ['test', None])]])
+			[[Field(None, ['test', None])]], True)
 
 	# Additional checks for SearchRequest
 
@@ -198,9 +198,9 @@ class Format(unittest.TestCase):
 
 		objs = [
 			    CreateRequest([f]),
-			    ModifyRequest(temp_id, f, [f]),
+			    ModifyRequest(temp_id, f, [f], True),
 			    ReadRequest(temp_id, f, [f]),
-			    InsertRequest(temp_id, f, [[f]]),
+			    InsertRequest(temp_id, f, [[f]], True),
 			    DeleteRequest(temp_id, [[f]]),
 			    SearchRequest(SearchRequest.Condition(f, op.EQ, f)),
 			    Pointer.fromPyValue(None),

@@ -335,7 +335,7 @@ class CreateRequest:
 class ModifyRequest:
 	"""Request for modification of existing objects"""
 
-	def __init__(self, id, path, fields):
+	def __init__(self, id, path, fields, remove_conflicts):
 
 		if id is None:
 			raise FormatError("Cannot modify undefined object")
@@ -343,12 +343,14 @@ class ModifyRequest:
 		self.id = id
 		self.path = path
 		self.fields = fields
+		self.remove_conflicts = remove_conflicts
 
 	def __str__(self):
-		return "{name} for object {id}{data}".format(
+		return "{name} for object {id}{data}{remove_conflicts}".format(
 			name=type(self).__name__,
 			id=self.id,
-			data=("" if self.fields is None else ": " + repr(self.fields)))
+			data=("" if self.fields is None else ": " + repr(self.fields)),
+			remove_conflicts=", remove conflicts" if self.remove_conflicts else "")
 
 
 class DeleteRequest:
@@ -396,7 +398,7 @@ class ReadRequest:
 class InsertRequest:
 	"""Request for insertion into list of fields"""
 
-	def __init__(self, id, path, field_groups):
+	def __init__(self, id, path, field_groups, remove_conflicts):
 
 		# path should be determined, except maybe for the last element
 		for elem in path.name[:-1]:
@@ -422,13 +424,15 @@ class InsertRequest:
 		self.id = id
 		self.field_groups = field_groups
 		self.path = path
+		self.remove_conflicts = remove_conflicts
 
 	def __str__(self):
-		return "{name} for object {id} and path {path}: {data}".format(
+		return "{name} for object {id} and path {path}: {data}{remove_conflicts}".format(
 			name=type(self).__name__,
 			id=self.id,
 			path=self.path,
-			data=repr(self.field_groups))
+			data=repr(self.field_groups),
+			remove_conflicts=", remove conflicts" if self.remove_conflicts else "")
 
 
 class SearchRequest:

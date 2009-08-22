@@ -319,17 +319,20 @@ class Connection:
 			self._requests = []
 
 	@_transacted
-	def modify(self, id, path, value):
+	def modify(self, id, path, value, remove_conflicts=False):
 		"""
 		Modify existing object.
 		id - object ID
 		path - path to place where to save value
 		value - data structure to save
+		remove_conflicts - if True, remove all conflicting data structures;
+			if False - taise an exception
 		"""
 		if path is None:
 			path = []
 		fields = _flattenHierarchy(value, self._engine)
-		self._requests.append(interface.ModifyRequest(id, Field(self._engine, path), fields))
+		self._requests.append(interface.ModifyRequest(id,
+			Field(self._engine, path), fields, remove_conflicts))
 
 	@_transacted
 	def read(self, id, path=None, masks=None):
@@ -367,26 +370,31 @@ class Connection:
 		"""
 		return self.read(id, path=None, masks=masks)
 
-	def insert(self, id, path, value):
+	def insert(self, id, path, value, remove_conflicts=False):
 		"""
 		Insert value into list.
 		id - object ID
 		path - path to insert to (must point to list)
 		value - data structure to insert
+		remove_conflicts - if True, remove all conflicting data structures;
+			if False - taise an exception
 		"""
-		return self.insertMany(id, path, [value])
+		return self.insertMany(id, path, [value], remove_conflicts)
 
 	@_transacted
-	def insertMany(self, id, path, values):
+	def insertMany(self, id, path, values, remove_conflicts=False):
 		"""
 		Insert several values into list.
 		id - object ID
 		path - path to insert to (must point to list)
 		values - list of data structures to insert
+		remove_conflicts - if True, remove all conflicting data structures;
+			if False - taise an exception
 		"""
 		self._requests.append(interface.InsertRequest(
 			id, Field(self._engine, path),
-			[_flattenHierarchy(value, self._engine) for value in values]))
+			[_flattenHierarchy(value, self._engine) for value in values],
+			remove_conflicts))
 
 	def delete(self, id, path=None):
 		"""

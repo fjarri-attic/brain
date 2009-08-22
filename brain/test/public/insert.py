@@ -221,7 +221,7 @@ class Insert(TestRequest):
 		spoiled database structure
 		"""
 		obj = self.conn.create({'key': [1, 2, 3]})
-		self.assertRaises(brain.StructureError, self.conn.insert, 
+		self.assertRaises(brain.StructureError, self.conn.insert,
 			obj, ['key', 'key2', 0], 'val')
 
 	def testRootAutovivification(self):
@@ -230,7 +230,7 @@ class Insert(TestRequest):
 		self.conn.insert(obj, ['key2', None], 'val')
 		res = self.conn.read(obj)
 		self.assertEqual(res, {'key': [1, 2, 3], 'key2': ['val']})
-		
+
 
 def get_class():
 	return Insert

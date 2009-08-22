@@ -317,7 +317,7 @@ class Modify(TestRequest):
 		structure is saved on top of value
 		"""
 		obj = self.conn.create({'key': 1})
-		self.conn.modify(obj, ['key', 1], 2)
+		self.conn.modify(obj, ['key', 1], 2, True)
 		res = self.conn.read(obj)
 		self.assertEqual(res, {'key': [None, 2]})
 
