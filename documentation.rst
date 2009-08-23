@@ -4,16 +4,31 @@ Brain - DDB-like front-end for SQL engines
 
 .. contents::
 
-Documentation is under construction
------------------------------------
+Introduction
+------------
 
-Just give me a few days.
+Document databases may prove out to be more convenient than relational ones for programs
+that operate with a large set of objects with different parameters. With document database
+you do not need to develop the database scheme, just toss objects with complex structure
+to the database and retreive them by any search criteria. For example, this approach may
+be useful for music players (store tracks/albums/artists as objects with cross-references
+and references to real files), project management software, bug tracking systems and so on.
+
+This package is, in effect, a wrapper, which makes the relational database engine look
+like DDB. Of course, this approach has its drawbacks - noticeable overhead and slow store/retreive
+operations. But it gives fast search, transaction support and all features of chosen relational
+DB engine (like DB server, secure access, replication and other stuff) for free. Plus, all DB engines
+are constantly improving without my attention - isn't it cool?
+
+This package is in beta state now. You can find all planned tasks in todo.rst (not included in
+distribution, get it from master branch). I will appreciate any comments and bug reports,
+from grammar and spelling errors in documentation to flaws in module architecture.
 
 Quick start
 -----------
 
 This section will show only the simple usage examples. For exhaustive information please consult
-the reference entries for corresponding functions.
+the `Reference`_ entries for corresponding functions.
 
 Basic functions
 ~~~~~~~~~~~~~~~
@@ -314,6 +329,55 @@ Currently two engines are supported:
 
   ``connection_limit``:
     Connection limit for newly created database. Unlimited by default.
+
+Tests
+~~~~~
+
+The package is supplied with a set of functionality tests which I use for debugging purposes.
+They can be found in ``test`` subfolder of module main folder. Tests are executed using ``run.py``,
+which has the following parameters:
+
+``run.py <func|fuzz> [options]``
+
+``func``:
+  Functionality tests. They are based on Python's ``unittest`` module, with some minor extensions.
+  Currently they provide almost 100% coverage of package code.
+
+``fuzz``:
+  Several objects with random data are created and random actions (`modify()`_, `insert()`_,
+  `read()`_, `delete()`_) are performed on them. After each action result is compared to
+  the result of ``FakeConnection``, which uses Python data structures to emulate package
+  behavior.
+
+**global parameters**:
+  ``-v LEVEL``, ``--verbosity=LEVEL``:
+    Integer from 0 (less verbose) to 3 (more verbose), specifying the amount of information
+    which is displayed during tests. Default is 2.
+
+``func`` **parameters**:
+  ``--ae``, ``--all-engines``:
+    If specified, all available DB engines will be tested. If not specified, only the default
+    engine (see `getDefaultEngineTag()`_) will be tested.
+
+  ``--ac``, ``--all-connections``:
+    If specified, all available connections will be tested (local, XML RPC and so on). If
+    not specified, only local connection will be tested.
+
+  ``--as``, ``--all-storages``:
+    If specified, all storage types for each engine will be tested (for example, for sqlite3
+    available types are in-memory and file). If not specified, only the default storage for
+    each engine will be tested.
+
+``fuzz`` **parameters**:
+  ``-o NUM``, ``--objects=NUM``:
+    Number of object to be tested simultaneously. Default is 1.
+
+  ``-a NUM``, ``--actions=NUM``
+    Number of actions to be performed for one object. Default is 100.
+
+  ``-s SEED``, ``--seed=SEED``
+    Integer which will be used as starting seed for random number generator. This wil allow
+    to get reproduceable results. By default, random seed is generated.
 
 .. _connect():
 
