@@ -8,8 +8,7 @@ import sys
 
 VERSION = '0.0.12'
 
-scriptdir, script= os.path.split(sys.argv[0])
-DOCUMENTATION = open(os.path.join(scriptdir, 'documentation.rst')).read()
+DOCUMENTATION = open(os.path.join(os.path.dirname(__file__), 'documentation.rst')).read()
 
 setup(
 	name='brain',
