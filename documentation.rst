@@ -205,7 +205,7 @@ Known limitations
 ~~~~~~~~~~~~~~~~~
 
 Value limitations:
- * Currently the following Python types are supported: None, int, float, str and bytes.
+ * Currently the following Python types are supported: ``None``, ``int``, ``float``, ``str`` and ``bytes``.
  * Integers are limited to 8 bytes (by DB engines) and to 4 bytes by XML RPC protocol.
 
 Structure limitations:
@@ -214,13 +214,13 @@ Structure limitations:
  * Lists and dictionaries can be empty.
  * Dictionary keys should have string type.
 
-.. _brain.connect():
+.. _paths:
 
 Path
 ~~~~
 
 Path to some value in object is a list, which can contain only strings, integers and Nones.
-Empty list means the root level of an object; string stands for dictionary key and interger
+Empty list means the root level of an object; string stands for dictionary key and integer
 stands for position in list. None is used in several special cases: to specify that `insert()`_
 should perform insertion at the end of the list or as a mask for `delete()`_ and `read()`_.
 
@@ -315,8 +315,10 @@ Currently two engines are supported:
   ``connection_limit``:
     Connection limit for newly created database. Unlimited by default.
 
-connect()
-~~~~~~~~~
+.. _connect():
+
+brain.connect()
+~~~~~~~~~~~~~~~
 
 Connect to the database (or create the new one).
 
@@ -331,8 +333,10 @@ Connect to the database (or create the new one).
 
 **Returns**: `Connection`_ object.
 
-getDefaultEngineTag()
-~~~~~~~~~~~~~~~~~~~~~
+.. _getDefaultEngineTag():
+
+brain.getDefaultEngineTag()
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Get engine tag, which will be used if ``None`` is specified as engine tag in `connect()`_.
 
@@ -340,8 +344,10 @@ Get engine tag, which will be used if ``None`` is specified as engine tag in `co
 
 **Returns**: default engine tag.
 
-getEngineTags()
-~~~~~~~~~~~~~~~
+.. _getEngineTags():
+
+brain.getEngineTags()
+~~~~~~~~~~~~~~~~~~~~~
 
 Get available engine tags.
 
@@ -351,10 +357,10 @@ Get available engine tags.
 
 .. _operators:
 
-.. _brain.op:
+.. _op:
 
-op
-~~
+brain.op
+~~~~~~~~
 
 This submodule contains operator definitions for `search()`_ request:
 
@@ -372,6 +378,8 @@ This submodule contains operator definitions for `search()`_ request:
   * ``LT``, ``LTE``, ``GT`` and ``GTE`` can be used for integers and floats.
 
 .. _Connection:
+
+.. _RemoteConnection:
 
 Connection, RemoteConnection
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -447,7 +455,7 @@ beginSync()
 This function is an alias for `begin()`_ (equals to ``begin(sync=True)``)
 
 Start synchronous transaction. During the synchronous transaction request results are available
-instantly (for the same connection object), so one can perfomr complex actions inside
+instantly (for the same connection object), so one can perform complex actions inside
 one transaction. On the downside, actual database transaction is opened all the time,
 probably locking the database (depends on the engine). In case of remote connection,
 synchronous transaction means that there will be several requests/responses performed,
@@ -784,6 +792,13 @@ or because of some errors in underlying SQL engine.
 
 **Arguments**: ``repair()``
 
+rollback()
+==========
+
+Roll current transaction back. If transaction is not in progress, `FacadeError`_ will be raised.
+
+**Arguments**: ``rollback()``
+
 search()
 ========
 
@@ -841,16 +856,87 @@ Search for objects in database which satisfy given conditions.
  >>> print(conn.search((['name'], op.EQ, 'Alex'), op.AND, (op.NOT, ['weight'], op.GT, 0)) == [id1])
  True
 
-rollback()
-==========
+Client
+~~~~~~
 
-Roll current transaction back. If transaction is not in progress, `FacadeError`_ will be raised.
+XML RPC client for brain DB. Based on Python's built-in ``xmlrpc.client.ServerProxy`` and has the
+following extensions:
 
-**Arguments**: ``rollback()``
+* Supports tuples (marshaling only): marshaled in XML same as arrays, but tag is
+  ``<tuple>`` instead of ``<array>``
 
-.. _paths:
+* Supports non-string dictionary keys (unmarshaling only)
+
+* Supports keyword arguments (marshaling only)
+
+* Transforms ``bytes()`` to ``Binary`` implicitly during marshaling
+
+* Unmarshalls known `exceptions`_ from ``Faults`` returned by server
+
+**Arguments**: ``Client(addr)``
+
+``addr``:
+  Address to connect to.
+
+Client.connect()
+================
+
+Connect to DB or create a new one.
+
+**Arguments**: same as for `brain.connect()`_.
+
+**Returns**: `RemoteConnection`_ object.
+
+Client.getDefaultEngineTag()
+============================
+
+Same as `brain.getDefaultEngineTag()`_.
+
+Client.getEngineTags()
+======================
+
+Same as `brain.getEngineTags()`_.
 
 Server
 ~~~~~~
 
-XML RPC server for database. Based on Python built-in ``xmlrpc.server.DocXMLRPCServer``.
+XML RPC server for database. Based on Python's built-in ``xmlrpc.server.DocXMLRPCServer`` and has the following
+extensions:
+
+* Supports tuples (unmarshaling only): marshaled in XML same as arrays, but tag is
+  ``<tuple>`` instead of ``<array>``
+
+* Supports non-string dictionary keys (marhsalling only)
+
+* Supports keyword arguments (unmarshaling only). They are passed as the dictionary in additional
+  argument to each function. If function does not have any keyword arguments, empty dictionary is passed.
+
+**Arguments**: ``Server(port=8000, name=None, db_path=None)``
+
+``port``:
+  Port where server will wait for requests.
+
+``name``:
+  Server thread name.
+
+``db_path``:
+  Will be used with DB engines, which store information in files - ``db_path`` will serve as
+  a prefix to each created DB file.
+
+.. _start():
+
+Server.start()
+==============
+
+Start server in a separate thread. Returns instantly.
+
+**Arguments**: ``start()``
+
+.. _stop():
+
+Server.stop()
+=============
+
+Shutdown server and wait for its thread to stop.
+
+**Arguments**: ``stop()``
