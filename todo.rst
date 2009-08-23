@@ -1,12 +1,17 @@
-Next release: 0.1.0
+Next release: 0.1.1
 ===================
 
-* (done) ``BrainServer`` and ``BrainClient`` renamed to ``Server`` and ``Client``
-* (done) make ``path`` mandatory for ``modify()``
-* (done) add ``remove_conflicts`` parameter for ``modify()`` and ``insert()``
-* (done) save changelog to file in repository
-* (in progress) write proper documentation
-* (in progress) perform code review
+Policy for conflicts removal
+----------------------------
+
+Add ability to set as a parameter to connection the default value of ``remove_conflicts``.
+Currently it is set to False so that database conflicts do not pass unnoticed.
+
+Doctests from documentation
+---------------------------
+
+Make doctests from all examples in documentation in order to avoid embarassment if
+they stop working after some change.
 
 Future
 ======
@@ -50,18 +55,6 @@ Performance tests
 Need to add some atomic performance tests. They will allow to test different
 database implementations using XML RPC (they should somehow take into account
 XML RPC latency).
-
-Policy for conflicts removal
-----------------------------
-
-Add ability to set as a parameter to connection the default value of ``remove_conflicts``.
-Currently it is set to False so that database conflicts do not pass unnoticed.
-
-Doctests from documentation
----------------------------
-
-Make doctests from all examples in documentation in order to avoid embarassment if
-they stop working after some change.
 
 Long search conditions
 ----------------------

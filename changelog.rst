@@ -90,3 +90,12 @@ Added support for insertion and deletion requests in nested lists.
 * added function for restoring database integrity (specification/refcounters table and
   listsizes table can be rebuilt using other DB contents)
 * added setuptools info and registered in pypi
+
+0.1.0
+-----
+
+* ``BrainServer`` and ``BrainClient`` renamed to ``Server`` and ``Client``
+* made ``path`` mandatory for ``modify()``
+* added ``remove_conflicts`` parameter for ``modify()`` and ``insert()``
+* saved changelog and todo list to files in repository
+* wrote documentation
