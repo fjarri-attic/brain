@@ -67,3 +67,9 @@ Long search conditions
 ----------------------
 
 Add support for something like (cond, AND, cond, AND, cond).
+
+Improve fuzz tests
+------------------
+
+Add more types of requests to fuzz tests - i.e., remove_conflicts in modify() and insert(),
+read not only the whole object, but by path and by mask too and so on.
