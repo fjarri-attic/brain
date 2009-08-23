@@ -98,7 +98,7 @@ class Search(TestRequest):
 			(op.NOT, ['blablabla'], op.EQ, '22')
 		)
 
-		self.assertEqual(res, [self.id1, self.id5])
+		self.assertSameElements(res, [self.id1, self.id5])
 
 		# Same test, but now non-existent field goes first
 		res = self.conn.search(
@@ -107,7 +107,7 @@ class Search(TestRequest):
 			(['phone'], op.EQ, '1111')
 		)
 
-		self.assertEqual(res, [self.id1, self.id5])
+		self.assertSameElements(res, [self.id1, self.id5])
 
 	def testNonExistentFieldInOrCondition(self):
 		"""Check that condition on non-existent field works with Or operator"""
