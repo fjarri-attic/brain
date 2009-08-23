@@ -6,7 +6,7 @@ except ImportError:
 import os.path
 import sys
 
-VERSION = '0.0.12'
+VERSION = '0.1.0'
 
 DOCUMENTATION = open(os.path.join(os.path.dirname(__file__), 'documentation.rst')).read()
 
