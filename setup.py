@@ -21,7 +21,7 @@ setup(
 	description='DDB front-end for SQL engines',
 	long_description=DOCUMENTATION,
 	classifiers=[
-		'Development Status :: 3 - Alpha',
+		'Development Status :: 4 - Beta',
 		'Environment :: Console',
 		'Intended Audience :: Developers',
 		'License :: OSI Approved :: GNU General Public License (GPL)',
