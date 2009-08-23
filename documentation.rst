@@ -871,11 +871,13 @@ Search for objects in database which satisfy given conditions.
 **Arguments**: ``search(condition)``
 
 ``condition``:
-  Tuple ([``brain.op.NOT``, ]``condition``, logical_operator, ``condition``) or
-  ([``brain.op.NOT``, ]`path`_, comparison_operator, value). Logical_operator and
+  Tuple ([``brain.op.NOT``, ]``condition``, logical_operator, ``condition``),
+  ([``brain.op.NOT``, ]`path`_, comparison_operator, value) or (). Logical_operator and
   comparison_operator - any `operators`_. Value should be a scalar of supported
   type. Note that different values support different type of comparisons;
   see `brain.op`_ reference for details.
+
+  If `search()`_ is called without parameters, list of all existing object IDs is returned.
 
   If condition uses path, not existing in some object, condition is considered
   to be false for this object if it does not contain ``brain.op.NOT`` and true
