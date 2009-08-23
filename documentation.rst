@@ -63,7 +63,7 @@ These objects can be read from database:
 You can see that the object ID is, in fact, a simple integer. It is true for sqlite3 engine,
 but each engine can use its own ID format.
 
-The next function is `modify()`_; it allows us to change the contents of the object.
+The next function is `Connection.modify()`_; it allows us to change the contents of the object.
 
  >>> conn.modify(id1, ['a'], 2)
  >>> data1 = conn.read(id1)
@@ -76,7 +76,7 @@ is a list, whose elements can be strings, integers or Nones. String element corr
 in dictionary, integer to list index, and None to list mask.
 
 You may have noticed that the second object contains a list. New elements can be added
-to list in two ways - either using `modify()`_ with path, specifying list index to create,
+to list in two ways - either using `Connection.modify()`_ with path, specifying list index to create,
 or inserting new element to some place in list:
 
  >>> conn.modify(id2, ['list', 3], 3)
@@ -104,7 +104,7 @@ has list under 'list' key in dictionary, which, in turn has the first element eq
 Search request supports nested conditions and several types of comparisons (including regexps).
 See its reference page for more information.
 
-The last basic function is `delete()`_. It can delete the whole objects, or its parts
+The last basic function is `Connection.delete()`_. It can delete the whole objects, or its parts
 (dictionary keys or list elements).
 
  >>> print(conn.objectExists(id1))
@@ -116,8 +116,8 @@ The last basic function is `delete()`_. It can delete the whole objects, or its 
  >>> print(conn.read(id2))
  {'id1': 1}
 
-Connection should be closed using `close()`_ after it is not longer needed. In case of
-in-memory database, of course, all data will be lost after call to `close()`_.
+Connection should be closed using `Connection.close()`_ after it is not longer needed. In case of
+in-memory database, of course, all data will be lost after call to `Connection.close()`_.
 
 Transaction support
 ~~~~~~~~~~~~~~~~~~~
@@ -131,7 +131,7 @@ error, this transaction is rolled back, so the request cannot be completed parti
 
 There are two types of transactions - synchronous and asynchronous. During the
 synchronous transaction you get request results instantly; during the asynchronous one
-requests do not return any results - all results are returned by `commit()`_ as a list.
+requests do not return any results - all results are returned by `Connection.commit()`_ as a list.
 
 Let's illustrate this by several simple examples. First, connect to database and
 create some objects.
@@ -141,7 +141,7 @@ create some objects.
  >>> id1 = conn.create({'a': 1, 'b': 2})
  >>> id2 = conn.create({'c': 3, 'd': 4})
 
-For each of two `create()`_'s above transactions were started and committed implicitly
+For each of two `Connection.create()`_'s above transactions were started and committed implicitly
 (because there were not any active transactions at the moment). Now we will create synchronous
 transaction explicitly:
 
@@ -169,8 +169,8 @@ it is gone.
 
 Asynchronous transactions are slightly different. During the transaction requests will not
 return values, because they are not, in fact, executed - they are stored inside the connection
-object and passed to DB engine in one single package when `commit()`_ is called. If the user
-changes his mind and calls `rollback()`_, all this package is simply discarded.
+object and passed to DB engine in one single package when `Connection.commit()`_ is called. If the user
+changes his mind and calls `Connection.rollback()`_, all this package is simply discarded.
 
  >>> conn.beginAsync()
  >>> conn.modify(id1, ['a'], 0)
@@ -178,9 +178,9 @@ changes his mind and calls `rollback()`_, all this package is simply discarded.
  >>> print(conn.commit())
  [None, {'a': 0, 'b': 2}]
 
-In the example above there were two requests inside a transaction; first one, `modify()`_
-does not return anything, and the second one, `read()`_, returned object contents.
-Therefore `commit()`_ returned both their results as a list.
+In the example above there were two requests inside a transaction; first one, `Connection.modify()`_
+does not return anything, and the second one, `Connection.read()`_, returned object contents.
+Therefore `Connection.commit()`_ returned both their results as a list.
 
 XML RPC layer
 ~~~~~~~~~~~~~
@@ -236,8 +236,9 @@ Path
 
 Path to some value in object is a list, which can contain only strings, integers and Nones.
 Empty list means the root level of an object; string stands for dictionary key and integer
-stands for position in list. None is used in several special cases: to specify that `insert()`_
-should perform insertion at the end of the list or as a mask for `delete()`_ and `read()`_.
+stands for position in list. None is used in several special cases: to specify that
+`Connection.insert()`_ should perform insertion at the end of the list or as a mask for
+`Connection.delete()`_ and `Connection.read()`_.
 
 If path does not contain Nones, it is called *determined*.
 
@@ -265,7 +266,8 @@ Following exceptions can be thrown by API:
 
  ``brain.FacadeError``:
    Signals about the error in high-level wrappers. Can be caused by incorrect
-   calls to `begin()`_ \\ `commit()`_ \\ `rollback()`_, incorrect engine tag and so on.
+   calls to `Connection.begin()`_ \\ `Connection.commit()`_ \\ `Connection.rollback()`_,
+   incorrect engine tag and so on.
 
  ``brain.EngineError``:
    Signals about an error in DB engine wrapper.
@@ -344,10 +346,10 @@ which has the following parameters:
   Currently they provide almost 100% coverage of package code.
 
 ``fuzz``:
-  Several objects with random data are created and random actions (`modify()`_, `insert()`_,
-  `read()`_, `delete()`_) are performed on them. After each action result is compared to
-  the result of ``FakeConnection``, which uses Python data structures to emulate package
-  behavior.
+  Several objects with random data are created and random actions (`Connection.modify()`_,
+  `Connection.insert()`_, `Connection.read()`_, `Connection.delete()`_) are performed on them.
+  After each action result is compared to   the result of ``FakeConnection``, which uses Python
+  data structures to emulate package behavior.
 
 **global parameters**:
   ``-v LEVEL``, ``--verbosity=LEVEL``:
@@ -426,7 +428,7 @@ Get available engine tags.
 brain.op
 ~~~~~~~~
 
-This submodule contains operator definitions for `search()`_ request:
+This submodule contains operator definitions for `Connection.search()`_ request:
 
 * inversion operator ``NOT`` - can be used in all conditions.
 
@@ -453,28 +455,28 @@ so only Connection methods will be described.
 
 Currently the following connection methods are available:
 
- * `begin()`_
- * `beginAsync()`_
- * `beginSync()`_
- * `close()`_
- * `commit()`_
- * `create()`_
- * `delete()`_
- * `deleteMany()`_
- * `dump()`_
- * `insert()`_
- * `insertMany()`_
- * `modify()`_
- * `objectExists()`_
- * `read()`_
- * `readByMask()`_
- * `readByMasks()`_
- * `repair()`_
- * `rollback()`_
- * `search()`_
+ * `Connection.begin()`_
+ * `Connection.beginAsync()`_
+ * `Connection.beginSync()`_
+ * `Connection.close()`_
+ * `Connection.commit()`_
+ * `Connection.create()`_
+ * `Connection.delete()`_
+ * `Connection.deleteMany()`_
+ * `Connection.dump()`_
+ * `Connection.insert()`_
+ * `Connection.insertMany()`_
+ * `Connection.modify()`_
+ * `Connection.objectExists()`_
+ * `Connection.read()`_
+ * `Connection.readByMask()`_
+ * `Connection.readByMasks()`_
+ * `Connection.repair()`_
+ * `Connection.rollback()`_
+ * `Connection.search()`_
 
-begin()
-=======
+Connection.begin()
+==================
 
 Start database transaction. If transaction is already in progress, `FacadeError`_
 will be raised.
@@ -483,18 +485,18 @@ will be raised.
 
 ``sync``:
   Boolean value, specifying whether transaction should be synchronous or not
-  (see `beginSync()`_ or `beginAsync()`_ correspondingly for details)
+  (see `Connection.beginSync()`_ or `Connection.beginAsync()`_ correspondingly for details)
 
-beginAsync()
-============
+Connection.beginAsync()
+=======================
 
-This function is an alias for `begin()`_ (equals to ``begin(sync=False)``)
+This function is an alias for `Connection.begin()`_ (equals to ``begin(sync=False)``)
 
 Start asynchronous transaction. During the asynchronous transaction requests to database
 are not processed, just stored inside the connection. Correspondingly, actual database
-transaction is not started. When `commit()`_ is called, database transaction is created,
+transaction is not started. When `Connection.commit()`_ is called, database transaction is created,
 and all of requests are being processed at once, and their results are returned from
-`commit()`_ as a list.
+`Connection.commit()`_ as a list.
 
 This decreases the time database is locked by the transaction and increases the speed
 of remote operations (one XML RPC multicall is faster than several single calls).
@@ -513,10 +515,10 @@ or implicit transaction.
  >>> print(conn.commit())
  [None, {'name': 'Carl'}]
 
-beginSync()
-===========
+Connection.beginSync()
+======================
 
-This function is an alias for `begin()`_ (equals to ``begin(sync=True)``)
+This function is an alias for `Connection.begin()`_ (equals to ``begin(sync=True)``)
 
 Start synchronous transaction. During the synchronous transaction request results are available
 instantly (for the same connection object), so one can perform complex actions inside
@@ -536,22 +538,22 @@ slowing down transaction processing.
  {'name': 'Carl'}
  >>> conn.commit()
 
-close()
-=======
+Connection.close()
+==================
 
 Close connection to the database. All uncommitted changes will be lost.
 
 **Arguments**: ``close()``
 
-commit()
-========
+Connection.commit()
+===================
 
 Commit current transaction. If transaction is not in progress, `FacadeError`_ will be raised.
 
 **Arguments**: ``commit()``
 
-create()
-========
+Connection.create()
+===================
 
 Create new object in database.
 
@@ -580,12 +582,12 @@ Create new object in database.
  >>> print(conn.read(id2))
  {'key': [1, 2, 3]}
 
-.. _delete():
+.. _Connection.delete():
 
-.. _deleteMany():
+.. _Connection.deleteMany():
 
-delete(), deleteMany()
-======================
+Connection.delete(), Connection.deleteMany()
+============================================
 
 Delete the whole object or some of its fields. If an element of list is deleted,
 other list elements are shifted correspondingly.
@@ -627,8 +629,8 @@ other list elements are shifted correspondingly.
  >>> print(conn.read(id1))
  {'Tracks': [{'Name': 'track 1'}, {'Name': 'track 2'}]}
 
-dump()
-======
+Connection.dump()
+=================
 
 Get all database contents.
 
@@ -643,12 +645,12 @@ Get all database contents.
  >>> print(conn.dump())
  {1: [1, 2, 3], 2: {'key': 'val'}}
 
-.. _insert():
+.. _Connection.insert():
 
-.. _insertMany():
+.. _Connection.insertMany():
 
-insert(), insertMany()
-======================
+Connection.insert(), Connection.insertMany()
+============================================
 
 Insert given data to list in object.
 
@@ -672,7 +674,7 @@ Insert given data to list in object.
   Data to insert - should be a supported data structure.
 
 ``remove_conflicts``
-  See the description of this parameter for `modify()`_. ``insert()`` tries to perform
+  See the description of this parameter for `Connection.modify()`_. ``insert()`` tries to perform
   ``modify(id, path, [], remove_conflicts)`` before doing any actions.
 
 **Remarks**:
@@ -723,8 +725,8 @@ Insert given data to list in object.
  >>> print(conn.read(id1))
  {'key2': {'key3': [50, 51, 52, 53, {'subkey': 'val'}]}, 'key': [0, 1, 2, 3, 4]}
 
-modify()
-========
+Connection.modify()
+===================
 
 Modify or create field in object.
 
@@ -749,7 +751,7 @@ Modify or create field in object.
   * ``path`` points to list or dictionary, when scalar value already exists on the same level
 
   If ``remove_conflicts`` equals ``True``, all conflicting fields are deleted. In other words,
-  modify() is guaranteed to finish successfully and the result of ``read(id, path)`` is
+  ``modify()`` is guaranteed to finish successfully and the result of ``read(id, path)`` is
   guaranteed to be equal to ``value``.
 
   If ``remove_conflicts`` equals ``False``, `StructureError` is raised if conflict is found.
@@ -776,8 +778,8 @@ Modify or create field in object.
  >>> print(conn.read(id1))
  {'key': {'key2': 'val'}}
 
-objectExists()
-==============
+Connection.objectExists()
+=========================
 
 Check if object with given ID exists.
 
@@ -788,14 +790,14 @@ Check if object with given ID exists.
 
 **Returns**: True if object with given ID exists, False otherwise.
 
-.. _read():
+.. _Connection.read():
 
-.. _readByMask():
+.. _Connection.readByMask():
 
-.. _readByMasks():
+.. _Connection.readByMasks():
 
-read(), readByMask, readByMasks()
-=================================
+Connection.read(), Connection.readByMask, Connection.readByMasks()
+==================================================================
 
 Read contents of given object.
 
@@ -845,39 +847,39 @@ in turn, is an alias for ``read(id, None, masks)``.
  >>> print(conn.read(id1, ['tracks'], [[None, 'Length']]))
  [{'Length': 240}, {'Length': 300}]
 
-repair()
-========
+Connection.repair()
+===================
 
 Internal database structure includes some redundant tables, which are used to increase
 database performance. This function can restore them based on actual field data stored in
-database. It can be used when database requests (even `read()`_) are returning strange
+database. It can be used when database requests (even `Connection.read()`_) are returning strange
 errors with long call stack. These internal tables can be spoiled either by errors in logic
 or because of some errors in underlying SQL engine.
 
 **Arguments**: ``repair()``
 
-rollback()
-==========
+Connection.rollback()
+=====================
 
 Roll current transaction back. If transaction is not in progress, `FacadeError`_ will be raised.
 
 **Arguments**: ``rollback()``
 
-search()
-========
+Connection.search()
+===================
 
 Search for objects in database which satisfy given conditions.
 
 **Arguments**: ``search(condition)``
 
 ``condition``:
-  Tuple ([``brain.op.NOT``, ]``condition``, logical_operator, ``condition``),
-  ([``brain.op.NOT``, ]`path`_, comparison_operator, value) or (). Logical_operator and
+  Tuple ([``brain.op.NOT``, ] ``condition``, logical_operator, ``condition``),
+  ([``brain.op.NOT``, ] `path`_, comparison_operator, value) or (). Logical_operator and
   comparison_operator - any `operators`_. Value should be a scalar of supported
   type. Note that different values support different type of comparisons;
   see `brain.op`_ reference for details.
 
-  If `search()`_ is called without parameters, list of all existing object IDs is returned.
+  If `Connection.search()`_ is called without parameters, list of all existing object IDs is returned.
 
   If condition uses path, not existing in some object, condition is considered
   to be false for this object if it does not contain ``brain.op.NOT`` and true
