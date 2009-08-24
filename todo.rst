@@ -1,21 +1,11 @@
 Next release: 0.1.1
 ===================
 
-Policy for conflicts removal
-----------------------------
-
-Add ability to set as a parameter to connection the default value of ``remove_conflicts``.
-Currently it is set to False so that database conflicts do not pass unnoticed.
-
-Doctests from documentation
----------------------------
-
-Make doctests from all examples in documentation in order to avoid embarassment if
-they stop working after some change.
-
-**Problem**: long doctests can be commented only using Python comments, which decreases readability.
-
-**Problem**: in examples for search() order of returned IDs can be different depending on the engine.
+* (done) documentation can be now fed to doctest.testfile()
+* (done) using set() when checking search() results in doctests
+* add examples for all mentioned exceptions in reference
+* fix bug with non-created hierarchy during autovivification
+* add policy for conflicts removal as connection parameter
 
 Future
 ======
