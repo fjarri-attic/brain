@@ -3,8 +3,8 @@ Next release: 0.1.1
 
 * (done) documentation can be now fed to doctest.testfile()
 * (done) using set() when checking search() results in doctests
+* (done) fix bug with non-created hierarchy during autovivification
 * add examples for all mentioned exceptions in reference
-* fix bug with non-created hierarchy during autovivification
 * add policy for conflicts removal as connection parameter
 
 Future

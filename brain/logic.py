@@ -495,8 +495,18 @@ class LogicLayer:
 			next_is_str = isinstance(next, str)
 			if not (next_is_str and dict() in values) and not (not next_is_str and list() in values):
 				if remove_conflicts:
+
+					# remove all conflicting values
 					for fld in self._structure.getFieldsList(id, tmp_field, exclude_self=False):
 						self._structure.deleteValues(id, fld)
+
+					# create necessary hierarchy
+					name_copy.append(next)
+					while len(name_copy) > 0:
+						tmp_field.py_value = (dict() if isinstance(name_copy[-1], str) else list())
+						self._setFieldValue(id, tmp_field)
+						tmp_field.name.append(name_copy.pop())
+
 					return
 				else:
 					raise interface.StructureError("Path " + repr(tmp_field.name + [next]) +
