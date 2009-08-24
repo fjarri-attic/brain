@@ -99,3 +99,14 @@ Added support for insertion and deletion requests in nested lists.
 * added ``remove_conflicts`` parameter for ``modify()`` and ``insert()``
 * saved changelog and todo list to files in repository
 * wrote documentation
+
+0.1.1
+-----
+
+* documentation was moved to test module and can be now fed to doctest.testfile()
+* fixed several minor typos in documentation
+* added examples with raised exceptions to documentation
+* using set() when checking search() results in doctests
+* fixed bug with non-created hierarchy during autovivification
+* added policy for conflicts removal as connection parameter
+* added ability to run doctests to test\run.py
