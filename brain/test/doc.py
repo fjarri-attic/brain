@@ -357,10 +357,16 @@ which has the following parameters:
   After each action result is compared to   the result of ``FakeConnection``, which uses Python
   data structures to emulate package behavior.
 
+``doc``:
+  Test examples in this documentation using Python's ``doctest`` module.
+
 **global parameters**:
   ``-v LEVEL``, ``--verbosity=LEVEL``:
     Integer from 0 (less verbose) to 3 (more verbose), specifying the amount of information
     which is displayed during tests. Default is 2.
+
+    For ``doc`` tests verbosity level 3 and above enables ``verbose=True`` mode (which means
+    that all tests will be shown); otherwise only errors will be shown.
 
 ``func`` **parameters**:
   ``--ae``, ``--all-engines``:
