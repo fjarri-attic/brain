@@ -393,11 +393,14 @@ brain.connect()
 
 Connect to the database (or create the new one).
 
-**Arguments**: ``connect(engine_tag, *args, **kwds)``
+**Arguments**: ``connect(engine_tag, *args, remove_conflicts=False, **kwds)``
 
 ``engine_tag``:
   String, specifying the DB engine to use. Can be obtained by `getEngineTags()`_.
   If equal to ``None``, the default tag is used; its value can be obtained using `getDefaultEngineTag()`_.
+
+``remove_conflicts``:
+  Default value of this parameter for `Connection.modify()`_ and `Connection.insert()`_.
 
 ``args``, ``kwds``:
   Engine-specific parameters. See `Engines`_ section for further information.
@@ -702,9 +705,9 @@ Connection.insert(), Connection.insertMany()
 Insert given data to list in object.
 
 **Arguments**:
-  ``insert(id, path, value, remove_conflicts=False)``
+  ``insert(id, path, value, remove_conflicts=None)``
 
-  ``insertMany(id, path, values, remove_conflicts=False)``
+  ``insertMany(id, path, values, remove_conflicts=None)``
 
 **Note**: ``insert(id, path, value, remove_conflicts)`` is an alias for
 ``insert(id, path, [value], remove_conflicts)``
@@ -793,7 +796,7 @@ Connection.modify()
 
 Modify or create field in object.
 
-**Arguments**: ``modify(id, path, value, remove_conflicts=False)``
+**Arguments**: ``modify(id, path, value, remove_conflicts=None)``
 
 ``id``:
   Target object ID.
@@ -818,6 +821,8 @@ Modify or create field in object.
   guaranteed to be equal to ``value``.
 
   If ``remove_conflicts`` equals ``False``, `StructureError` is raised if conflict is found.
+
+  If ``remove_conflicts`` equals None (default), the value given to `brain.connect()`_ is used.
 
 **Example**:
 

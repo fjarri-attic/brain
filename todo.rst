@@ -5,7 +5,7 @@ Next release: 0.1.1
 * (done) added examples with raised exceptions to documentation
 * (done) using set() when checking search() results in doctests
 * (done) fix bug with non-created hierarchy during autovivification
-* add policy for conflicts removal as connection parameter
+* (done) added policy for conflicts removal as connection parameter
 * add ability to run doctests to test\run.py
 
 Future

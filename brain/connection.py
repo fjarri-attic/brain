@@ -65,10 +65,11 @@ def _fieldsToTree(fields):
 	# get rid of temporary root object and return only its first element
 	return res[0]
 
-def connect(engine_tag, *args, **kwds):
+def connect(engine_tag, *args, remove_conflicts=False, **kwds):
 	"""
 	Connect to database.
 	engine_tag - tag of engine which handles the database layer
+	remove_conflicts - default setting of this parameter for modify() and insert()
 	args and kwds - engine-specific parameters
 	Returns Connection object for local connections or session ID for remote connections.
 	"""
@@ -89,7 +90,7 @@ def connect(engine_tag, *args, **kwds):
 
 	engine_obj = engine_class(*args, **engine_kwds)
 
-	return Connection(engine_obj)
+	return Connection(engine_obj, remove_conflicts=remove_conflicts)
 
 def _tupleToSearchCondition(*args, engine):
 	"""Transform tuple (path, operator, value) to Condition object"""
@@ -205,13 +206,14 @@ def _transformResults(requests, results):
 class Connection:
 	"""Main control class of the database"""
 
-	def __init__(self, engine):
+	def __init__(self, engine, remove_conflicts=False):
 		self._engine = engine
 		self._logic = logic.LogicLayer(self._engine)
 
 		self._transaction = False
 		self._sync = False
 		self._requests = []
+		self._remove_conflicts = remove_conflicts
 
 	def _prepareRequest(self, request):
 		"""Prepare request for processing"""
@@ -325,17 +327,21 @@ class Connection:
 			self._requests = []
 
 	@_transacted
-	def modify(self, id, path, value, remove_conflicts=False):
+	def modify(self, id, path, value, remove_conflicts=None):
 		"""
 		Modify existing object.
 		id - object ID
 		path - path to place where to save value
 		value - data structure to save
 		remove_conflicts - if True, remove all conflicting data structures;
-			if False - taise an exception
+			if False - taise an exception, if None - use connection default
 		"""
 		if path is None:
 			path = []
+
+		if remove_conflicts is None:
+			remove_conflicts = self._remove_conflicts
+
 		fields = _flattenHierarchy(value, self._engine)
 		self._requests.append(interface.ModifyRequest(id,
 			Field(self._engine, path), fields, remove_conflicts))
@@ -376,27 +382,30 @@ class Connection:
 		"""
 		return self.read(id, path=None, masks=masks)
 
-	def insert(self, id, path, value, remove_conflicts=False):
+	def insert(self, id, path, value, remove_conflicts=None):
 		"""
 		Insert value into list.
 		id - object ID
 		path - path to insert to (must point to list)
 		value - data structure to insert
 		remove_conflicts - if True, remove all conflicting data structures;
-			if False - taise an exception
+			if False - taise an exception, if None - use connection default
 		"""
-		return self.insertMany(id, path, [value], remove_conflicts)
+		return self.insertMany(id, path, [value], remove_conflicts=remove_conflicts)
 
 	@_transacted
-	def insertMany(self, id, path, values, remove_conflicts=False):
+	def insertMany(self, id, path, values, remove_conflicts=None):
 		"""
 		Insert several values into list.
 		id - object ID
 		path - path to insert to (must point to list)
 		values - list of data structures to insert
 		remove_conflicts - if True, remove all conflicting data structures;
-			if False - taise an exception
+			if False - taise an exception, if None - use connection default
 		"""
+		if remove_conflicts is None:
+			remove_conflicts = self._remove_conflicts
+
 		self._requests.append(interface.InsertRequest(
 			id, Field(self._engine, path),
 			[_flattenHierarchy(value, self._engine) for value in values],
