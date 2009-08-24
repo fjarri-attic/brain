@@ -1,15 +1,5 @@
-Next release: 0.1.1
+Next release: 0.1.2
 ===================
-
-* (done) documentation can be now fed to doctest.testfile()
-* (done) added examples with raised exceptions to documentation
-* (done) using set() when checking search() results in doctests
-* (done) fix bug with non-created hierarchy during autovivification
-* (done) added policy for conflicts removal as connection parameter
-* add ability to run doctests to test\run.py
-
-Future
-======
 
 XML RPC clarification
 ---------------------
@@ -35,6 +25,9 @@ XML RPC secure transport
 ------------------------
 
 Add ability to use HTTPS in ``brain.Client``. This requires `XML RPC clarification`_.
+
+Future
+======
 
 Cross-references in text values
 -------------------------------
