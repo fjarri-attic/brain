@@ -13,7 +13,6 @@ DOCUMENTATION = open(os.path.join(os.path.dirname(__file__), 'documentation.rst'
 setup(
 	name='brain',
 	packages=['brain', 'brain.test', 'brain.test.public', 'brain.test.internal'],
-	data_files=[('docs', ['documentation.rst', 'changelog.rst'])],
 	version=VERSION,
 	author='Bogdan Opanchuk',
 	author_email='bg@bk.ru',
