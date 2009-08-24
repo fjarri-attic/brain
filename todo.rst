@@ -13,6 +13,10 @@ Doctests from documentation
 Make doctests from all examples in documentation in order to avoid embarassment if
 they stop working after some change.
 
+**Problem**: long doctests can be commented only using Python comments, which decreases readability.
+
+**Problem**: in examples for search() order of returned IDs can be different depending on the engine.
+
 Future
 ======
 
