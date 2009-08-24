@@ -1,4 +1,4 @@
-DOCUMENTATION = r"""
+r"""
 ==========================================
 Brain - DDB-like front-end for SQL engines
 ==========================================
@@ -1112,3 +1112,20 @@ Shutdown server and wait for its thread to stop.
 
 **Arguments**: ``stop()``
 """
+
+import doctest
+import time
+import sys
+
+DOCUMENTATION = __doc__
+
+def runDocTest(verbosity):
+	print("Running doctest")
+
+	print("=" * 70)
+	time1 = time.time()
+	doctest.testmod(m=sys.modules.get(__name__), verbose=False if verbosity < 3 else True)
+	time2 = time.time()
+	print("=" * 70)
+
+	print("Finished in {0:.3f} seconds".format(time2 - time1))

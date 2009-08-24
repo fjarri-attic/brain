@@ -3,13 +3,14 @@
 import optparse
 import sys
 
+import doc
 import func
 import fuzz
 
 # Parser settings
 
 parser = optparse.OptionParser(usage = "run.py <mode> [options]\n" +
-	"Modes: func, fuzz")
+	"Modes: func, fuzz, doc")
 
 parser.add_option("--ae", "--all-engines", action="store_true",
 	dest="all_engines", help="[func] run tests using all available DB engines")
@@ -34,7 +35,7 @@ if len(sys.argv) == 1:
 	parser.error("Error: mode should be specified")
 
 # FIXME: find a way to do it using OptionParser
-modes = ['func', 'fuzz']
+modes = ['func', 'fuzz', 'doc']
 mode = sys.argv[1]
 args = sys.argv[2:]
 
@@ -51,3 +52,5 @@ if mode == 'func':
 elif mode == 'fuzz':
 	fuzz.runFuzzTest(objects=opts.objects, actions=opts.actions,
 		seed=opts.seed, verbosity=opts.verbosity)
+elif mode == 'doc':
+	doc.runDocTest(verbosity=opts.verbosity)
