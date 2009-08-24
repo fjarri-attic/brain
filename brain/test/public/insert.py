@@ -245,6 +245,17 @@ class Insert(TestRequest):
 		res = self.conn.read(obj)
 		self.assertEqual(res, {'key2': {'key3': ['val']}, 'key': [1, 2, 3]})
 
+	def testSpoiledStructureAfterConflictRemoval(self):
+		"""
+		Regression test for bug when conflict removal during insert
+		did not remove all conflicting structures
+		"""
+		obj = self.conn.create({'key2': [50]})
+		self.conn.insert(obj, ['key2', 'key3', None], 50, remove_conflicts=True)
+		self.conn._engine.dump()
+		self.assertRaises(brain.StructureError, self.conn.insert,
+			obj, ['key2', None], 51)
+
 
 def get_class():
 	return Insert
