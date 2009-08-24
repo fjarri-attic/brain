@@ -582,7 +582,7 @@ class LogicLayer:
 			types = self._structure.getValueTypes(request.id, request.path)
 			if len(types) == 0:
 				raise interface.LogicError("Object " + str(request.id) +
-					" does not have field " + str(request.path))
+					" does not have field " + str(request.path.name))
 
 		# if list of masks was not given, read all object's fields starting from path
 		if request.masks is None:
