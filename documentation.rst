@@ -901,8 +901,8 @@ Search for objects in database which satisfy given conditions.
 
 * Compound condition
 
- >>> print(conn.search((['name'], op.EQ, 'Alex'), op.AND, (op.NOT, ['name'], op.EQ, 'Carl')) == [id1, id2])
- False
+ >>> print(conn.search((['name'], op.EQ, 'Alex'), op.OR, (['name'], op.EQ, 'Carl')) == [id1, id3])
+ True
 
 * Compound condition with negative
 
