@@ -6,3 +6,5 @@ build/lib/*
 dist/*
 config
 *.bak
+documentation.rst
+documentation.html

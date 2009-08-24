@@ -1,3 +1,4 @@
+DOCUMENTATION = r"""
 ==========================================
 Brain - DDB-like front-end for SQL engines
 ==========================================
@@ -1110,3 +1111,4 @@ Server.stop()
 Shutdown server and wait for its thread to stop.
 
 **Arguments**: ``stop()``
+"""
