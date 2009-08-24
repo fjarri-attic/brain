@@ -801,7 +801,7 @@ Connection.read(), Connection.readByMask, Connection.readByMasks()
 
 Read contents of given object.
 
-**Arguments**
+**Arguments**:
   ``read(id, path=None, masks=None)``
 
   ``readByMask(id, mask=None)``
