@@ -252,7 +252,6 @@ class Insert(TestRequest):
 		"""
 		obj = self.conn.create({'key2': [50]})
 		self.conn.insert(obj, ['key2', 'key3', None], 50, remove_conflicts=True)
-		self.conn._engine.dump()
 		self.assertRaises(brain.StructureError, self.conn.insert,
 			obj, ['key2', None], 51)
 
