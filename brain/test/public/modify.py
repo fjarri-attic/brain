@@ -317,9 +317,19 @@ class Modify(TestRequest):
 		structure is saved on top of value
 		"""
 		obj = self.conn.create({'key': 1})
-		self.conn.modify(obj, ['key', 1], 2, True)
+		self.conn.modify(obj, ['key', 1], 2, remove_conflicts=True)
 		res = self.conn.read(obj)
 		self.assertEqual(res, {'key': [None, 2]})
+
+	def testAutovivificationCreatesHierarchy(self):
+		"""
+		Check that all necessary hierarchy (not just the ending leaf)
+		is created during autovivification
+		"""
+		obj = self.conn.create({'key': 1})
+		self.conn.modify(obj, ['key', 'key2', 'key3'], 3, remove_conflicts=True)
+		res = self.conn.read(obj, ['key', 'key2'])
+		self.assertEqual(res, {'key3': 3})
 
 
 def get_class():
