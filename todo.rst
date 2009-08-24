@@ -2,10 +2,11 @@ Next release: 0.1.1
 ===================
 
 * (done) documentation can be now fed to doctest.testfile()
+* (done) added examples with raised exceptions to documentation
 * (done) using set() when checking search() results in doctests
 * (done) fix bug with non-created hierarchy during autovivification
-* add examples for all mentioned exceptions in reference
 * add policy for conflicts removal as connection parameter
+* add ability to run doctests to test\run.py
 
 Future
 ======
