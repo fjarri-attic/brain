@@ -492,6 +492,21 @@ will be raised.
   Boolean value, specifying whether transaction should be synchronous or not
   (see `Connection.beginSync()`_ or `Connection.beginAsync()`_ correspondingly for details)
 
+**Example**:
+
+* Start new transaction
+
+ >>> conn = brain.connect(None, None)
+ >>> conn.begin(sync=True)
+
+* Failed attempt to start transaction when another one is in progress
+
+ >>> conn.begin(sync=True)
+ Traceback (most recent call last):
+ ...
+ brain.interface.FacadeError: Transaction is already in progress
+ >>> conn.close()
+
 Connection.beginAsync()
 =======================
 
@@ -560,6 +575,22 @@ Connection.commit()
 Commit current transaction. If transaction is not in progress, `FacadeError`_ will be raised.
 
 **Arguments**: ``commit()``
+
+**Example**:
+
+* Create and commit transaction
+
+ >>> conn = brain.connect(None, None)
+ >>> conn.beginSync()
+ >>> conn.commit()
+
+* Try to commit non-existent transaction
+
+ >>> conn.commit()
+ Traceback (most recent call last):
+ ...
+ brain.interface.FacadeError: Transaction is not in progress
+ >>> conn.close()
 
 Connection.create()
 ===================
@@ -724,6 +755,13 @@ Insert given data to list in object.
  >>> print(conn.read(id1))
  {'key2': [50], 'key': [0, 1, 2, 3, 4]}
 
+* Autovivification raises error on existing conflicts
+
+ >>> conn.insert(id1, ['key2', 'key3', None], 50)
+ Traceback (most recent call last):
+ ...
+ brain.interface.StructureError: Path ['key2', 'key3'] conflicts with existing structure
+
 * Autovivification, remove conflicts
 
  >>> conn.insert(id1, ['key2', 'key3', None], 50, remove_conflicts=True)
@@ -741,6 +779,13 @@ Insert given data to list in object.
  >>> conn.insert(id1, ['key2', 'key3', None], {'subkey': 'val'})
  >>> print(conn.read(id1))
  {'key2': {'key3': [50, 51, 52, 53, {'subkey': 'val'}]}, 'key': [0, 1, 2, 3, 4]}
+
+* Try to pass wrong path to insert()
+
+ >>> conn.insert(id1, ['key2', 'key3'], 'val')
+ Traceback (most recent call last):
+ ...
+ brain.interface.FormatError: Last element of target field name should be None or integer
  >>> conn.close()
 
 Connection.modify()
@@ -790,6 +835,13 @@ Modify or create field in object.
  >>> conn.modify(id1, ['key'], [1, 2])
  >>> print(conn.read(id1))
  {'key': [1, 2]}
+
+* Try to autovivify conflicting path without ``remove_conflicts`` set
+
+ >>> conn.modify(id1, ['key', 'key2'], 'val')
+ Traceback (most recent call last):
+ ...
+ brain.interface.StructureError: Path ['key', 'key2'] conflicts with existing structure
 
 * Implicitly transform list remove ``[1, 2]`` using ``remove_conflicts``
 
@@ -886,6 +938,22 @@ Connection.rollback()
 Roll current transaction back. If transaction is not in progress, `FacadeError`_ will be raised.
 
 **Arguments**: ``rollback()``
+
+**Example**:
+
+* Create and rollback transaction
+
+ >>> conn = brain.connect(None, None)
+ >>> conn.beginSync()
+ >>> conn.rollback()
+
+* Try to rollback non-existent transaction
+
+ >>> conn.rollback()
+ Traceback (most recent call last):
+ ...
+ brain.interface.FacadeError: Transaction is not in progress
+ >>> conn.close()
 
 Connection.search()
 ===================
