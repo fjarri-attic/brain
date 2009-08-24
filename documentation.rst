@@ -115,6 +115,7 @@ The last basic function is `Connection.delete()`_. It can delete the whole objec
  >>> conn.delete(id2, ['list'])
  >>> print(conn.read(id2))
  {'id1': 1}
+ >>> conn.close()
 
 Connection should be closed using `Connection.close()`_ after it is not longer needed. In case of
 in-memory database, of course, all data will be lost after call to `Connection.close()`_.
@@ -177,6 +178,7 @@ changes his mind and calls `Connection.rollback()`_, all this package is simply 
  >>> conn.read(id1)
  >>> print(conn.commit())
  [None, {'a': 0, 'b': 2}]
+ >>> conn.close()
 
 In the example above there were two requests inside a transaction; first one, `Connection.modify()`_
 does not return anything, and the second one, `Connection.read()`_, returned object contents.
@@ -187,6 +189,7 @@ XML RPC layer
 
 Brain has embedded XML RPC server and client. First, we will create and start server:
 
+ >>> import brain
  >>> srv = brain.Server()
  >>> srv.start()
 
@@ -244,12 +247,14 @@ If path does not contain Nones, it is called *determined*.
 
 **Example**:
 
+ >>> conn = brain.connect(None, None)
  >>> id1 = conn.create({'Tracks': [{'Name': 'track 1', 'Length': 240},
  ... {'Name': 'track 2', 'Length': 300}]})
  >>> print(conn.read(id1, ['Tracks', 0, 'Name']))
  track 1
  >>> print(conn.readByMask(id1, ['Tracks', None, 'Length']))
  {'Tracks': [{'Length': 240}, {'Length': 300}]}
+ >>> conn.close()
 
 .. _FacadeError:
 
@@ -507,6 +512,7 @@ or implicit transaction.
 
 **Example**:
 
+ >>> conn = brain.connect(None, None)
  >>> id1 = conn.create({'name': 'Bob'})
  >>> conn.beginAsync()
  >>> conn.modify(id1, ['name'], 'Carl')
@@ -514,6 +520,7 @@ or implicit transaction.
  None
  >>> print(conn.commit())
  [None, {'name': 'Carl'}]
+ >>> conn.close()
 
 Connection.beginSync()
 ======================
@@ -531,12 +538,14 @@ slowing down transaction processing.
 
 **Example**:
 
+ >>> conn = brain.connect(None, None)
  >>> id1 = conn.create({'name': 'Bob'})
  >>> conn.beginSync()
  >>> conn.modify(id1, ['name'], 'Carl')
  >>> print(conn.read(id1))
  {'name': 'Carl'}
  >>> conn.commit()
+ >>> conn.close()
 
 Connection.close()
 ==================
@@ -572,6 +581,7 @@ Create new object in database.
 
 * Creation without path
 
+ >>> conn = brain.connect(None, None)
  >>> id1 = conn.create([1, 2, 3])
  >>> print(conn.read(id1))
  [1, 2, 3]
@@ -581,6 +591,7 @@ Create new object in database.
  >>> id2 = conn.create([1, 2, 3], ['key'])
  >>> print(conn.read(id2))
  {'key': [1, 2, 3]}
+ >>> conn.close()
 
 .. _Connection.delete():
 
@@ -610,6 +621,7 @@ other list elements are shifted correspondingly.
 
 * Deletion of the whole object
 
+ >>> conn = brain.connect(None, None)
  >>> id1 = conn.create([1, 2, 3])
  >>> conn.delete(id1)
  >>> print(conn.objectExists(id1))
@@ -624,10 +636,12 @@ other list elements are shifted correspondingly.
 
 * Deletion by mask
 
- >>> id1 = conn.create({'Tracks': [{'Name': 'track 1', 'Length': 240}, {'Name': 'track 2', 'Length': 300}]})
+ >>> id1 = conn.create({'Tracks': [{'Name': 'track 1', 'Length': 240},
+ ... {'Name': 'track 2', 'Length': 300}]})
  >>> conn.delete(id1, ['Tracks', None, 'Length'])
  >>> print(conn.read(id1))
  {'Tracks': [{'Name': 'track 1'}, {'Name': 'track 2'}]}
+ >>> conn.close()
 
 Connection.dump()
 =================
@@ -640,10 +654,12 @@ Get all database contents.
 
 **Example**:
 
+ >>> conn = brain.connect(None, None)
  >>> id1 = conn.create([1, 2, 3])
  >>> id2 = conn.create({'key': 'val'})
  >>> print(conn.dump())
  {1: [1, 2, 3], 2: {'key': 'val'}}
+ >>> conn.close()
 
 .. _Connection.insert():
 
@@ -687,6 +703,7 @@ Insert given data to list in object.
 
 **Example**:
 
+ >>> conn = brain.connect(None, None)
  >>> id1 = conn.create({'key': [1, 2, 3]})
 
 * Insertion to the beginning
@@ -715,7 +732,7 @@ Insert given data to list in object.
 
 * Insert several values at once
 
- >>> conn.insertMany(id1, ['key2', None], [51, 52, 53])
+ >>> conn.insertMany(id1, ['key2', 'key3', None], [51, 52, 53])
  >>> print(conn.read(id1))
  {'key2': {'key3': [50, 51, 52, 53]}, 'key': [0, 1, 2, 3, 4]}
 
@@ -724,6 +741,7 @@ Insert given data to list in object.
  >>> conn.insert(id1, ['key2', 'key3', None], {'subkey': 'val'})
  >>> print(conn.read(id1))
  {'key2': {'key3': [50, 51, 52, 53, {'subkey': 'val'}]}, 'key': [0, 1, 2, 3, 4]}
+ >>> conn.close()
 
 Connection.modify()
 ===================
@@ -758,6 +776,7 @@ Modify or create field in object.
 
 **Example**:
 
+ >>> conn = brain.connect(None, None)
  >>> id1 = conn.create({'key': 'val'})
 
 * Simple modification
@@ -777,6 +796,7 @@ Modify or create field in object.
  >>> conn.modify(id1, ['key', 'key2'], 'val', remove_conflicts=True)
  >>> print(conn.read(id1))
  {'key': {'key2': 'val'}}
+ >>> conn.close()
 
 Connection.objectExists()
 =========================
@@ -808,8 +828,8 @@ Read contents of given object.
 
   ``readByMasks(id, masks=None)``
 
-**Note**: ``readByMask(id, mask)`` is an alias for ``readByMasks(id, [mask])`` and ``readByMasks(id, masks)``,
-in turn, is an alias for ``read(id, None, masks)``.
+**Note**: ``readByMask(id, mask)`` is an alias for ``readByMasks(id, [mask])`` and
+``readByMasks(id, masks)``, in turn, is an alias for ``read(id, None, masks)``.
 
 ``id``:
   Target object ID.
@@ -825,6 +845,7 @@ in turn, is an alias for ``read(id, None, masks)``.
 
 **Example**:
 
+ >>> conn = brain.connect(None, None)
  >>> id1 = conn.create({'tracks': [{'Name': 'track 1', 'Length': 240}, {'Name': 'track 2', 'Length': 300}]})
 
 * Read the whole object
@@ -846,6 +867,7 @@ in turn, is an alias for ``read(id, None, masks)``.
 
  >>> print(conn.read(id1, ['tracks'], [[None, 'Length']]))
  [{'Length': 240}, {'Length': 300}]
+ >>> conn.close()
 
 Connection.repair()
 ===================
@@ -885,14 +907,16 @@ Search for objects in database which satisfy given conditions.
   to be false for this object if it does not contain ``brain.op.NOT`` and true
   otherwise.
 
-**Returns**: list of object IDs, satisfying given conditions.
+**Returns**: list of object IDs, satisfying given conditions (note that order can
+depend on DB engine).
 
 **Example**:
 
+ >>> import brain.op as op
+ >>> conn = brain.connect(None, None)
  >>> id1 = conn.create({'name': 'Alex', 'age': 22})
  >>> id2 = conn.create({'name': 'Bob', 'height': 180, 'age': 25})
  >>> id3 = conn.create({'name': 'Carl', 'height': 170, 'age': 26})
- >>> import brain.op as op
 
 * Simple condition
 
@@ -901,12 +925,14 @@ Search for objects in database which satisfy given conditions.
 
 * Compound condition
 
- >>> print(conn.search((['name'], op.EQ, 'Alex'), op.OR, (['name'], op.EQ, 'Carl')) == [id1, id3])
+ >>> print(set(conn.search((['name'], op.EQ, 'Alex'), op.OR,
+ ... (['name'], op.EQ, 'Carl'))) == set([id1, id3]))
  True
 
 * Compound condition with negative
 
- >>> print(conn.search((['name'], op.EQ, 'Alex'), op.OR, (op.NOT, ['name'], op.EQ, 'Carl')) == [id1, id2])
+ >>> print(set(conn.search((['name'], op.EQ, 'Alex'), op.OR,
+ ... (op.NOT, ['name'], op.EQ, 'Carl'))) == set([id1, id2]))
  True
 
 * Condition with non-equality
@@ -916,13 +942,16 @@ Search for objects in database which satisfy given conditions.
 
 * Condition with non-existent field
 
- >>> print(conn.search((['name'], op.EQ, 'Alex'), op.AND, (['weight'], op.GT, 0)) == [])
+ >>> print(conn.search((['name'], op.EQ, 'Alex'), op.AND,
+ ... (['weight'], op.GT, 0)) == [])
  True
 
 * Condition with non-existent field and negative
 
- >>> print(conn.search((['name'], op.EQ, 'Alex'), op.AND, (op.NOT, ['weight'], op.GT, 0)) == [id1])
+ >>> print(conn.search((['name'], op.EQ, 'Alex'), op.AND,
+ ... (op.NOT, ['weight'], op.GT, 0)) == [id1])
  True
+ >>> conn.close()
 
 Client
 ~~~~~~
@@ -968,8 +997,8 @@ Same as `brain.getEngineTags()`_.
 Server
 ~~~~~~
 
-XML RPC server for database. Based on Python's built-in ``xmlrpc.server.DocXMLRPCServer`` and has the following
-extensions:
+XML RPC server for database. Based on Python's built-in ``xmlrpc.server.DocXMLRPCServer``
+and has the following extensions:
 
 * Supports tuples (unmarshaling only): marshaled in XML same as arrays, but tag is
   ``<tuple>`` instead of ``<array>``
