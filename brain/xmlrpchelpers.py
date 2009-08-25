@@ -21,70 +21,22 @@ from xmlrpc.client import ServerProxy, Binary, Marshaller, Unmarshaller, \
 import xmlrpc.client
 import re
 
-# Additional marshalling functions
+def _transformBinary(data, back=False):
 
-def _dump_bytes(self, value, write):
-	self.dump_instance(Binary(value), write)
+	actions = {
+		dict: lambda x: {key: _transformBinary(x[key], back) for key in x},
+		list: lambda x: [_transformBinary(elem, back) for elem in x],
+	}
 
-def _dump_tuple(self, value, write):
-	i = id(value)
-	if i in self.memo:
-		raise TypeError("cannot marshal recursive sequences")
-	self.memo[i] = None
-	dump = self._Marshaller__dump
-	write("<value><tuple><data>\n")
-	for v in value:
-		dump(v, write)
-	write("</data></tuple></value>\n")
-	del self.memo[i]
+	if back:
+		actions[Binary] = lambda x: bytes(x.data)
+	else:
+		actions[bytes] = Binary
 
-def _dump_struct(self, value, write, escape=xmlrpc.client.escape):
-	i = id(value)
-	if i in self.memo:
-		raise TypeError("cannot marshal recursive dictionaries")
-	self.memo[i] = None
-	dump = self._Marshaller__dump
-	write("<value><struct>\n")
-	for k, v in value.items():
-		write("<member>\n")
-		if isinstance(k, str):
-			self.dispatch[k.__class__](self, k, write, escape)
-		else:
-			self.dispatch[k.__class__](self, k, write)
-		dump(v, write)
-		write("</member>\n")
-	write("</struct></value>\n")
-	del self.memo[i]
-
-
-# Additional unmarshalling functions
-
-def _start(self, tag, attrs):
-	# prepare to handle this element
-	if tag == "array" or tag == "struct" or tag == "tuple":
-		self._marks.append(len(self._stack))
-	self._data = []
-	self._value = (tag == "value")
-
-def _end_base64(self, data):
-	value = Binary()
-	value.decode(data.encode("ascii"))
-	self.append(value.data)
-	self._value = 0
-
-def _end_tuple(self, data):
-	mark = self._marks.pop()
-	# map tuples to Python tuples
-	self._stack[mark:] = [tuple(self._stack[mark:])]
-	self._value = 0
-
-# Alter the behaviour of loaded Marshaller and Unmarshaller
-xmlrpc.client.Marshaller.dispatch[tuple] = _dump_tuple
-xmlrpc.client.Marshaller.dispatch[bytes] = _dump_bytes
-xmlrpc.client.Marshaller.dispatch[dict] = _dump_struct
-xmlrpc.client.Unmarshaller.start = _start
-xmlrpc.client.Unmarshaller.dispatch["tuple"] = _end_tuple
-xmlrpc.client.Unmarshaller.dispatch["base64"] = _end_base64
+	if type(data) in actions:
+		return actions[type(data)](data)
+	else:
+		return data
 
 def _parseFault(fault_code, fault_string, exceptions):
 	_error_pat = re.compile('(?P<exception>[^:]*):(?P<rest>.*$)')
@@ -148,9 +100,12 @@ class _KeywordMarshaller:
 
 	def __call__(self, *args, **kwds):
 		l = list(args)
+		l = _transformBinary(l)
 		l.append(kwds)
-		args=tuple(l)
-		return self.__send.__getattr__(self.__name)(*args)
+		args = tuple(l)
+		res = self.__send.__getattr__(self.__name)(*args)
+		res = _transformBinary(res, back=True)
+		return res
 
 	def __getattr__(self, name):
 		return _KeywordMarshaller(self.__send, self.__name + '.' + name)
@@ -183,10 +138,13 @@ class _KeywordInstance:
 		self._inst = inst
 
 	def _dispatch(self, method, params):
-		args=list(params)
-		kwds=args.pop()
-		args=tuple(args)
-		return self._inst._dispatch(method, *args, **kwds)
+		args = list(params)
+		args = _transformBinary(args, back=True)
+		kwds = args.pop()
+		args = tuple(args)
+		res = self._inst._dispatch(method, *args, **kwds)
+		res = _transformBinary(res)
+		return res
 
 	def __getattr__(self, name):
 		return getattr(self._inst, name)
