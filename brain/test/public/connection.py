@@ -34,7 +34,8 @@ class Connection(TestRequest):
 	def testAsyncTransactionNoErros(self):
 		"""Check asynhcronous transaction operation when there aren't any errors"""
 
-		data1 = {'name': 'Alex', 'friends': ['Bob', 'Carl']}
+		data1 = {'name': 'Alex', 'friends': ['Bob', 'Carl'],
+			'bytedata': b'bbb'}
 		data2 = {'name': 'Roy', 'friends': ['Ned', 'Mark']}
 
 		# create two objects
