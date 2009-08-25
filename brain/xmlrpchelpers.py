@@ -11,7 +11,10 @@ import xmlrpc.client
 import re
 
 def _transformBinary(data, back=False):
-
+	"""
+	Transform nested data, changing each bytes occurrence to Binary
+	(or vice versa if back == True)
+	"""
 	actions = {
 		dict: lambda x: {key: _transformBinary(x[key], back) for key in x},
 		list: lambda x: [_transformBinary(elem, back) for elem in x],
@@ -28,6 +31,8 @@ def _transformBinary(data, back=False):
 		return data
 
 def _parseFault(fault_code, fault_string, exceptions):
+	"""Parse XML RPC Fault object and get known exception from it"""
+
 	_error_pat = re.compile('(?P<exception>[^:]*):(?P<rest>.*$)')
 	m = _error_pat.match(fault_string)
 	if m:
