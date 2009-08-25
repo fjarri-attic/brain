@@ -210,8 +210,10 @@ def _transformResults(requests, results):
 		elif isinstance(request, interface.ReadRequest):
 			res.append(_fieldsToTree(result))
 		elif isinstance(request, interface.DumpRequest):
-			for obj_id in result:
-				result[obj_id] = _fieldsToTree(result[obj_id])
+			for i, e in enumerate(result):
+				# IDs have even indexes, lists of fields have odd ones
+				if i % 2 == 1:
+					result[i] = _fieldsToTree(result[i])
 			res.append(result)
 
 	return res
@@ -490,7 +492,7 @@ class Connection:
 	def dump(self):
 		"""
 		Dump the whole database contents.
-		Returns map of object IDs to object contents.
+		Returns list [obj_id1, contents1, obj_id2, contents2, ...]
 		"""
 		self._requests.append(interface.DumpRequest())
 

@@ -207,13 +207,20 @@ class Connection(TestRequest):
 		"""Check dumping to Python structures"""
 		self.prepareStandNoList()
 		res = self.conn.dump()
-		self.assertEqual(res, {
+
+		# separate IDs from data and create a dictionary
+		# for easier comparison
+		dump_dict = {obj_id: data for obj_id, data in zip(res[::2], res[1::2])}
+
+		reference_data = {
 			self.id1: {'name': 'Alex', 'phone': '1111'},
 			self.id2: {'name': 'Bob', 'phone': '2222'},
 			self.id3: {'name': 'Carl', 'phone': '3333', 'age': '27'},
 			self.id4: {'name': 'Don', 'phone': '4444', 'age': '20'},
 			self.id5: {'name': 'Alex', 'phone': '1111', 'age': '22'}
-		})
+		}
+
+		self.assertEqual(dump_dict, reference_data)
 
 	def testReferences(self):
 		"""Check that object IDs can be saved in database"""
@@ -255,8 +262,18 @@ class Connection(TestRequest):
 		"""Check that repair request at least does not spoil anything"""
 		self.prepareStandDifferentTypes()
 		data_before = self.conn.dump()
+
+		# separate IDs from data and create a dictionary
+		# for easier comparison
+		data_before_dict = {obj_id: data for obj_id, data in
+			zip(data_before[::2], data_before[1::2])}
+
 		self.conn.repair()
+
 		data_after = self.conn.dump()
+		data_after_dict = {obj_id: data for obj_id, data in
+			zip(data_after[::2], data_after[1::2])}
+
 		self.assertEqual(data_before, data_after)
 
 

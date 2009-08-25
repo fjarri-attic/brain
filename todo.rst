@@ -3,7 +3,7 @@ Next release: 0.1.2
 
 * (done) use lists instead of tuples in search()
 * remove hook for tuples in xmlrpchelpers
-* return list [id, data, id, data, ...] instead of dictionary from dump()
+* (done) return list [id, data, id, data, ...] instead of dictionary from dump()
 * remove hook for non-string dictionary keys in xmlrpchelpers
 * remove hook for bytes() in xmlrpchelpers and transform data structures instead
 * simplify xmlrpchelpers structure (since custom Marshaller is not needed anymore) and update

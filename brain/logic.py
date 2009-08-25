@@ -679,8 +679,12 @@ class LogicLayer:
 
 	def processDumpRequest(self, request):
 		ids = self.processSearchRequest(interface.SearchRequest())
-		return {obj_id: self.processReadRequest(interface.ReadRequest(obj_id))
-			for obj_id in ids}
+
+		result = []
+		for obj_id in ids:
+			result += [obj_id, self.processReadRequest(interface.ReadRequest(obj_id))]
+
+		return result
 
 	def processRepairRequest(self, request):
 		self._structure.repairSupportTables()

@@ -691,7 +691,7 @@ Get all database contents.
 
 **Arguments**: ``dump()``
 
-**Returns**: dictionary {object ID: object contents}
+**Returns**: list [object 1 ID, object 1 contents, object 2 ID, object 2 contents, ...]
 
 **Example**:
 
@@ -699,7 +699,7 @@ Get all database contents.
  >>> id1 = conn.create([1, 2, 3])
  >>> id2 = conn.create({'key': 'val'})
  >>> print(conn.dump())
- {1: [1, 2, 3], 2: {'key': 'val'}}
+ [1, [1, 2, 3], 2, {'key': 'val'}]
  >>> conn.close()
 
 .. _Connection.insert():
