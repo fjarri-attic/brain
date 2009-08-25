@@ -47,8 +47,13 @@ def _parseFault(fault_code, fault_string, exceptions):
 	raise xmlrpc.client.Fault(fault_code, fault_string)
 
 
-class _KeywordMarshaller:
-	"""Wrapper for method calls with keyword arguments, client side"""
+class _MyServerProxyMethod:
+	"""
+	Wrapper for method calls for MyServerProxy
+	- adds keyword arguments as a dictionary parameter
+	- transforms bytes to Binary and back
+	- raises known exceptions instead of Fault
+	"""
 
 	def __init__(self, send, name, exceptions):
 		self.__send = send
@@ -70,7 +75,7 @@ class _KeywordMarshaller:
 		return res
 
 	def __getattr__(self, name):
-		return _KeywordMarshaller(self.__send, self.__name + '.' + name, self.__exceptions)
+		return _MyServerProxyMethod(self.__send, self.__name + '.' + name, self.__exceptions)
 
 
 class MyServerProxy:
@@ -89,7 +94,7 @@ class MyServerProxy:
 		self.s = ServerProxy(*args, **kwds)
 
 	def __getattr__(self, name):
-		return _KeywordMarshaller(self.s, name, self._exceptions)
+		return _MyServerProxyMethod(self.s, name, self._exceptions)
 
 
 class _KeywordInstance:
@@ -119,12 +124,9 @@ class _KeywordFunction:
 
 	def __call__(self, *args):
 		args = list(args)
-		args = _transformBinary(args, back=True)
 		kwds = args.pop()
 		args = tuple(args)
-		res = self._func(*args, **kwds)
-		res = _transformBinary(res)
-		return res
+		return self._func(*args, **kwds)
 
 
 class MyXMLRPCServer(DocXMLRPCServer):
@@ -147,18 +149,25 @@ class MyXMLRPCServer(DocXMLRPCServer):
 	def register_instance(self, inst):
 		DocXMLRPCServer.register_instance(self, _KeywordInstance(inst))
 
+
 class _MyMultiCallMethod:
+	"""Custom multicall method - adds keywords as the last function argument"""
+
 	def __init__(self, call_list, name):
 		self.__call_list = call_list
 		self.__name = name
+
 	def __getattr__(self, name):
 		return _MyMultiCallMethod(self.__call_list, "%s.%s" % (self.__name, name))
+
 	def __call__(self, *args, **kwds):
 		args = tuple(list(args) + [kwds])
 		self.__call_list.append((self.__name, args))
 
 
 class _MyMultiCallIterator:
+	"""Custom multicall iterator - raises known exceptions instead of Faults"""
+
 	def __init__(self, results, exceptions):
 		self._results = results
 		self._exceptions = exceptions
@@ -174,6 +183,7 @@ class _MyMultiCallIterator:
 
 
 class MyMultiCall(MultiCall):
+	"""Custom multicall object - adds session ID to all calls"""
 
 	def __init__(self, server, session_id):
 		self.__server = server
