@@ -54,3 +54,9 @@ Improve fuzz tests
 
 Add more types of requests to fuzz tests - i.e., remove_conflicts in modify() and insert(),
 read not only the whole object, but by path and by mask too and so on.
+
+Add ability to use lambda as an argument to search()
+----------------------------------------------------
+
+This will require some code-walking library.
+
