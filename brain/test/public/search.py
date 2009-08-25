@@ -13,9 +13,9 @@ class Search(TestRequest):
 		"""Check complex condition with And operator"""
 		self.prepareStandNoList()
 		res = self.conn.search(
-			(['phone'], op.EQ, '1111'),
+			[['phone'], op.EQ, '1111'],
 			op.AND,
-			(['age'], op.EQ, '22')
+			[['age'], op.EQ, '22']
 		)
 
 		self.assertEqual(res, [self.id5])
@@ -24,9 +24,9 @@ class Search(TestRequest):
 		"""Check complex condition with Or operator"""
 		self.prepareStandNoList()
 		res = self.conn.search(
-			(['phone'], op.EQ, '2222'),
+			[['phone'], op.EQ, '2222'],
 			op.OR,
-			(['age'], op.EQ, '27')
+			[['age'], op.EQ, '27']
 		)
 
 		self.assertSameElements(res, [self.id2, self.id3])
@@ -36,9 +36,9 @@ class Search(TestRequest):
 		self.prepareStandNoList()
 
 		res = self.conn.search(
-			(['phone'], op.EQ, '1111'),
+			[['phone'], op.EQ, '1111'],
 			op.AND,
-			(op.NOT, ['age'], op.EQ, '22')
+			[op.NOT, ['age'], op.EQ, '22']
 		)
 
 		self.assertEqual(res, [self.id1])
@@ -49,9 +49,9 @@ class Search(TestRequest):
 
 		res = self.conn.search(
 			op.NOT,
-			(['phone'], op.EQ, '1111'),
+			[['phone'], op.EQ, '1111'],
 			op.AND,
-			(op.NOT, ['age'], op.EQ, '22'),
+			[op.NOT, ['age'], op.EQ, '22'],
 		)
 
 		self.assertSameElements(res, [self.id2, self.id3, self.id4, self.id5])
@@ -62,9 +62,9 @@ class Search(TestRequest):
 
 		res = self.conn.search(
 			op.NOT,
-			(['phone'], op.EQ, '1111'),
+			[['phone'], op.EQ, '1111'],
 			op.OR,
-			(op.NOT, ['age'], op.EQ, '27')
+			[op.NOT, ['age'], op.EQ, '27']
 		)
 
 		self.assertEqual(res, [self.id3])
@@ -74,9 +74,9 @@ class Search(TestRequest):
 		self.prepareStandNoList()
 
 		res = self.conn.search(
-			(['phone'], op.REGEXP, '\d+'),
+			[['phone'], op.REGEXP, '\d+'],
 			op.AND,
-			(op.NOT, ['age'], op.EQ, '22')
+			[op.NOT, ['age'], op.EQ, '22']
 		)
 
 		self.assertSameElements(res, [self.id1, self.id2, self.id3, self.id4])
@@ -93,18 +93,18 @@ class Search(TestRequest):
 
 		# Second part of the condition should return list of all objects
 		res = self.conn.search(
-			(['phone'], op.EQ, '1111'),
+			[['phone'], op.EQ, '1111'],
 			op.AND,
-			(op.NOT, ['blablabla'], op.EQ, '22')
+			[op.NOT, ['blablabla'], op.EQ, '22']
 		)
 
 		self.assertSameElements(res, [self.id1, self.id5])
 
 		# Same test, but now non-existent field goes first
 		res = self.conn.search(
-			(op.NOT, ['blablabla'], op.EQ, '22'),
+			[op.NOT, ['blablabla'], op.EQ, '22'],
 			op.AND,
-			(['phone'], op.EQ, '1111')
+			[['phone'], op.EQ, '1111']
 		)
 
 		self.assertSameElements(res, [self.id1, self.id5])
@@ -117,18 +117,18 @@ class Search(TestRequest):
 
 		# Second part of the condition should return list of all objects
 		res = self.conn.search(
-			(['phone'], op.EQ, '1111'),
+			[['phone'], op.EQ, '1111'],
 			op.OR,
-			(op.NOT, ['blablabla'], op.EQ, '22')
+			[op.NOT, ['blablabla'], op.EQ, '22']
 		)
 
 		self.assertSameElements(res, all)
 
 		# Same test, but now non-existent field goes first
 		res = self.conn.search(
-			(op.NOT, ['blablabla'], op.EQ, '22'),
+			[op.NOT, ['blablabla'], op.EQ, '22'],
 			op.OR,
-			(['phone'], op.EQ, '1111')
+			[['phone'], op.EQ, '1111']
 		)
 
 		self.assertSameElements(res, all)
@@ -140,9 +140,9 @@ class Search(TestRequest):
 		"""
 		self.prepareStandNoList()
 		res = self.conn.search(
-			(['foobar'], op.EQ, '1111'),
+			[['foobar'], op.EQ, '1111'],
 			op.OR,
-			(op.NOT, ['blablabla'], op.EQ, '22')
+			[op.NOT, ['blablabla'], op.EQ, '22']
 		)
 
 		self.assertSameElements(res, [self.id1, self.id2, self.id3, self.id4, self.id5])
@@ -176,9 +176,9 @@ class Search(TestRequest):
 		self.prepareStandNestedList()
 
 		res = self.conn.search(
-			(['tracks', None, 'Authors', 1], op.EQ, 'Bob'),
+			[['tracks', None, 'Authors', 1], op.EQ, 'Bob'],
 			op.AND,
-			(['tracks', None, 'Name'], op.REGEXP, 'name')
+			[['tracks', None, 'Name'], op.REGEXP, 'name']
 		)
 
 		self.assertEqual(res, [self.id1])
@@ -246,9 +246,9 @@ class Search(TestRequest):
 		self.prepareStandDifferentTypes()
 
 		res = self.conn.search(
-			(op.NOT, ['tracks', None, 'Volume'], op.EQ, None),
+			[op.NOT, ['tracks', None, 'Volume'], op.EQ, None],
 			op.AND,
-			(['tracks', None, 'Length'], op.EQ, None)
+			[['tracks', None, 'Length'], op.EQ, None]
 		)
 
 		self.assertEqual(res, [self.id3])
@@ -256,7 +256,7 @@ class Search(TestRequest):
 	def testWrongCondition(self):
 		"""Test that exception is raised when condition is ill-formed"""
 		self.assertRaises(brain.FormatError, self.conn.search,
-			(['tracks', None, 'Length'], op.EQ))
+			['tracks', None, 'Length'], op.EQ)
 
 	def testGetAllIDs(self):
 		"""Check that empty search condition returns list of all IDs in database"""
