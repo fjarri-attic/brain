@@ -976,12 +976,12 @@ Search for objects in database which satisfy given conditions.
 
 ``condition``:
   One of three possibilities:
-  
+
   * List [``brain.op.NOT``, ] ``condition``, logical_operator, ``condition``
 
   * List [``brain.op.NOT``, ] `path`_, comparison_operator, value
 
-  * Empty list
+  * Empty list (only at root level, cannot be a part of condition)
 
   On the root level, you may not wrap condition in a list, but rather just pass
   it as a tuple of arguments to function.
@@ -1006,6 +1006,11 @@ depend on DB engine).
  >>> id1 = conn.create({'name': 'Alex', 'age': 22})
  >>> id2 = conn.create({'name': 'Bob', 'height': 180, 'age': 25})
  >>> id3 = conn.create({'name': 'Carl', 'height': 170, 'age': 26})
+
+* Empty condition
+
+ >>> print(set(conn.search()) == set([id1, id2, id3]))
+ True
 
 * Simple condition
 

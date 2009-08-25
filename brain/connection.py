@@ -117,7 +117,7 @@ def _listToSearchCondition(arg, engine):
 		invert = True
 		shift = 1
 	elif len(arg) == 0:
-		return interface.SearchRequest.Condition()
+		return None
 	else:
 		raise interface.FormatError("Wrong number of elements in search condition")
 
