@@ -975,13 +975,22 @@ Search for objects in database which satisfy given conditions.
 **Arguments**: ``search(condition)``
 
 ``condition``:
-  Tuple ([``brain.op.NOT``, ] ``condition``, logical_operator, ``condition``),
-  ([``brain.op.NOT``, ] `path`_, comparison_operator, value) or (). Logical_operator and
-  comparison_operator - any `operators`_. Value should be a scalar of supported
-  type. Note that different values support different type of comparisons;
-  see `brain.op`_ reference for details.
+  One of three possibilities:
+  
+  * List [``brain.op.NOT``, ] ``condition``, logical_operator, ``condition``
 
-  If `Connection.search()`_ is called without parameters, list of all existing object IDs is returned.
+  * List [``brain.op.NOT``, ] `path`_, comparison_operator, value
+
+  * Empty list
+
+  On the root level, you may not wrap condition in a list, but rather just pass
+  it as a tuple of arguments to function.
+
+  Logical_operator and comparison_operator - any `operators`_. Value should be a
+  scalar of supported type. Note that different values support different type of
+  comparisons; see `brain.op`_ reference for details.
+
+  If ``condition`` is an empty list, it matches all existing object IDs in database.
 
   If condition uses path, not existing in some object, condition is considered
   to be false for this object if it does not contain ``brain.op.NOT`` and true
@@ -1005,14 +1014,14 @@ depend on DB engine).
 
 * Compound condition
 
- >>> print(set(conn.search((['name'], op.EQ, 'Alex'), op.OR,
- ... (['name'], op.EQ, 'Carl'))) == set([id1, id3]))
+ >>> print(set(conn.search([['name'], op.EQ, 'Alex'], op.OR,
+ ... [['name'], op.EQ, 'Carl'])) == set([id1, id3]))
  True
 
 * Compound condition with negative
 
- >>> print(set(conn.search((['name'], op.EQ, 'Alex'), op.OR,
- ... (op.NOT, ['name'], op.EQ, 'Carl'))) == set([id1, id2]))
+ >>> print(set(conn.search([['name'], op.EQ, 'Alex'], op.OR,
+ ... [op.NOT, ['name'], op.EQ, 'Carl'])) == set([id1, id2]))
  True
 
 * Condition with non-equality
@@ -1022,14 +1031,14 @@ depend on DB engine).
 
 * Condition with non-existent field
 
- >>> print(conn.search((['name'], op.EQ, 'Alex'), op.AND,
- ... (['weight'], op.GT, 0)) == [])
+ >>> print(conn.search([['name'], op.EQ, 'Alex'], op.AND,
+ ... [['weight'], op.GT, 0]) == [])
  True
 
 * Condition with non-existent field and negative
 
- >>> print(conn.search((['name'], op.EQ, 'Alex'), op.AND,
- ... (op.NOT, ['weight'], op.GT, 0)) == [id1])
+ >>> print(conn.search([['name'], op.EQ, 'Alex'], op.AND,
+ ... [op.NOT, ['weight'], op.GT, 0]) == [id1])
  True
  >>> conn.close()
 

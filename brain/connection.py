@@ -92,31 +92,45 @@ def connect(engine_tag, *args, remove_conflicts=False, **kwds):
 
 	return Connection(engine_obj, remove_conflicts=remove_conflicts)
 
-def _tupleToSearchCondition(*args, engine):
-	"""Transform tuple (path, operator, value) to Condition object"""
+def _isNotSearchCondition(arg):
+	"""
+	Check whether supplied argument looks like search condition.
+	If it is a scalar, or a list of scalars - it is definitely not a condition.
+	"""
+	if not isinstance(arg, list):
+		return True
 
-	# do not check whether the first argument is really NOT
-	if len(args) == 3:
+	for elem in arg:
+		if isinstance(elem, list):
+			return False
+
+	return True
+
+def _listToSearchCondition(arg, engine):
+	"""Recursively transform list to Condition object"""
+
+	# Not checking whether the first argument is really op.NOT or just a random value
+	if len(arg) == 3:
 		invert = False
 		shift = 0
-	elif len(args) == 4:
+	elif len(arg) == 4:
 		invert = True
 		shift = 1
-	elif len(args) == 0:
-		return None
+	elif len(arg) == 0:
+		return interface.SearchRequest.Condition()
 	else:
 		raise interface.FormatError("Wrong number of elements in search condition")
 
-	operand1 = args[shift]
-	operand2 = args[2 + shift]
-	operator = args[shift + 1]
+	operand1 = arg[shift]
+	operand2 = arg[2 + shift]
+	operator = arg[shift + 1]
 
-	operand1 = (_tupleToSearchCondition(*operand1, engine=engine)
-		if isinstance(operand1, tuple) else Field(engine, operand1))
-	operand2 = (_tupleToSearchCondition(*operand2, engine=engine)
-		if isinstance(operand2, tuple) else Field(engine, [], operand2))
+	operand1 = (_listToSearchCondition(operand1, engine=engine)
+		if not _isNotSearchCondition(operand1) else Field(engine, operand1))
+	operand2 = (_listToSearchCondition(operand2, engine=engine)
+		if not _isNotSearchCondition(operand2) else Field(engine, [], operand2))
 
-	return interface.SearchRequest.Condition(operand1, args[1 + shift], operand2, invert)
+	return interface.SearchRequest.Condition(operand1, arg[1 + shift], operand2, invert)
 
 @decorator
 def _transacted(func, obj, *args, **kwds):
@@ -434,11 +448,16 @@ class Connection:
 	def search(self, *condition):
 		"""
 		Search for object with specified fields.
-		condition - ([NOT, ]condition, operator, condition) or
-		([NOT, ]field_name, operator, value)
+		condition - [[NOT, ]condition, operator, condition] or
+		[[NOT, ]field_name, operator, value]
 		Returns list of object IDs.
 		"""
-		condition_obj = _tupleToSearchCondition(*condition, engine=self._engine)
+
+		# syntax sugar: you may not wrap plain condition in a list
+		if len(condition) != 1:
+			condition = list(condition)
+
+		condition_obj = _listToSearchCondition(condition, engine=self._engine)
 		self._requests.append(interface.SearchRequest(condition_obj))
 
 	@_transacted
