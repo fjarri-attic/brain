@@ -2,10 +2,10 @@ Next release: 0.1.2
 ===================
 
 * (done) use lists instead of tuples in search()
-* remove hook for tuples in xmlrpchelpers
+* (done) remove hook for tuples in xmlrpchelpers
 * (done) return list [id, data, id, data, ...] instead of dictionary from dump()
-* remove hook for non-string dictionary keys in xmlrpchelpers
-* remove hook for bytes() in xmlrpchelpers and transform data structures instead
+* (done) remove hook for non-string dictionary keys in xmlrpchelpers
+* (done) remove hook for bytes() in xmlrpchelpers and transform data structures instead
 * simplify xmlrpchelpers structure (since custom Marshaller is not needed anymore) and update
   documentation correspondingly
 * do not use 'brain.test' in tests (i.e, make brain and brain.test independent)
