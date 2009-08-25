@@ -5,7 +5,8 @@ import copy
 
 import brain
 import brain.op as op
-from brain.test.public.requests import TestRequest
+
+from public.requests import TestRequest
 
 class Connection(TestRequest):
 	"""Test different uses of ModifyRequest"""

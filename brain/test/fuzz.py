@@ -7,7 +7,6 @@ import traceback
 import time
 
 import brain
-from brain.connection import FakeConnection
 
 STARTING_DEPTH = 5 # starting data depth of objects
 MAX_DEPTH = 5 # maximum depth of data structures created during test
@@ -15,6 +14,60 @@ MAX_ELEMENTS_NUM = 3 # maximum number of elements in created lists/dictionaries
 STOP_DATA_GENERATION = 0.6 # probability of stopping data generation on each level of structure
 STOP_PATH_GENERATION = 0.1 # probability of stopping path generation on each level of structure
 NONE_PROBABILITY = 0.3 # probability of last None appearance in the path of insert request
+
+
+class FakeConnection:
+	"""
+	Class which mimics some Connection methods, implementing them using Python data structures.
+	It is used to test request results for real Connection class
+	"""
+
+	def __init__(self):
+		self._id_counter = 0
+		self._root = {}
+
+	def _getPath(self, obj, path):
+		"""Get pointer to data structure with given path"""
+		if len(path) == 1:
+			return obj[path[0]]
+		else:
+			return self._getPath(obj[path[0]], path[1:])
+
+	def _deleteAll(self, obj, path):
+		"""Delete all values from given path"""
+		if len(path) == 1:
+			del obj[path[0]]
+		else:
+			self._deleteAll(obj[path[0]], path[1:])
+
+	def create(self, data, path=None):
+		if path is None:
+			path = []
+		self._id_counter += 1
+		_saveTo(self._root, self._id_counter, path, data)
+		return self._id_counter
+
+	def modify(self, id, path, value, remove_conflicts=False):
+		_saveTo(self._root, id, path, value)
+
+	def insertMany(self, id, path, values, remove_conflicts=False):
+		target = self._getPath(self._root, [id] + path[:-1])
+		index = path[-1]
+
+		if index is None:
+			for value in values:
+				target.append(value)
+		else:
+			for value in reversed(values):
+				target.insert(index, value)
+
+	def deleteMany(self, id, paths=None):
+		for path in paths:
+			self._deleteAll(self._root, [id] + path)
+
+	def read(self, id):
+		return self._root[id]
+
 
 # Auxiliary functions
 

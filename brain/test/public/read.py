@@ -3,7 +3,8 @@
 import unittest
 
 import brain
-from brain.test.public.requests import TestRequest
+
+from public.requests import TestRequest
 
 class Read(TestRequest):
 	"""Test operation of ReadRequest"""

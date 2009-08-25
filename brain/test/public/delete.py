@@ -4,7 +4,8 @@ import unittest
 
 import brain
 import brain.op as op
-from brain.test.public.requests import TestRequest
+
+from public.requests import TestRequest
 
 class Delete(TestRequest):
 	"""Test operation of DeleteRequest"""

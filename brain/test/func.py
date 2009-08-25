@@ -5,10 +5,10 @@ import sys
 import tempfile
 import os
 
-import brain.test.helpers as helpers
-import brain.test.internal.interface as interface
-import brain.test.internal.engine as engine
-import brain.test.public as public
+import helpers
+import internal.interface as interface
+import internal.engine as engine
+import public
 from public import delete, insert, modify, read, search, connection
 
 import brain

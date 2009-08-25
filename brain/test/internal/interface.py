@@ -4,9 +4,9 @@ import unittest
 
 import brain
 import brain.op as op
-import brain.test.helpers as helpers
 from brain.interface import *
 
+import helpers
 
 class Format(unittest.TestCase):
 	"""Class which contains all request format testcases"""

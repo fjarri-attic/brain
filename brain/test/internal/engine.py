@@ -2,7 +2,7 @@
 
 import unittest
 
-import brain.test.helpers as helpers
+import helpers
 from brain.engine import *
 from brain.interface import Field
 
