@@ -1053,14 +1053,7 @@ Client
 XML RPC client for brain DB. Based on Python's built-in ``xmlrpc.client.ServerProxy`` and has the
 following extensions:
 
-* Supports tuples (marshaling only): marshaled in XML same as arrays, but tag is
-  ``<tuple>`` instead of ``<array>``
-
-* Supports non-string dictionary keys (unmarshaling only)
-
-* Supports keyword arguments (marshaling only)
-
-* Transforms ``bytes()`` to ``Binary`` implicitly during marshaling
+* Supports keyword arguments to calls (adds dictionary with keyword argument to each method call)
 
 * Unmarshalls known `exceptions`_ from ``Faults`` returned by server
 
@@ -1092,15 +1085,9 @@ Server
 ~~~~~~
 
 XML RPC server for database. Based on Python's built-in ``xmlrpc.server.DocXMLRPCServer``
-and has the following extensions:
-
-* Supports tuples (unmarshaling only): marshaled in XML same as arrays, but tag is
-  ``<tuple>`` instead of ``<array>``
-
-* Supports non-string dictionary keys (marhsalling only)
-
-* Supports keyword arguments (unmarshaling only). They are passed as the dictionary in additional
-  argument to each function. If function does not have any keyword arguments, empty dictionary is passed.
+and extends standard XML RPC slightly: it supports keyword arguments to calls.
+They are passed as the dictionary in additional argument to each function.
+If function does not have any keyword arguments, empty dictionary is passed.
 
 **Arguments**: ``Server(port=8000, name=None, db_path=None)``
 
