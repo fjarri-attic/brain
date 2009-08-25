@@ -1,30 +1,16 @@
 Next release: 0.1.2
 ===================
 
-XML RPC clarification
----------------------
-
-Currently XML RPC in brain is extended comparing to library version:
-
-* keyword arguments support
-
-* ``bytes()`` transparent support (don't need to use Binary explicitly)
-
-* ``tuple`` support
-
-* Non-string keys of dictionaries support
-
-* module-specific exceptions marshalling/unmarshalling
-
-This is performed mainly using hacks and looks ugly. Patch was sent to Python bug tracker
-(http://bugs.python.org/issue6701), but it seems to be ignored. So, the way out is to
-remove need of XML RPC extensions and perform necessary actions directly in
-XML RPC server/client.
-
-XML RPC secure transport
-------------------------
-
-Add ability to use HTTPS in ``brain.Client``. This requires `XML RPC clarification`_.
+* (done) use lists instead of tuples in search()
+* remove hook for tuples in xmlrpchelpers
+* return list [id, data, id, data, ...] instead of dictionary from dump()
+* remove hook for non-string dictionary keys in xmlrpchelpers
+* remove hook for bytes() in xmlrpchelpers and transform data structures instead
+* simplify xmlrpchelpers structure (since custom Marshaller is not needed anymore) and update
+  documentation correspondingly
+* do not use 'brain.test' in tests (i.e, make brain and brain.test independent)
+* add ability to use HTTPS in XML RPC (probably will be available automatically by this moment;
+  just check that it works)
 
 Future
 ======
