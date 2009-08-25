@@ -1,23 +1,12 @@
 """
 Helper classes for XML RPC used in this DB
-As compared to original XML RPC, we add:
-1) implicit bytes() marshalling/unmarshalling (so that user could pass such values
-   without wrapping them in Binary())
-2) tuples marshalling/unmarshalling
-3) exceptions unmarshalling (will raise known exceptions on client side)
 
-FIXME: this module contains several hacks which could cease to work after internal
-Python library changes; moreover, they modify the behaviour of imported classes,
-which can cause errors in other modules which use XML RPC (on client side, for example)
-
-This is because Python xmlrpc package is designed in a way that actively prevents
-users from adding abilities to it. The right way would be to rewrite xmlrpc, and it
-will be possibly done in the future
+TODO: As compared to original XML RPC, keyword arguments support was added
+Probably it should be eliminated.
 """
 
 from xmlrpc.server import DocXMLRPCServer
-from xmlrpc.client import ServerProxy, Binary, Marshaller, Unmarshaller, \
-	Transport, MultiCall, MultiCallIterator
+from xmlrpc.client import ServerProxy, Binary, Fault, MultiCall, MultiCallIterator
 import xmlrpc.client
 import re
 
@@ -52,63 +41,30 @@ def _parseFault(fault_code, fault_string, exceptions):
 	raise xmlrpc.client.Fault(fault_code, fault_string)
 
 
-class _ExceptionUnmarshaller(xmlrpc.client.Unmarshaller):
-	"""Extension for Unmarshaller which will raise known exceptions on client side"""
-
-	def __init__(self, exceptions, *args, **kwds):
-
-		# known exception classes
-		self._exceptions = exceptions
-
-		# fault string for exception looks like "SomeError:error message goes here"
-		self._error_pat = re.compile('(?P<exception>[^:]*):(?P<rest>.*$)')
-
-		xmlrpc.client.Unmarshaller.__init__(self, *args, **kwds)
-
-	def close(self):
-		# return response tuple and target method
-		if self._type is None or self._marks:
-			raise xmlrpc.client.ResponseError()
-		if self._type == "fault":
-			d = self._stack[0]
-			_parseFault(d['faultCode'], d['faultString'], self._exceptions)
-		return tuple(self._stack)
-
-
-class _ExceptionTransport(xmlrpc.client.Transport):
-	"""Extension of default XML RPC transport"""
-
-	# Override user-agent if desired
-	#user_agent = "xmlrpc-exceptions/0.0.1"
-
-	def __init__(self, exceptions):
-		xmlrpc.client.Transport.__init__(self)
-		self._exceptions = exceptions
-
-	def getparser(self, *args, **kwds):
-		target = _ExceptionUnmarshaller(self._exceptions)
-		parser = xmlrpc.client.ExpatParser(target)
-		return parser, target
-
-
 class _KeywordMarshaller:
 	"""Wrapper for method calls with keyword arguments, client side"""
 
-	def __init__(self, send, name):
+	def __init__(self, send, name, exceptions):
 		self.__send = send
 		self.__name = name
+		self.__exceptions = exceptions
 
 	def __call__(self, *args, **kwds):
 		l = list(args)
 		l = _transformBinary(l)
 		l.append(kwds)
 		args = tuple(l)
-		res = self.__send.__getattr__(self.__name)(*args)
+
+		try:
+			res = self.__send.__getattr__(self.__name)(*args)
+		except Fault as f:
+			_parseFault(f.faultCode, f.faultString, self.__exceptions)
+
 		res = _transformBinary(res, back=True)
 		return res
 
 	def __getattr__(self, name):
-		return _KeywordMarshaller(self.__send, self.__name + '.' + name)
+		return _KeywordMarshaller(self.__send, self.__name + '.' + name, self.__exceptions)
 
 
 class MyServerProxy:
@@ -122,13 +78,12 @@ class MyServerProxy:
 			exceptions = []
 		self._exceptions = exceptions
 
-		kwds['transport'] = _ExceptionTransport(exceptions)
 		kwds['allow_none'] = True
 
 		self.s = ServerProxy(*args, **kwds)
 
 	def __getattr__(self, name):
-		return _KeywordMarshaller(self.s, name)
+		return _KeywordMarshaller(self.s, name, self._exceptions)
 
 
 class _KeywordInstance:
