@@ -18,6 +18,7 @@ def _transformBinary(data, back=False):
 	actions = {
 		dict: lambda x: {key: _transformBinary(x[key], back) for key in x},
 		list: lambda x: [_transformBinary(elem, back) for elem in x],
+		tuple: lambda x: tuple(_transformBinary(elem, back) for elem in x)
 	}
 
 	if back:
@@ -56,8 +57,8 @@ class _KeywordMarshaller:
 
 	def __call__(self, *args, **kwds):
 		l = list(args)
-		l = _transformBinary(l)
 		l.append(kwds)
+		l = _transformBinary(l)
 		args = tuple(l)
 
 		try:
@@ -117,10 +118,13 @@ class _KeywordFunction:
 		self._func = func
 
 	def __call__(self, *args):
-		args=list(args)
-		kwds=args.pop()
-		args=tuple(args)
-		return self._func(*args, **kwds)
+		args = list(args)
+		args = _transformBinary(args, back=True)
+		kwds = args.pop()
+		args = tuple(args)
+		res = self._func(*args, **kwds)
+		res = _transformBinary(res)
+		return res
 
 
 class MyXMLRPCServer(DocXMLRPCServer):
