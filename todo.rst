@@ -13,6 +13,7 @@ Next release: 0.1.2
   just check that it works)
 * format argument lists for XML RPC help so that keyword arguments were shown as
   dictionary parameters
+* add support for long search conditions like (cond, AND, cond, AND, cond).
 
 Future
 ======
@@ -32,11 +33,6 @@ Need to add some atomic performance tests. They will allow to test different
 database implementations using XML RPC (they should somehow take into account
 XML RPC latency).
 
-Long search conditions
-----------------------
-
-Add support for something like (cond, AND, cond, AND, cond).
-
 Improve fuzz tests
 ------------------
 
@@ -47,4 +43,3 @@ Add ability to use lambda as an argument to search()
 ----------------------------------------------------
 
 This will require some code-walking library.
-
