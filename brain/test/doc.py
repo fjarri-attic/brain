@@ -1053,13 +1053,13 @@ depend on DB engine).
  ... [op.NOT, ['height'], op.EQ, 180]) == [id1])
  True
 
- * Long compound condition
+* Long compound condition
 
-  >>> print(conn.search([['name'], op.EQ, 'Alex'], op.OR,
-  ... [['age'], op.EQ, 25], op.AND,
-  ... [['height'], op.GT, 175]) == [id2])
-  True
-  >>> conn.close()
+ >>> print(conn.search([['name'], op.EQ, 'Alex'], op.OR,
+ ... [['age'], op.EQ, 25], op.AND,
+ ... [['height'], op.GT, 175]) == [id2])
+ True
+ >>> conn.close()
 
 Client
 ~~~~~~
