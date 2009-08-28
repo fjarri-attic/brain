@@ -1,17 +1,15 @@
 Next release: 0.1.2
 ===================
 
-* (done) use lists instead of tuples in search()
-* (done) remove hook for tuples in xmlrpchelpers
-* (done) return list [id, data, id, data, ...] instead of dictionary from dump()
-* (done) remove hook for non-string dictionary keys in xmlrpchelpers
-* (done) remove hook for bytes() in xmlrpchelpers and transform data structures instead
+* (done) using lists instead of tuples in search()
+* (done) removed hook for tuples in xmlrpchelpers
+* (done) returning list [id, data, id, data, ...] instead of dictionary from dump()
+* (done) removed hook for non-string dictionary keys in xmlrpchelpers
+* (done) removed hook for bytes() in xmlrpchelpers and transform data structures instead
 * (done) simplified xmlrpchelpers structure (since custom Marshaller is not needed anymore) and updated
   documentation correspondingly
-* (done) do not use 'brain.test' in tests (i.e, make brain and brain.test independent)
+* (done) not using 'brain.test' in tests (i.e, make brain and brain.test independent)
 * (done) added support for long search conditions
-* add ability to use HTTPS in XML RPC (probably will be available automatically by this moment;
-  just check that it works)
 * format argument lists for XML RPC help so that keyword arguments were shown as
   dictionary parameters
 
@@ -43,3 +41,9 @@ Add ability to use lambda as an argument to search()
 ----------------------------------------------------
 
 This will require some code-walking library.
+
+Test SSL support
+----------------
+
+Currently openssl for py3k is not available.
+
