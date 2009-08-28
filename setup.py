@@ -8,7 +8,7 @@ import sys
 
 from brain.test.doc import DOCUMENTATION
 
-VERSION = '0.1.1'
+VERSION = '0.1.2'
 
 # generate .rst file with documentation
 open(os.path.join(os.path.dirname(__file__), 'documentation.rst'), 'w').write(DOCUMENTATION)
