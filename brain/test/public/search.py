@@ -279,6 +279,36 @@ class Search(TestRequest):
 		res = self.conn.search(['aaa'], op.EQ, dict())
 		self.assertEqual(res, [obj2])
 
+	def testLongCondition(self):
+		"""Test work of long search conditions"""
+		self.prepareStandNoList()
+
+		# note that the result of this request depends on calculation order
+		res = self.conn.search([op.NOT, ['name'], op.EQ, 'Alex'], op.AND,
+			[op.NOT, ['phone'], op.EQ, '3333'], op.OR,
+			[['age'], op.EQ, '22'])
+
+		self.assertSameElements(res, [self.id2, self.id4, self.id5])
+
+	def testLongConditionWithInversion(self):
+		"""Test work of long search conditions"""
+		self.prepareStandNoList()
+
+		# inversion should be applied to the final result of condition
+		res = self.conn.search(op.NOT, [op.NOT, ['name'], op.EQ, 'Alex'], op.AND,
+			[op.NOT, ['phone'], op.EQ, '3333'], op.OR,
+			[['age'], op.EQ, '22'])
+
+		self.assertSameElements(res, [self.id1, self.id3])
+
+	def testTrivialCompounCondition(self):
+		"""Test that conditions like [NOT, condition] are supported"""
+		self.prepareStandNoList()
+		res = self.conn.search([op.NOT, [op.NOT, ['name'], op.EQ, 'Alex']],
+			op.AND, [op.NOT, [['age'], op.EQ, '22']])
+
+		self.assertEqual(res, [self.id1])
+
 
 def get_class():
 	return Search

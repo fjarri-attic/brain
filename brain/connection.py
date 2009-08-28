@@ -106,31 +106,43 @@ def _isNotSearchCondition(arg):
 
 	return True
 
-def _listToSearchCondition(arg, engine):
+def _listToSearchCondition(arg, engine, invert=False):
 	"""Recursively transform list to Condition object"""
 
-	# Not checking whether the first argument is really op.NOT or just a random value
-	if len(arg) == 3:
-		invert = False
-		shift = 0
-	elif len(arg) == 4:
-		invert = True
-		shift = 1
-	elif len(arg) == 0:
+	if len(arg) == 0:
 		return None
-	else:
+
+	shift = 0
+	if arg[0] == op.NOT:
+		invert = not invert
+		shift = 1
+
+	# if number of arguments is even, something is wrong
+	if (len(arg) - shift) % 2 == 0:
 		raise interface.FormatError("Wrong number of elements in search condition")
 
-	operand1 = arg[shift]
-	operand2 = arg[2 + shift]
-	operator = arg[shift + 1]
+	# condition should have one of two formats:
+	#   condition, [operator, condition, [...]]
+	#   field, comparison, value
+	if _isNotSearchCondition(arg[shift]):
+		if len(arg) - shift > 3:
+			raise interface.FormatError("Wrong number of elements in search condition")
+		return interface.SearchRequest.Condition(
+			Field(engine, arg[shift]), arg[shift + 1],
+			Field(engine, [], arg[shift + 2]), invert=invert)
+	else:
+		for i in range(shift, len(arg), 2):
+			if _isNotSearchCondition(arg[i]):
+				raise interface.FormatError("Wrong compound search condition")
 
-	operand1 = (_listToSearchCondition(operand1, engine=engine)
-		if not _isNotSearchCondition(operand1) else Field(engine, operand1))
-	operand2 = (_listToSearchCondition(operand2, engine=engine)
-		if not _isNotSearchCondition(operand2) else Field(engine, [], operand2))
-
-	return interface.SearchRequest.Condition(operand1, arg[1 + shift], operand2, invert)
+		result = _listToSearchCondition(arg[shift], engine)
+		for i in range(shift + 1, len(arg), 2):
+			operator = arg[i]
+			operand2 = _listToSearchCondition(arg[i + 1], engine)
+			result = interface.SearchRequest.Condition(result, operator, operand2)
+		if invert:
+			result.invert = not result.invert
+		return result
 
 @decorator
 def _transacted(func, obj, *args, **kwds):
