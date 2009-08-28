@@ -10,8 +10,7 @@ Next release: 0.1.2
   documentation correspondingly
 * (done) not using 'brain.test' in tests (i.e, make brain and brain.test independent)
 * (done) added support for long search conditions
-* format argument lists for XML RPC help so that keyword arguments were shown as
-  dictionary parameters
+* (done) added note about mandatory keyword parameters dictionary in XML RPC server help.
 
 Future
 ======

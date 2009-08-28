@@ -139,6 +139,9 @@ class MyXMLRPCServer(DocXMLRPCServer):
 
 		self.set_server_title('Brain XML RPC server')
 		self.set_server_name('Brain XML RPC server methods')
+		self.set_server_documentation("Keyword arguments should be passed in the last " +
+			"parameter to function as a dictionary. If there are no keyword parameters, " +
+			"empty dictionary should be passed.")
 
 		# registering multicall function manually, because we should
 		# remove keyword argument before calling it
