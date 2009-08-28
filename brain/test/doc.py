@@ -977,7 +977,7 @@ Search for objects in database which satisfy given conditions.
 ``condition``:
   One of three possibilities:
 
-  * List [``brain.op.NOT``, ] ``condition``, logical_operator, ``condition``
+  * List [``brain.op.NOT``, ] ``condition``, [[logical_operator, ``condition``, ] ... ]
 
   * List [``brain.op.NOT``, ] `path`_, comparison_operator, value
 
@@ -995,6 +995,13 @@ Search for objects in database which satisfy given conditions.
   If condition uses path, not existing in some object, condition is considered
   to be false for this object if it does not contain ``brain.op.NOT`` and true
   otherwise.
+
+  Compound conditions are evaluated successively: ``[cond1, op1, cond2, op2, cond3]`` is evaluated
+  as ``[[cond1, op1, cond2], op2, cond3]``.
+
+  In compound conditions ``NOT`` applies to the result of the whole condition, not to the first
+  operand: ``[NOT, cond1, op1, cond2, op2, cond3]`` is evaluated as
+  ``[NOT, [[cond1, op1, cond2], op2, cond3]]``.
 
 **Returns**: list of object IDs, satisfying given conditions (note that order can
 depend on DB engine).
@@ -1037,15 +1044,22 @@ depend on DB engine).
 * Condition with non-existent field
 
  >>> print(conn.search([['name'], op.EQ, 'Alex'], op.AND,
- ... [['weight'], op.GT, 0]) == [])
+ ... [['height'], op.EQ, 180]) == [])
  True
 
 * Condition with non-existent field and negative
 
  >>> print(conn.search([['name'], op.EQ, 'Alex'], op.AND,
- ... [op.NOT, ['weight'], op.GT, 0]) == [id1])
+ ... [op.NOT, ['height'], op.EQ, 180]) == [id1])
  True
- >>> conn.close()
+
+ * Long compound condition
+
+  >>> print(conn.search([['name'], op.EQ, 'Alex'], op.OR,
+  ... [['age'], op.EQ, 25], op.AND,
+  ... [['height'], op.GT, 175]) == [id2])
+  True
+  >>> conn.close()
 
 Client
 ~~~~~~
