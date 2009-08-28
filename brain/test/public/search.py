@@ -309,6 +309,26 @@ class Search(TestRequest):
 
 		self.assertEqual(res, [self.id1])
 
+	def testWrongNumberOfElements(self):
+		"""Test request validity checker - number of elements"""
+		arg_sets = [
+		    (['age']),
+		    (op.NOT, ['age']),
+		    (['age'], '22'),
+		    (op.NOT, ['age'], '22'),
+		    (['age'], op.EQ, '22', 23, 24),
+		    (op.NOT, ['age'], op.EQ, '22', 23, 24),
+		    (op.NOT, [op.NOT, ['name'], op.EQ, 'Alex'], op.OR)
+		]
+
+		for arg_set in arg_sets:
+			self.assertRaises(brain.FormatError, self.conn.search, *arg_set)
+
+	def testWrongCompoundCondition(self):
+		"""Test request validity checker - mixed compound condition"""
+		self.assertRaises(brain.FormatError, self.conn.search,
+			op.NOT, [op.NOT, ['name'], op.EQ, 'Alex'], op.OR, ['name'])
+
 
 def get_class():
 	return Search
