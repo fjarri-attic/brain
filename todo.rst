@@ -9,11 +9,11 @@ Next release: 0.1.2
 * (done) simplified xmlrpchelpers structure (since custom Marshaller is not needed anymore) and updated
   documentation correspondingly
 * (done) do not use 'brain.test' in tests (i.e, make brain and brain.test independent)
+* (done) added support for long search conditions
 * add ability to use HTTPS in XML RPC (probably will be available automatically by this moment;
   just check that it works)
 * format argument lists for XML RPC help so that keyword arguments were shown as
   dictionary parameters
-* add support for long search conditions like (cond, AND, cond, AND, cond).
 
 Future
 ======
