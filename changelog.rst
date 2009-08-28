@@ -110,3 +110,14 @@ Added support for insertion and deletion requests in nested lists.
 * fixed bug with non-created hierarchy during autovivification
 * added policy for conflicts removal as connection parameter
 * added ability to run doctests to test\run.py
+
+0.1.2
+-----
+
+* removed Marshaller/Unmarshaller hooks from xmlrpchelpers
+* returning list [id, data, id, data, ...] instead of dictionary from dump()
+* simplified xmlrpchelpers structure (since custom Marshaller is not needed anymore)
+* using lists instead of tuples in search()
+* added support for long search conditions
+* added note about mandatory keyword parameters dictionary in XML RPC server help.
+* not using 'brain.test' in tests (i.e, make brain and brain.test independent)
