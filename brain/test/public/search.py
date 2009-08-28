@@ -101,6 +101,15 @@ class Search(TestRequest):
 
 		self.assertSameElements(res, [self.id1, self.id5])
 
+		# Same test, but without NOT
+		res = self.conn.search(
+			[['phone'], op.EQ, '1111'],
+			op.AND,
+			[['blablabla'], op.EQ, '22'] # empty set
+		)
+
+		self.assertEqual(res, [])
+
 		# Same test, but now non-existent field goes first
 		res = self.conn.search(
 			[op.NOT, ['blablabla'], op.EQ, '22'],
@@ -109,6 +118,15 @@ class Search(TestRequest):
 		)
 
 		self.assertSameElements(res, [self.id1, self.id5])
+
+		# Same test, but without NOT
+		res = self.conn.search(
+			[['blablabla'], op.EQ, '22'], # empty set
+			op.AND,
+			[['phone'], op.EQ, '1111']
+		)
+
+		self.assertEqual(res, [])
 
 	def testNonExistentFieldInOrCondition(self):
 		"""Check that condition on non-existent field works with Or operator"""
@@ -125,6 +143,15 @@ class Search(TestRequest):
 
 		self.assertSameElements(res, all)
 
+		# Same test, but without NOT
+		res = self.conn.search(
+			[['phone'], op.EQ, '1111'],
+			op.OR,
+			[['blablabla'], op.EQ, '22'] # empty set
+		)
+
+		self.assertSameElements(res, [self.id1, self.id5])
+
 		# Same test, but now non-existent field goes first
 		res = self.conn.search(
 			[op.NOT, ['blablabla'], op.EQ, '22'],
@@ -134,6 +161,15 @@ class Search(TestRequest):
 
 		self.assertSameElements(res, all)
 
+		# Same test, but without NOT
+		res = self.conn.search(
+			[['blablabla'], op.EQ, '22'], # empty set
+			op.OR,
+			[['phone'], op.EQ, '1111']
+		)
+
+		self.assertSameElements(res, [self.id1, self.id5])
+
 	def testNonExistentFieldInBothParts(self):
 		"""
 		Check that request work if both parts of complex condition mention
@@ -141,9 +177,25 @@ class Search(TestRequest):
 		"""
 		self.prepareStandNoList()
 		res = self.conn.search(
-			[['foobar'], op.EQ, '1111'],
+			[['foobar'], op.EQ, '1111'], # empty set
 			op.OR,
-			[op.NOT, ['blablabla'], op.EQ, '22']
+			[['blablabla'], op.EQ, '22'] # empty set
+		)
+
+		self.assertEqual(res, [])
+
+		res = self.conn.search(
+			[['foobar'], op.EQ, '1111'], # empty set
+			op.OR,
+			[op.NOT, ['blablabla'], op.EQ, '22'] # all objects
+		)
+
+		self.assertSameElements(res, [self.id1, self.id2, self.id3, self.id4, self.id5])
+
+		res = self.conn.search(
+			[op.NOT, ['foobar'], op.EQ, '1111'], # all objects
+			op.OR,
+			[['blablabla'], op.EQ, '22'] # empty set
 		)
 
 		self.assertSameElements(res, [self.id1, self.id2, self.id3, self.id4, self.id5])
