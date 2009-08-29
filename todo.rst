@@ -1,18 +1,18 @@
 Next release: 0.1.3
 ===================
 
+* (done) added read from random path to list of fuzz test actions
+* fuzz test: add readByMasks() action
+* fuzz test: add delete() by mask action
+* fuzz test: add remove_conflicts parameter to modify() and insert() actions
+* fuzz test: add search() action
+
 Performance tests
 -----------------
 
 Need to add some atomic performance tests. They will allow to test different
 database implementations using XML RPC (they should somehow take into account
 XML RPC latency).
-
-Improve fuzz tests
-------------------
-
-Add more types of requests to fuzz tests - i.e., remove_conflicts in modify() and insert(),
-read not only the whole object, but by path and by mask too and so on.
 
 Future
 ======
