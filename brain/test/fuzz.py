@@ -5,8 +5,10 @@ import string
 import copy
 import traceback
 import time
+import sys
 
 import brain
+from brain.connection import _saveTo
 
 STARTING_DEPTH = 5 # starting data depth of objects
 MAX_DEPTH = 5 # maximum depth of data structures created during test
@@ -65,8 +67,11 @@ class FakeConnection:
 		for path in paths:
 			self._deleteAll(self._root, [id] + path)
 
-	def read(self, id):
-		return self._root[id]
+	def read(self, id, path=None):
+		if path is None:
+			path = []
+
+		return self._getPath(self._root, [id] + path)
 
 
 # Auxiliary functions
@@ -261,7 +266,7 @@ def _runTests(objects, actions, verbosity):
 			# if object gets deleted, return its state to original
 			fake_state_after = fake_conn.read(fake_objs[i])
 			if fake_state_after is None:
-				fake_conn.modify(fake_objs[i], fake_state_before, [])
+				fake_conn.modify(fake_objs[i], [], fake_state_before)
 				continue
 
 			# try to perform action on a real object
@@ -321,12 +326,12 @@ def runFuzzTest(objects=1, actions=100, verbosity=2, seed=0):
 	try:
 		_runTests(objects, actions, verbosity)
 	except:
-		err_class, err_obj, err_tb = err
-		self.__stream.writeln("! " + str(err_obj))
+		err_class, err_obj, err_tb = sys.exc_info()
+		print("! " + str(err_obj))
 
 		# report traceback
 		if verbosity > 1:
-			traceback.print_tb(err_tb, None, self.__stream)
+			traceback.print_tb(err_tb)
 	finally:
 		print("=" * 70)
 		time2 = time.time()
