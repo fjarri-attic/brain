@@ -176,7 +176,8 @@ class RandomAction:
 		args_constructors = {
 			'modify': self._constructModifyArgs,
 			'insertMany': self._constructInsertArgs,
-			'deleteMany': self._constructDeleteArgs
+			'deleteMany': self._constructDeleteArgs,
+			'read': self._constructReadArgs
 		}
 
 		if type(self._obj_contents) not in [list, dict] or len(self._obj_contents) == 0:
@@ -204,10 +205,13 @@ class RandomAction:
 	def _constructDeleteArgs(self):
 		self._args = ([getRandomDeletePath(self._obj_contents)],)
 
+	def _constructReadArgs(self):
+		self._args = (getRandomDefinitePath(self._obj_contents),)
+
 	def __call__(self, conn, obj_id):
 		args = self._args
 		kwds = self._kwds
-		getattr(conn, self._method)(obj_id, *args, **kwds)
+		return getattr(conn, self._method)(obj_id, *args, **kwds)
 
 	def __str__(self):
 		return self._method + repr(self._args)
@@ -261,7 +265,7 @@ def _runTests(objects, actions, verbosity):
 
 			# create random action and test it on fake object
 			action = RandomAction(state_before)
-			action(fake_conn, fake_objs[i])
+			fake_result = action(fake_conn, fake_objs[i])
 
 			# if object gets deleted, return its state to original
 			fake_state_after = fake_conn.read(fake_objs[i])
@@ -271,7 +275,7 @@ def _runTests(objects, actions, verbosity):
 
 			# try to perform action on a real object
 			try:
-				action(conn, objs[i])
+				result = action(conn, objs[i])
 			except:
 				print("Error performing action on object " + str(i) +
 					": " + action.dump())
@@ -302,6 +306,17 @@ def _runTests(objects, actions, verbosity):
 				print("Action: " + action.dump(verbosity))
 				print("Main state after: " + repr(state_after))
 				print("Fake state after: " + repr(fake_state_after))
+				if verbosity > 3:
+					conn._engine.dump()
+				raise Exception("Functionality error")
+
+			# compare action return values (if any)
+			if result != fake_result:
+				print("Action return values are different:")
+				print("State before: " + repr(fake_state_before))
+				print("Action: " + action.dump(verbosity))
+				print("Main return value: " + repr(result))
+				print("Fake return value: " + repr(fake_result))
 				if verbosity > 3:
 					conn._engine.dump()
 				raise Exception("Functionality error")
