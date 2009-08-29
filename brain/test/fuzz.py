@@ -8,7 +8,7 @@ import time
 import sys
 
 import brain
-from brain.connection import _saveTo
+from brain.connection import saveTo
 
 STARTING_DEPTH = 5 # starting data depth of objects
 MAX_DEPTH = 5 # maximum depth of data structures created during test
@@ -46,11 +46,11 @@ class FakeConnection:
 		if path is None:
 			path = []
 		self._id_counter += 1
-		_saveTo(self._root, self._id_counter, path, data)
+		saveTo(self._root, self._id_counter, path, data)
 		return self._id_counter
 
 	def modify(self, id, path, value, remove_conflicts=False):
-		_saveTo(self._root, id, path, value)
+		saveTo(self._root, id, path, value)
 
 	def insertMany(self, id, path, values, remove_conflicts=False):
 		target = self._getPath(self._root, [id] + path[:-1])

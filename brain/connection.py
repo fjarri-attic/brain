@@ -25,7 +25,7 @@ def _flattenHierarchy(data, engine):
 
 	return [Field(engine, path, value) for path, value in flattenNode(data)]
 
-def _saveTo(obj, ptr, path, value):
+def saveTo(obj, ptr, path, value):
 	"""Save given value to a place in hierarchy, defined by pointer"""
 
 	# ensure that there is a place in obj where ptr points
@@ -48,7 +48,7 @@ def _saveTo(obj, ptr, path, value):
 			else:
 				obj[ptr] = []
 
-		_saveTo(obj[ptr], path[0], path[1:], value)
+		saveTo(obj[ptr], path[0], path[1:], value)
 
 def _fieldsToTree(fields):
 	"""Transform list of Field objects to nested dictionaries and lists"""
@@ -60,7 +60,7 @@ def _fieldsToTree(fields):
 	res = []
 
 	for field in fields:
-		_saveTo(res, 0, field.name, field.py_value)
+		saveTo(res, 0, field.name, field.py_value)
 
 	# get rid of temporary root object and return only its first element
 	return res[0]
