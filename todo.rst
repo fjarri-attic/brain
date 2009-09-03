@@ -2,7 +2,7 @@ Next release: 0.1.3
 ===================
 
 * (done) added read from random path to list of fuzz test actions
-* fuzz test: add readByMasks() action
+* (done) fuzz test: add readByMasks() action
 * fuzz test: add delete() by mask action
 * fuzz test: add remove_conflicts parameter to modify() and insert() actions
 * fuzz test: add search() action
