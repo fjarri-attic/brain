@@ -8,62 +8,7 @@ import inspect
 from . import interface, logic, engine, op
 from .interface import Field
 from .decorator import decorator
-
-def _flattenHierarchy(data, engine):
-	"""Transform nested dictionaries and lists to a flat list of Field objects"""
-
-	def flattenNode(node, prefix=[]):
-		"""Transform current list/dictionary to a list of field name elements"""
-		if isinstance(node, dict):
-			results = [flattenNode(node[x], prefix + [x]) for x in node.keys()]
-			return functools.reduce(list.__add__, results, [(prefix, dict())])
-		elif isinstance(node, list):
-			results = [flattenNode(x, prefix + [i]) for i, x in enumerate(node)]
-			return functools.reduce(list.__add__, results, [(prefix, list())])
-		else:
-			return [(prefix, node)]
-
-	return [Field(engine, path, value) for path, value in flattenNode(data)]
-
-def saveTo(obj, ptr, path, value):
-	"""Save given value to a place in hierarchy, defined by pointer"""
-
-	# ensure that there is a place in obj where ptr points
-	if isinstance(obj, list) and len(obj) < ptr + 1:
-		# extend the list to corresponding index
-		obj.extend([None] * (ptr + 1 - len(obj)))
-	elif isinstance(obj, dict) and ptr not in obj:
-		# create dictionary key
-		obj[ptr] = None
-
-	if len(path) == 0:
-	# if we are in leaf now, store value
-		if (value != [] and value != {}) or obj[ptr] is None:
-			obj[ptr] = value
-	else:
-	# if not, create required structure and call this function recursively
-		if obj[ptr] is None:
-			if isinstance(path[0], str):
-				obj[ptr] = {}
-			else:
-				obj[ptr] = []
-
-		saveTo(obj[ptr], path[0], path[1:], value)
-
-def _fieldsToTree(fields):
-	"""Transform list of Field objects to nested dictionaries and lists"""
-
-	if len(fields) == 0:
-		return []
-
-	# we need some starting object, whose pointer we can pass to recursive saveTo()
-	res = []
-
-	for field in fields:
-		saveTo(res, 0, field.name, field.py_value)
-
-	# get rid of temporary root object and return only its first element
-	return res[0]
+from .data import *
 
 def connect(engine_tag, *args, remove_conflicts=False, **kwds):
 	"""
@@ -220,12 +165,12 @@ def _transformResults(requests, results):
 		elif request_type in return_result:
 			res.append(result)
 		elif isinstance(request, interface.ReadRequest):
-			res.append(_fieldsToTree(result))
+			res.append(pathsToTree([(field.name, field.py_value) for field in result]))
 		elif isinstance(request, interface.DumpRequest):
 			for i, e in enumerate(result):
 				# IDs have even indexes, lists of fields have odd ones
 				if i % 2 == 1:
-					result[i] = _fieldsToTree(result[i])
+					result[i] = pathsToTree([(field.name, field.py_value) for field in result[i]])
 			res.append(result)
 
 	return res
@@ -370,7 +315,7 @@ class Connection:
 		if remove_conflicts is None:
 			remove_conflicts = self._remove_conflicts
 
-		fields = _flattenHierarchy(value, self._engine)
+		fields = [Field(self._engine, path, val) for path, val in treeToPaths(value)]
 		self._requests.append(interface.ModifyRequest(id,
 			Field(self._engine, path), fields, remove_conflicts))
 
@@ -436,7 +381,8 @@ class Connection:
 
 		self._requests.append(interface.InsertRequest(
 			id, Field(self._engine, path),
-			[_flattenHierarchy(value, self._engine) for value in values],
+			[[Field(self._engine, path, val) for path, val in treeToPaths(value)]
+				for value in values],
 			remove_conflicts))
 
 	def delete(self, id, path=None):
@@ -484,7 +430,7 @@ class Connection:
 		"""
 		if path is None:
 			path = []
-		fields = _flattenHierarchy(data, self._engine)
+		fields = [Field(self._engine, path, val) for path, val in treeToPaths(data)]
 
 		for field in fields:
 			field.name = path + field.name
