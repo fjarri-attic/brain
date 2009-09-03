@@ -8,7 +8,7 @@ import time
 import sys
 
 import brain
-from brain.connection import saveTo
+from brain.connection import saveTo, _flattenHierarchy, _fieldsToTree
 
 STARTING_DEPTH = 5 # starting data depth of objects
 MAX_DEPTH = 5 # maximum depth of data structures created during test
@@ -16,6 +16,15 @@ MAX_ELEMENTS_NUM = 3 # maximum number of elements in created lists/dictionaries
 STOP_DATA_GENERATION = 0.6 # probability of stopping data generation on each level of structure
 STOP_PATH_GENERATION = 0.1 # probability of stopping path generation on each level of structure
 NONE_PROBABILITY = 0.3 # probability of last None appearance in the path of insert request
+
+def _getPath(obj, path):
+	"""Get pointer to data structure with given path"""
+	if len(path) == 0:
+		return obj
+	elif len(path) == 1:
+		return obj[path[0]]
+	else:
+		return _getPath(obj[path[0]], path[1:])
 
 
 class FakeConnection:
@@ -27,13 +36,6 @@ class FakeConnection:
 	def __init__(self):
 		self._id_counter = 0
 		self._root = {}
-
-	def _getPath(self, obj, path):
-		"""Get pointer to data structure with given path"""
-		if len(path) == 1:
-			return obj[path[0]]
-		else:
-			return self._getPath(obj[path[0]], path[1:])
 
 	def _deleteAll(self, obj, path):
 		"""Delete all values from given path"""
@@ -53,7 +55,7 @@ class FakeConnection:
 		saveTo(self._root, id, path, value)
 
 	def insertMany(self, id, path, values, remove_conflicts=False):
-		target = self._getPath(self._root, [id] + path[:-1])
+		target = _getPath(self._root, [id] + path[:-1])
 		index = path[-1]
 
 		if index is None:
@@ -67,12 +69,40 @@ class FakeConnection:
 		for path in paths:
 			self._deleteAll(self._root, [id] + path)
 
-	def read(self, id, path=None):
+	def read(self, id, path=None, masks=None):
 		if path is None:
 			path = []
 
-		return self._getPath(self._root, [id] + path)
+		res = _getPath(self._root, [id] + path)
 
+		if masks is not None:
+			fields = _flattenHierarchy(res, None)
+			res_fields = []
+			for field in fields:
+				satisfies = False
+				for mask in masks:
+					if len(mask) > len(field.name):
+						continue
+
+					if len(mask) == 0:
+						satisfies = True
+						break
+
+					satisfies = True
+					for i, e in enumerate(mask):
+						if e != field.name[i] and not (e is None and isinstance(field.name[i], int)):
+							satisfies = False
+							break
+
+					if satisfies:
+						break
+
+				if satisfies:
+					res_fields.append(field)
+
+			res = _fieldsToTree(res_fields)
+
+		return res
 
 # Auxiliary functions
 
@@ -155,6 +185,13 @@ def getRandomInsertPath(root):
 		path[-1] = None
 	return path
 
+def getRandomMask(root):
+	path = getRandomPath(root)
+	for i, e in enumerate(path):
+		if not isinstance(e, str) and random.random() < NONE_PROBABILITY:
+			path[i] = None
+	return path
+
 def listInData(data):
 	"""Returns True if there is a list in given data structure"""
 	if isinstance(data, list):
@@ -206,7 +243,14 @@ class RandomAction:
 		self._args = ([getRandomDeletePath(self._obj_contents)],)
 
 	def _constructReadArgs(self):
-		self._args = (getRandomDefinitePath(self._obj_contents),)
+		path = getRandomDefinitePath(self._obj_contents)
+		elems = random.randint(0, MAX_ELEMENTS_NUM)
+		if elems > 0:
+			masks = [getRandomMask(_getPath(self._obj_contents, path)) for i in range(elems)]
+		else:
+			masks = None
+
+		self._args = (path, masks)
 
 	def __call__(self, conn, obj_id):
 		args = self._args
