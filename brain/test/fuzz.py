@@ -31,9 +31,18 @@ class FakeConnection:
 	def _deleteAll(self, obj, path):
 		"""Delete all values from given path"""
 		if len(path) == 1:
-			del obj[path[0]]
+			if path[0] is None and isinstance(obj, list):
+				obj[:] = []
+			elif (isinstance(path[0], str) and isinstance(obj, dict)) or \
+					(isinstance(path[0], int) and isinstance(obj, list)):
+				del obj[path[0]]
 		else:
-			self._deleteAll(obj[path[0]], path[1:])
+			if path[0] is None and isinstance(obj, list):
+				for i in range(len(obj)):
+					self._deleteAll(obj[i], path[1:])
+			elif (isinstance(path[0], str) and isinstance(obj, dict)) or \
+					(isinstance(path[0], int) and isinstance(obj, list)):
+				self._deleteAll(obj[path[0]], path[1:])
 
 	def create(self, data, path=None):
 		if path is None:
@@ -46,7 +55,7 @@ class FakeConnection:
 		saveToTree(self._root, id, path, value)
 
 	def insertMany(self, id, path, values, remove_conflicts=False):
-		target = getNodeByPath(self._root, [id] + path[:-1])
+		target = getNodeByPath(self._root[id], path[:-1])
 		index = path[-1]
 
 		if index is None:
@@ -58,7 +67,7 @@ class FakeConnection:
 
 	def deleteMany(self, id, paths=None):
 		for path in paths:
-			self._deleteAll(self._root, [id] + path)
+			self._deleteAll(self._root[id], path)
 
 	def read(self, id, path=None, masks=None):
 		if path is None:
@@ -160,7 +169,7 @@ def getRandomDeletePath(root):
 	"""
 	path = []
 	while len(path) == 0:
-		path = getRandomDefinitePath(root)
+		path = getRandomMask(root)
 	return path
 
 def getRandomInsertPath(root):
