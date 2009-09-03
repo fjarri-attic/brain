@@ -16,7 +16,7 @@ MAX_ELEMENTS_NUM = 3 # maximum number of elements in created lists/dictionaries
 STOP_DATA_GENERATION = 0.6 # probability of stopping data generation on each level of structure
 STOP_PATH_GENERATION = 0.1 # probability of stopping path generation on each level of structure
 NONE_PROBABILITY = 0.3 # probability of last None appearance in the path of insert request
-
+READ_BY_MASK_PROBABILITY = 0.6 # probability of using masks in read()
 
 class FakeConnection:
 	"""
@@ -30,18 +30,19 @@ class FakeConnection:
 
 	def _deleteAll(self, obj, path):
 		"""Delete all values from given path"""
+		print((obj, path))
 		if len(path) == 1:
 			if path[0] is None and isinstance(obj, list):
 				obj[:] = []
-			elif (isinstance(path[0], str) and isinstance(obj, dict)) or \
-					(isinstance(path[0], int) and isinstance(obj, list)):
+			elif (isinstance(path[0], str) and isinstance(obj, dict) and path[0] in obj.keys()) or \
+					(isinstance(path[0], int) and isinstance(obj, list) and path[0] < len(obj)):
 				del obj[path[0]]
 		else:
 			if path[0] is None and isinstance(obj, list):
 				for i in range(len(obj)):
 					self._deleteAll(obj[i], path[1:])
-			elif (isinstance(path[0], str) and isinstance(obj, dict)) or \
-					(isinstance(path[0], int) and isinstance(obj, list)):
+			elif (isinstance(path[0], str) and isinstance(obj, dict) and path[0] in obj.keys()) or \
+					(isinstance(path[0], int) and isinstance(obj, list) and path[0] < len(obj)):
 				self._deleteAll(obj[path[0]], path[1:])
 
 	def create(self, data, path=None):
@@ -244,8 +245,8 @@ class RandomAction:
 
 	def _constructReadArgs(self):
 		path = getRandomDefinitePath(self._obj_contents)
-		elems = random.randint(0, MAX_ELEMENTS_NUM)
-		if elems > 0:
+		if random.random() < READ_BY_MASK_PROBABILITY:
+			elems = random.randint(1, MAX_ELEMENTS_NUM)
 			masks = [getRandomMask(getNodeByPath(self._obj_contents, path)) for i in range(elems)]
 		else:
 			masks = None
