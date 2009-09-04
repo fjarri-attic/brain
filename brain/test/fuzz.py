@@ -30,7 +30,6 @@ class FakeConnection:
 
 	def _deleteAll(self, obj, path):
 		"""Delete all values from given path"""
-		print((obj, path))
 		if len(path) == 1:
 			if path[0] is None and isinstance(obj, list):
 				obj[:] = []
