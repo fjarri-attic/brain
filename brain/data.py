@@ -63,3 +63,17 @@ def getNodeByPath(obj, path):
 		return obj[path[0]]
 	else:
 		return getNodeByPath(obj[path[0]], path[1:])
+
+def pathMatchesMask(path, mask):
+	if len(mask) > len(path):
+		return False
+
+	if len(mask) == 0:
+		return True
+
+	satisfies = True
+	for i, e in enumerate(mask):
+		if e != path[i] and not (e is None and isinstance(path[i], int)):
+			return False
+
+	return True

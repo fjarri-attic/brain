@@ -30,18 +30,17 @@ class FakeConnection:
 
 	def _deleteAll(self, obj, path):
 		"""Delete all values from given path"""
-		if len(path) == 1:
-			if path[0] is None and isinstance(obj, list):
+		if path[0] is None and isinstance(obj, list):
+			if len(path) == 1:
 				obj[:] = []
-			elif (isinstance(path[0], str) and isinstance(obj, dict) and path[0] in obj.keys()) or \
-					(isinstance(path[0], int) and isinstance(obj, list) and path[0] < len(obj)):
-				del obj[path[0]]
-		else:
-			if path[0] is None and isinstance(obj, list):
+			else:
 				for i in range(len(obj)):
 					self._deleteAll(obj[i], path[1:])
-			elif (isinstance(path[0], str) and isinstance(obj, dict) and path[0] in obj.keys()) or \
-					(isinstance(path[0], int) and isinstance(obj, list) and path[0] < len(obj)):
+		elif (isinstance(path[0], str) and isinstance(obj, dict) and path[0] in obj.keys()) or \
+				(isinstance(path[0], int) and isinstance(obj, list) and path[0] < len(obj)):
+			if len(path) == 1:
+				del obj[path[0]]
+			else:
 				self._deleteAll(obj[path[0]], path[1:])
 
 	def create(self, data, path=None):
@@ -79,26 +78,10 @@ class FakeConnection:
 			fields = treeToPaths(res)
 			res_fields = []
 			for field_path, value in fields:
-				satisfies = False
 				for mask in masks:
-					if len(mask) > len(field_path):
-						continue
-
-					if len(mask) == 0:
-						satisfies = True
+					if pathMatchesMask(field_path, mask):
+						res_fields.append((field_path, value))
 						break
-
-					satisfies = True
-					for i, e in enumerate(mask):
-						if e != field_path[i] and not (e is None and isinstance(field_path[i], int)):
-							satisfies = False
-							break
-
-					if satisfies:
-						break
-
-				if satisfies:
-					res_fields.append((field_path, value))
 
 			res = pathsToTree(res_fields)
 
