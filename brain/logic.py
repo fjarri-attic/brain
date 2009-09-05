@@ -442,6 +442,11 @@ class _StructureLayer:
 
 	def objectHasField(self, id, field):
 		"""Returns True if object has given field (with any type of value)"""
+
+		# if field points to root, object definitely has it
+		if len(field.name) == 0:
+			return True
+
 		types = self.getValueTypes(id, field)
 		field_copy = Field(self._engine, field.name)
 		for type in types:
@@ -546,6 +551,20 @@ class LogicLayer:
 			# shift numbers of all elements in list
 			self._structure.renumberList(id, target_field, fld, shift)
 
+	def _fillWithNones(self, id, path):
+		max = self._structure.getMaxListIndex(id, path)
+		if max is None:
+			start = 0
+		else:
+			start = max + 1
+		end = path.name[-1]
+
+		path_copy = Field(self._engine, path.name)
+		for i in range(start, end):
+			path_copy.name[-1] = i
+			path_copy.py_value = None
+			self._setFieldValue(id, path_copy)
+
 	def _modifyFields(self, id, path, fields, remove_conflicts):
 		"""Store values of given fields"""
 
@@ -554,8 +573,14 @@ class LogicLayer:
 			for field in self._structure.getFieldsList(id, path, exclude_self=False):
 				self._structure.deleteValues(id, field, path.columns_condition)
 		else:
-		# path does not exist and is not root - check for list/map conflicts
+		# path does not exist and is not root
+
+			# check for list/map conflicts
 			self._checkForConflicts(id, path, remove_conflicts)
+
+			# fill autocreated list elements (if any) with Nones
+			if isinstance(path.name[-1], int):
+				self._fillWithNones(id, path)
 
 		# store field values
 		for field in fields:
