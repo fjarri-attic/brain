@@ -332,6 +332,13 @@ class Modify(TestRequest):
 		res = self.conn.read(obj, ['key', 'key2'])
 		self.assertEqual(res, {'key3': 3})
 
+	def testAutoFillWithNones(self):
+		"""Check that when modification creates new list elements, they are filled with Nones"""
+		obj = self.conn.create([1])
+		self.conn.modify(obj, [5], 1)
+		res = self.conn.read(obj, [3])
+		self.assertEqual(res, None)
+
 
 def get_class():
 	return Modify
