@@ -17,6 +17,7 @@ STOP_DATA_GENERATION = 0.6 # probability of stopping data generation on each lev
 STOP_PATH_GENERATION = 0.1 # probability of stopping path generation on each level of structure
 NONE_PROBABILITY = 0.3 # probability of last None appearance in the path of insert request
 READ_BY_MASK_PROBABILITY = 0.6 # probability of using masks in read()
+CONFLICTING_PATH_PROBABILITY = 0.2 # probability of using conflicting path when modifying/inserting
 
 class FakeConnection:
 	"""
@@ -51,7 +52,7 @@ class FakeConnection:
 		return self._id_counter
 
 	def modify(self, id, path, value, remove_conflicts=False):
-		saveToTree(self._root, id, path, value)
+		saveToTree(self._root, id, path, value, remove_conflicts=remove_conflicts)
 
 	def insertMany(self, id, path, values, remove_conflicts=False):
 		target = getNodeByPath(self._root[id], path[:-1])
@@ -144,6 +145,18 @@ def getRandomDefinitePath(root):
 		path = getRandomPath(root)
 	return path
 
+def getRandomConflictingPath(root):
+	path = []
+	while len(path) == 0:
+		path = getRandomDefinitePath(root)
+
+	i = random.randint(0, len(path) - 1)
+	if isinstance(path[i], str):
+		path[i] = 0
+	else:
+		path[i] = getRandomString()
+	return path
+
 def getRandomDeletePath(root):
 	"""
 	Returns random path for delete request -
@@ -186,6 +199,14 @@ def listInData(data):
 	else:
 		return False
 
+def hasNonTrivialDefinitePath(data):
+	if isinstance(data, list) and len(data) > 0:
+		return True
+	elif isinstance(data, dict) and len(data.keys()) > 0:
+		return True
+
+	return False
+
 
 class RandomAction:
 	"""Class, representing an action on a given object"""
@@ -214,8 +235,16 @@ class RandomAction:
 		return (str(self) if verbosity > 3 else self._method)
 
 	def _constructModifyArgs(self):
-		self._args = (getRandomDefinitePath(self._obj_contents),
-			getRandomData(MAX_DEPTH))
+		data = getRandomData(MAX_DEPTH)
+		if random.random() < CONFLICTING_PATH_PROBABILITY and \
+				hasNonTrivialDefinitePath(self._obj_contents):
+			path = getRandomConflictingPath(self._obj_contents)
+			remove_conflicts = True
+		else:
+			path = getRandomDefinitePath(self._obj_contents)
+			remove_conflicts = False
+
+		self._args = (path, data, remove_conflicts)
 
 	def _constructInsertArgs(self):
 		elems = random.randint(1, MAX_ELEMENTS_NUM)

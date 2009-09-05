@@ -15,7 +15,7 @@ def treeToPaths(node, prefix=[]):
 	else:
 		return [(prefix, node)]
 
-def saveToTree(obj, ptr, path, value):
+def saveToTree(obj, ptr, path, value, remove_conflicts=False):
 	"""Save given value to a place in hierarchy, defined by pointer"""
 
 	# ensure that there is a place in obj where ptr points
@@ -33,12 +33,16 @@ def saveToTree(obj, ptr, path, value):
 	else:
 	# if not, create required structure and call this function recursively
 		if obj[ptr] is None:
-			if isinstance(path[0], str):
-				obj[ptr] = {}
-			else:
-				obj[ptr] = []
+			obj[ptr] = {} if isinstance(path[0], str) else []
+		else:
+			if (isinstance(path[0], str) and not isinstance(obj[ptr], dict)) or \
+					(not isinstance(path[0], str) and not isinstance(obj[ptr], list)):
+				if remove_conflicts:
+					obj[ptr] = {} if isinstance(path[0], str) else []
+				else:
+					raise Exception("Conflict encountered at " + str(path))
 
-		saveToTree(obj[ptr], path[0], path[1:], value)
+		saveToTree(obj[ptr], path[0], path[1:], value, remove_conflicts)
 
 def pathsToTree(fields):
 	"""Transform list of (path, value) tuples to nested dictionaries and lists"""
