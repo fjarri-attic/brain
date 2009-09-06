@@ -290,7 +290,7 @@ class EngineTest(helpers.NamedTestCase):
 		self.assertFalse(Field.isFieldTableName(self.engine, "blablabla"))
 
 
-def suite(name, engine_tag, *args, **kwds):
+def suite(engine_tag, *args, **kwds):
 
 	class Derived(EngineTest):
 		def setUp(self):
@@ -300,7 +300,7 @@ def suite(name, engine_tag, *args, **kwds):
 		def tearDown(self):
 			self.engine.close()
 
-	Derived.__name__ = name
-	res = helpers.NamedTestSuite('engine')
+	Derived.__name__ = 'engine'
+	res = helpers.NamedTestSuite()
 	res.addTestCaseClass(Derived)
 	return res

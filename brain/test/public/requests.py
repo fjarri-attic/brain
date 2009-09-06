@@ -2,8 +2,9 @@
 
 import unittest
 
+import helpers
 
-class TestRequest(unittest.TestCase):
+class TestRequest(helpers.NamedTestCase):
 	"""Base class for database requests testing"""
 
 	def prepareStandNoList(self):

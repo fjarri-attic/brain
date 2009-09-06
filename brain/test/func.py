@@ -13,27 +13,22 @@ from public import delete, insert, modify, read, search, connection
 
 import brain
 
-def runFunctionalityTests(all_engines=False, all_connections=False, all_storages=False,
-	verbosity=2, show_report=True):
-	"""Start functionality tests suite"""
 
-	if show_report:
-		print("Functionality tests")
+class EngineTestSuite(helpers.NamedTestSuite):
+
+	def __init__(self, engine_tag, storage_tag, in_memory, engine_args, engine_kwds):
+		test_tag = engine_tag + "." + storage_tag
+		helpers.NamedTestSuite.__init__(self, test_tag)
+
+		self.in_memory = in_memory
+		self.engine_tag = engine_tag
+		self.engine_args = engine_args
+		self.engine_kwds = engine_kwds
+
+
+def getEngineTestSuites(db_path, all_engines, all_storages):
 
 	IN_MEMORY = 'memory' # tag for in-memory DB tests
-
-	suite = helpers.NamedTestSuite()
-	internal_suite = helpers.NamedTestSuite('internal')
-	internal_suite.addTest(interface.suite())
-
-	if all_engines:
-		engine_tags = brain.getEngineTags()
-		engine_tags = {tag: tag for tag in engine_tags}
-	else:
-		engine_tags = {brain.getDefaultEngineTag(): None}
-
-	# folder for DBs which are represented by files
-	db_path = tempfile.mkdtemp(prefix='braindb')
 
 	storages = {
 		'sqlite3': [(IN_MEMORY, (None,), {}), ('file', ('test.db',),
@@ -46,15 +41,45 @@ def runFunctionalityTests(all_engines=False, all_connections=False, all_storages
 		# leave only default storages
 		storages = {x: [storages[x][0]] for x in storages}
 
-	# add engine class tests
-	for tag_str in engine_tags:
-		for storage in storages[tag_str]:
-			storage_str, args, kwds = storage
-			test_tag = tag_str + "." + storage_str
-			internal_suite.addTest(engine.suite(test_tag,
-				engine_tags[tag_str], *args, **kwds))
+	if not all_engines:
+		default_tag = brain.getDefaultEngineTag()
+		storages = {default_tag: storages[default_tag]}
 
+	res = []
+
+	for engine_tag in storages:
+		for storage_tag, args, kwds in storages[engine_tag]:
+			res.append(EngineTestSuite(engine_tag, storage_tag,
+				(storage_tag == IN_MEMORY), args, kwds))
+
+	return res
+
+def runFunctionalityTests(all_engines=False, all_connections=False, all_storages=False,
+	verbosity=2, show_report=True):
+	"""Start functionality tests suite"""
+
+	if show_report:
+		print("Functionality tests")
+
+	suite = helpers.NamedTestSuite()
+
+	internal_suite = helpers.NamedTestSuite('internal')
 	suite.addTest(internal_suite)
+
+	public_suite = helpers.NamedTestSuite('public')
+	suite.addTest(public_suite)
+
+	internal_suite.addTest(interface.suite())
+
+	# folder for DBs which are represented by files
+	db_path = tempfile.mkdtemp(prefix='braindb')
+
+	# add engine class tests
+	for engine_suite in getEngineTestSuites(db_path, all_engines, all_storages):
+		args = engine_suite.engine_args
+		kwds = engine_suite.engine_kwds
+		engine_suite.addTest(engine.suite(engine_suite.engine_tag, *args, **kwds))
+		internal_suite.addTest(engine_suite)
 
 	# add functionality tests
 
@@ -74,18 +99,23 @@ def runFunctionalityTests(all_engines=False, all_connections=False, all_storages
 		'modify': modify, 'read': read, 'search': search, 'connection': connection}
 
 	for gen in connection_generators:
-		for tag_str in engine_tags:
-			for storage in storages[tag_str]:
-				for func_test in func_tests:
-					storage_str, args, kwds = storage
-					test_tag = gen + "." + tag_str + "." + storage_str + "." + func_test
-					suite.addTest(unittest.TestLoader().loadTestsFromTestCase(
-						public.getParameterized(
-						func_tests[func_test].get_class(),
-						test_tag, connection_generators[gen],
-						engine_tags[tag_str],
-						(storage_str == IN_MEMORY),
-						*args, **kwds)))
+		gen_suite = helpers.NamedTestSuite(gen)
+		for engine_suite in getEngineTestSuites(db_path, all_engines, all_storages):
+			for func_test in func_tests:
+				args = engine_suite.engine_args
+				kwds = engine_suite.engine_kwds
+				func_suite = helpers.NamedTestSuite()
+				func_suite.addTestCaseClass(public.getParameterized(
+					func_tests[func_test].get_class(),
+					func_test,
+					connection_generators[gen],
+					engine_suite.engine_tag,
+					engine_suite.in_memory,
+					*args, **kwds))
+				engine_suite.addTest(func_suite)
+			gen_suite.addTest(engine_suite)
+		public_suite.addTest(gen_suite)
+
 
 	# Run tests
 

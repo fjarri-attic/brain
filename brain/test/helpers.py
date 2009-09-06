@@ -98,12 +98,14 @@ class NamedTestSuite(unittest.TestSuite):
 		"""Override for default TestSuite.run() method"""
 
 		# pass tag to result collector
-		if self.__tag: result.enter(self.__tag)
+		if self.__tag is not None:
+			result.enter(self.__tag)
 
 		unittest.TestSuite.run(self, result)
 
 		# tell result collector that test suite has finished
-		if self.__tag: result.leave()
+		if self.__tag is not None:
+			result.leave()
 
 
 class NamedTestCase(unittest.TestCase):
