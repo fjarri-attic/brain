@@ -8,7 +8,7 @@ from brain.interface import *
 
 import helpers
 
-class Format(unittest.TestCase):
+class Format(helpers.NamedTestCase):
 	"""Class which contains all request format testcases"""
 
 	# Tests for Field class
@@ -219,6 +219,6 @@ class Format(unittest.TestCase):
 
 def suite():
 	"""Generate test suite for this module"""
-	res = helpers.NamedTestSuite()
-	res.addTest(unittest.TestLoader().loadTestsFromTestCase(Format))
+	res = helpers.NamedTestSuite('interface')
+	res.addTestCaseClass(Format)
 	return res

@@ -23,7 +23,8 @@ def runFunctionalityTests(all_engines=False, all_connections=False, all_storages
 	IN_MEMORY = 'memory' # tag for in-memory DB tests
 
 	suite = helpers.NamedTestSuite()
-	suite.addTest(interface.suite())
+	internal_suite = helpers.NamedTestSuite('internal')
+	internal_suite.addTest(interface.suite())
 
 	if all_engines:
 		engine_tags = brain.getEngineTags()
@@ -50,8 +51,10 @@ def runFunctionalityTests(all_engines=False, all_connections=False, all_storages
 		for storage in storages[tag_str]:
 			storage_str, args, kwds = storage
 			test_tag = tag_str + "." + storage_str
-			suite.addTest(engine.suite(test_tag,
+			internal_suite.addTest(engine.suite(test_tag,
 				engine_tags[tag_str], *args, **kwds))
+
+	suite.addTest(internal_suite)
 
 	# add functionality tests
 

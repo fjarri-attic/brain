@@ -7,7 +7,7 @@ from brain.engine import *
 from brain.interface import Field
 
 
-class EngineTest(unittest.TestCase):
+class EngineTest(helpers.NamedTestCase):
 	"""Test for DB engines using base interface"""
 
 	def testValueTransformation(self):
@@ -301,6 +301,6 @@ def suite(name, engine_tag, *args, **kwds):
 			self.engine.close()
 
 	Derived.__name__ = name
-	res = helpers.NamedTestSuite()
-	res.addTest(unittest.TestLoader().loadTestsFromTestCase(Derived))
+	res = helpers.NamedTestSuite('engine')
+	res.addTestCaseClass(Derived)
 	return res

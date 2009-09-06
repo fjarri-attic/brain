@@ -106,6 +106,13 @@ class NamedTestSuite(unittest.TestSuite):
 		if self.__tag: result.leave()
 
 
+class NamedTestCase(unittest.TestCase):
+	"""Overridden TestCase class which uses class name without module prefix as a tag"""
+
+	def id(self):
+		return self.__class__.__name__ + "." + self._testMethodName
+
+
 class TextTestRunner:
 	"""Simple test runner"""
 
