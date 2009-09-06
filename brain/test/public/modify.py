@@ -339,6 +339,17 @@ class Modify(TestRequest):
 		res = self.conn.read(obj, [3])
 		self.assertEqual(res, None)
 
+	def testAutoFillWithNonesNestedList(self):
+		"""
+		Check that when modification creates new nested list elements,
+		they are filled with Nones
+		"""
+		obj = self.conn.create({'a': 1})
+		self.conn.modify(obj, [0, 2, 'key1', 'key2'], 3, remove_conflicts=True)
+		self.conn._engine.dump()
+		res = self.conn.read(obj, [0, 0])
+		self.assertEqual(res, None)
+
 
 def get_class():
 	return Modify
