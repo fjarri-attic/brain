@@ -346,7 +346,6 @@ class Modify(TestRequest):
 		"""
 		obj = self.conn.create({'a': 1})
 		self.conn.modify(obj, [0, 2, 'key1', 'key2'], 3, remove_conflicts=True)
-		self.conn._engine.dump()
 		res = self.conn.read(obj, [0, 0])
 		self.assertEqual(res, None)
 
