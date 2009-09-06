@@ -3,6 +3,7 @@ Next release: 0.1.3
 
 * (done) fixed several bugs with lists autocreation: when new lists are created during modify()
   or insert(), their elements are filled with Nones
+* (done) fixed bug in read() logic - it did not raise error when reading from non-existent list element
 * (done) added read from random path to list of fuzz test actions
 * (done) fuzz test: add readByMasks() action
 * (done) fuzz test: add delete() by mask action

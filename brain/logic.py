@@ -619,8 +619,9 @@ class LogicLayer:
 			raise interface.LogicError("Object " + str(request.id) + " does not exist")
 
 		if request.path is not None:
-			types = self._structure.getValueTypes(request.id, request.path)
-			if len(types) == 0:
+			#types = self._structure.getValueTypes(request.id, request.path)
+			#if len(types) == 0:
+			if not self._structure.objectHasField(request.id, request.path):
 				raise interface.LogicError("Object " + str(request.id) +
 					" does not have field " + str(request.path.name))
 

@@ -134,6 +134,11 @@ class Read(TestRequest):
 		self.assertRaises(brain.LogicError, self.conn.read,
 			self.id1, ['blablabla'])
 
+	def testReadFromNonExistentListElement(self):
+		"""Check that attempt to read from non-existent list element raises LogicError"""
+		obj = self.conn.create([1, [2, 3, 4]])
+		self.assertRaises(brain.LogicError, self.conn.read, obj, [0, 0])
+
 	def testReadPathAndMasks(self):
 		"""Check that path and masks arguments ofr read() work simultaneously"""
 		obj = self.conn.create({'tracks': [{'Name': 'track 1', 'Length': 240},
