@@ -266,6 +266,18 @@ class Insert(TestRequest):
 		res = self.conn.read(obj)
 		self.assertEqual(res, [None, 4, 5, 6])
 
+	def testAutoexpandNewNestedLists(self):
+		"""
+		Check that when several nested lists are created before insertion,
+		they are autoexpanded to the index, where path points to.
+		"""
+		obj = self.conn.create({'key': [1, 2, 3]})
+		self.conn.insertMany(obj, [1, 2], [4, 5, 6], remove_conflicts=True)
+
+		self.assertEqual(self.conn.read(obj), [None, [None, None, 4, 5, 6]])
+		self.assertEqual(self.conn.read(obj, [0]), None)
+		self.assertEqual(self.conn.read(obj, [1, 0]), None)
+
 
 def get_class():
 	return Insert
