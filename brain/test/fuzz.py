@@ -240,7 +240,7 @@ class RandomAction:
 		args_constructors[self._method]()
 
 	def dump(self, verbosity):
-		return (str(self) if verbosity > 3 else self._method)
+		return (str(self) if verbosity > 3 else self.getMethod())
 
 	def _constructModifyArgs(self):
 		data = getRandomData(MAX_DEPTH)
@@ -284,6 +284,9 @@ class RandomAction:
 
 		self._args = (path, masks)
 
+	def getMethod(self):
+		return self._method
+
 	def __call__(self, conn, obj_id):
 		args = self._args
 		kwds = self._kwds
@@ -305,6 +308,7 @@ def _runTests(objects, actions, verbosity):
 
 	objs = []
 	fake_objs = []
+	times = {}
 
 	# create objects
 	for i in range(objects):
@@ -351,10 +355,19 @@ def _runTests(objects, actions, verbosity):
 
 			# try to perform action on a real object
 			try:
+				starting_time = time.time()
 				result = action(conn, objs[i])
+				action_time = time.time() - starting_time
+
+				method = action.getMethod()
+				if method not in times.keys():
+					times[method] = action_time
+				else:
+					times[method] += action_time
+
 			except:
 				print("Error performing action on object " + str(i) +
-					": " + action.dump())
+					": " + action.dump(verbosity))
 				if verbosity > 3:
 					print("State before: " + str(fake_state_before))
 					conn._engine.dump()
@@ -397,11 +410,13 @@ def _runTests(objects, actions, verbosity):
 					conn._engine.dump()
 				raise Exception("Functionality error")
 
+	return times
 
-def runFuzzTest(objects=1, actions=100, verbosity=2, seed=0):
+def runFuzzTest(objects=1, actions=100, verbosity=2, seed=0, show_report=True):
 	"""Main test function. Start test, terminate on first exception"""
 
-	print("Fuzz test")
+	if show_report:
+		print("Fuzz test")
 
 	if seed != 0:
 		random.seed(seed)
@@ -410,20 +425,26 @@ def runFuzzTest(objects=1, actions=100, verbosity=2, seed=0):
 		random.seed()
 		state = "random seed"
 
-	print(str(objects) + " objects, " + str(actions) + " actions, " + state)
+	if show_report:
+		print(str(objects) + " objects, " + str(actions) + " actions, " + state)
+		print("=" * 70)
 
-	print("=" * 70)
-	time1 = time.time()
 	try:
-		_runTests(objects, actions, verbosity)
+		times = _runTests(objects, actions, verbosity)
 	except:
+		times = None
 		err_class, err_obj, err_tb = sys.exc_info()
-		print("! " + str(err_obj))
+		print("Error during test: " + str(err_obj))
 
 		# report traceback
 		if verbosity > 1:
 			traceback.print_tb(err_tb)
 	finally:
-		print("=" * 70)
-		time2 = time.time()
-		print("Finished in {0:.3f} seconds".format(time2 - time1))
+		if show_report:
+			print("=" * 70)
+
+	if show_report and times is not None:
+		time_strings = ["- " + action + ": {0:.3f} s".format(times[action]) for action in times]
+		print("Action times:\n" + "\n".join(time_strings))
+
+	return times
