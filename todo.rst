@@ -1,18 +1,25 @@
 Next release: 0.1.3
 ===================
 
+* (done) fixed several bugs with lists autocreation: when new lists are created during modify()
+  or insert(), their elements are filled with Nones
 * (done) added read from random path to list of fuzz test actions
 * (done) fuzz test: add readByMasks() action
 * (done) fuzz test: add delete() by mask action
-* fuzz test: add remove_conflicts parameter to modify() and insert() actions
+* (done) fuzz test: add remove_conflicts parameter to modify() and insert() actions
 * fuzz test: add search() action
+* make fuzz test return times for each type of request separately
+* add non-atomic performance tests: time for functional tests and times for each request in fuzz test
+* review functional tests structure and use named test suites from helpers.py
 
-Performance tests
------------------
+0.1.4
+=====
 
-Need to add some atomic performance tests. They will allow to test different
-database implementations using XML RPC (they should somehow take into account
-XML RPC latency).
+* make rules for field names more strict (so that they could be passed to database as is) -
+  probably same as rules for variable names in Python
+* refactor modify() and insert() logic in order to reduce calls to database; something like
+  prepare and sort list of fields to modify first
+* review autovivification rules in modify() and insert() and remove counterintuitive ones
 
 Future
 ======
