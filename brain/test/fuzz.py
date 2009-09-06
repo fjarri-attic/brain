@@ -55,8 +55,15 @@ class FakeConnection:
 		saveToTree(self._root, id, path, value, remove_conflicts=remove_conflicts)
 
 	def insertMany(self, id, path, values, remove_conflicts=False):
+		if remove_conflicts:
+			self.modify(id, path[:-1], [], remove_conflicts=True)
+
 		target = getNodeByPath(self._root[id], path[:-1])
 		index = path[-1]
+
+		if index is not None and index > len(target):
+			for i in range(len(target), index):
+				target.append(None)
 
 		if index is None:
 			for value in values:
@@ -179,6 +186,7 @@ def getRandomInsertPath(root):
 		path = getRandomPath(root)
 	if random.random() < NONE_PROBABILITY:
 		path[-1] = None
+
 	return path
 
 def getRandomMask(root):
@@ -248,8 +256,20 @@ class RandomAction:
 
 	def _constructInsertArgs(self):
 		elems = random.randint(1, MAX_ELEMENTS_NUM)
+		path = getRandomInsertPath(self._obj_contents)
+
+		if random.random() < CONFLICTING_PATH_PROBABILITY and len(path) > 1:
+			i = random.randint(0, len(path) - 2)
+			if isinstance(path[i], str):
+				path[i] = 0
+			else:
+				path[i] = getRandomString()
+			remove_conflicts = True
+		else:
+			remove_conflicts = False
+
 		to_insert = [getRandomData(MAX_DEPTH) for i in range(elems)]
-		self._args = (getRandomInsertPath(self._obj_contents), to_insert)
+		self._args = (path, to_insert, remove_conflicts)
 
 	def _constructDeleteArgs(self):
 		self._args = ([getRandomDeletePath(self._obj_contents)],)
