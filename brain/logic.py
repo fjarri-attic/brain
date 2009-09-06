@@ -509,6 +509,8 @@ class LogicLayer:
 					name_copy.append(next)
 					while len(name_copy) > 0:
 						tmp_field.py_value = (dict() if isinstance(name_copy[-1], str) else list())
+						if len(tmp_field.name) > 0 and isinstance(tmp_field.name[-1], int):
+							self._fillWithNones(id, tmp_field)
 						self._setFieldValue(id, tmp_field)
 						tmp_field.name.append(name_copy.pop())
 
@@ -579,8 +581,11 @@ class LogicLayer:
 			self._checkForConflicts(id, path, remove_conflicts)
 
 			# fill autocreated list elements (if any) with Nones
-			if isinstance(path.name[-1], int):
-				self._fillWithNones(id, path)
+			field_copy = Field(self._engine, path.name)
+			while len(field_copy.name) > 0:
+				if isinstance(field_copy.name[-1], int):
+					self._fillWithNones(id, field_copy)
+				field_copy.name.pop()
 
 		# store field values
 		for field in fields:
