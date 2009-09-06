@@ -109,30 +109,32 @@ class NamedTestSuite(unittest.TestSuite):
 class TextTestRunner:
 	"""Simple test runner"""
 
-	def __init__(self, stream=sys.stderr, verbosity=1):
+	def __init__(self, stream=sys.stderr, verbosity=1, show_report=True):
 		self.__stream = _StreamWrapper(stream)
 		self.__verbosity = verbosity
+		self.__show_report = show_report
 
 	def run(self, suite):
 		"""Run all tests from given suite"""
 
-		# Run suite
 		res = _ResultCollector(self.__stream, self.__verbosity)
 
-		self.__stream.writeln("=" * 70)
+		if self.__show_report:
+			self.__stream.writeln("=" * 70)
 		time1 = time.time()
 		suite.run(res)
 		time2 = time.time()
-		self.__stream.writeln("=" * 70)
-		self.__stream.writeln("Finished in {0:.3f} seconds".format(time2 - time1))
+		if self.__show_report:
+			self.__stream.writeln("=" * 70)
+			self.__stream.writeln("Finished in {0:.3f} seconds".format(time2 - time1))
 
-		# Display results
-		if not res.wasSuccessful():
-			failures, errors = len(res.failures), len(res.errors)
-			self.__stream.writeln("FAIL: {failures} failures, {errors} errors, {passed} passed"
-				.format(failures=failures, errors=errors,
-				passed=(res.testsRun - failures - errors)))
-		else:
-			self.__stream.writeln("OK: " + str(res.testsRun) + " testcases passed")
+			# Display results
+			if not res.wasSuccessful():
+				failures, errors = len(res.failures), len(res.errors)
+				self.__stream.writeln("FAIL: {failures} failures, {errors} errors, {passed} passed"
+					.format(failures=failures, errors=errors,
+					passed=(res.testsRun - failures - errors)))
+			else:
+				self.__stream.writeln("OK: " + str(res.testsRun) + " testcases passed")
 
 		return res

@@ -13,10 +13,12 @@ from public import delete, insert, modify, read, search, connection
 
 import brain
 
-def runFunctionalityTests(all_engines=False, all_connections=False, all_storages=False, verbosity=2):
+def runFunctionalityTests(all_engines=False, all_connections=False, all_storages=False,
+	verbosity=2, show_report=True):
 	"""Start functionality tests suite"""
 
-	print("Functionality tests")
+	if show_report:
+		print("Functionality tests")
 
 	IN_MEMORY = 'memory' # tag for in-memory DB tests
 
@@ -88,7 +90,9 @@ def runFunctionalityTests(all_engines=False, all_connections=False, all_storages
 		xmlrpc_srv = brain.Server(db_path=db_path)
 		xmlrpc_srv.start()
 
-	helpers.TextTestRunner(verbosity=verbosity).run(suite)
+	test_time = helpers.TextTestRunner(verbosity=verbosity, show_report=show_report).run(suite)
 
 	if all_connections:
 		xmlrpc_srv.stop()
+
+	return test_time
