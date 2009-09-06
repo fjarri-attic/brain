@@ -256,6 +256,16 @@ class Insert(TestRequest):
 		self.assertRaises(brain.StructureError, self.conn.insert,
 			obj, ['key2', None], 51)
 
+	def testAutoexpandNewList(self):
+		"""
+		Check that when new list is created before insertion, it is autoexpanded
+		to the index, where path points to.
+		"""
+		obj = self.conn.create({'key': [1, 2, 3]})
+		self.conn.insertMany(obj, [1], [4, 5, 6], remove_conflicts=True)
+		res = self.conn.read(obj)
+		self.assertEqual(res, [None, 4, 5, 6])
+
 
 def get_class():
 	return Insert

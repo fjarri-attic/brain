@@ -670,15 +670,21 @@ class LogicLayer:
 		# where request.path is pointing to
 		parent_field = Field(self._engine, request.path.name[:-1])
 		parent = self._structure.getFieldValue(request.id, parent_field)
-		types = self._structure.getValueTypes(request.id, parent_field)
 
-		if len(parent) == 0:
-			# try to autovivify list
-			new_val = Field(self._engine, [], list())
-			self._modifyFields(request.id, parent_field,
-				[new_val], remove_conflicts=request.remove_conflicts)
-		elif parent[0].py_value != list():
-			raise interface.StructureError("Cannot insert to non-list")
+		if len(parent) == 0 or parent[0].py_value != list():
+			if len(parent) == 0 or request.remove_conflicts:
+			# try to autocreate list
+				new_val = Field(self._engine, [], list())
+				self._modifyFields(request.id, parent_field,
+					[new_val], remove_conflicts=request.remove_conflicts)
+			else:
+			# in this case we can raise more meaningful error
+				raise interface.StructureError("Cannot insert to non-list")
+
+		# if path does not point to beginning of the list, fill
+		# missing elements with Nones
+		if request.path.name[-1] is not None and request.path.name[-1] > 0:
+			self._fillWithNones(request.id, request.path)
 
 		target_col = len(request.path.name) - 1 # last column in name of target field
 
