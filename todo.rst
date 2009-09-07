@@ -1,8 +1,6 @@
 Next release: 0.1.4
 ===================
 
-* make rules for field names more strict (so that they could be passed to database as is) -
-  probably same as rules for variable names in Python
 * refactor modify() and insert() logic in order to reduce calls to database; something like
   prepare and sort list of fields to modify first
 * review autovivification rules in modify() and insert() and remove counterintuitive ones
