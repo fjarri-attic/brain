@@ -330,25 +330,26 @@ def getEngineTestParams(db_path, all_engines, all_storages):
 
 	return res
 
+def getParameterizedEngineTest(engine_tag, engine_args, engine_kwds):
+
+	class Derived(EngineTest):
+		def setUp(self):
+			self.engine = getEngineByTag(engine_tag)(*engine_args, **engine_kwds)
+			self.str_type = self.engine.getColumnType(str())
+
+		def tearDown(self):
+			self.engine.close()
+
+	return Derived
+
 def suite(db_path, all_engines, all_storages):
 
 	res = helpers.NamedTestSuite('engine')
 
 	for params in getEngineTestParams(db_path, all_engines, all_storages):
-
-		args = params.engine_args
-		kwds = params.engine_kwds
-
-		class Derived(EngineTest):
-			def setUp(self):
-				self.engine = getEngineByTag(params.engine_tag)(*args, **kwds)
-				self.str_type = self.engine.getColumnType(str())
-
-			def tearDown(self):
-				self.engine.close()
-
 		engine_suite = helpers.NamedTestSuite(params.test_tag)
-		engine_suite.addTestCaseClass(Derived)
+		engine_suite.addTestCaseClass(getParameterizedEngineTest(params.engine_tag,
+			params.engine_args, params.engine_kwds))
 		res.addTest(engine_suite)
 
 	return res
