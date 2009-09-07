@@ -15,9 +15,9 @@ class XMLRPCGenerator:
 		return getattr(self._client, name)
 
 
-def suite(db_path, all_engines=False, all_storages=False, 
+def suite(db_path, all_engines=False, all_storages=False,
 	all_connections=False, server_address=None):
-	
+
 	res = helpers.NamedTestSuite('public')
 
 	test_suites = getEngineTestSuites(db_path, all_engines, all_storages,
@@ -28,13 +28,13 @@ def suite(db_path, all_engines=False, all_storages=False,
 
 	return res
 
-def getEngineTestSuites(db_path, all_engines=False, all_storages=False, 
+def getEngineTestSuites(db_path, all_engines=False, all_storages=False,
 	all_connections=False, server_address=None):
 
 	res = []
 
 	if all_connections:
-		connection_generators = {'local': brain, 
+		connection_generators = {'local': brain,
 			'xmlrpc': XMLRPCGenerator(server_address)}
 	else:
 		connection_generators = {'local': brain}
@@ -43,7 +43,7 @@ def getEngineTestSuites(db_path, all_engines=False, all_storages=False,
 		for engine_params in engine.getEngineTestParams(db_path, all_engines, all_storages):
 			requests_suite = helpers.NamedTestSuite(gen + '.' + engine_params.test_tag)
 			for module in [delete, insert, modify, read, search, connection]:
-				requests_suite.addTest(module.suite(engine_params, 
+				requests_suite.addTest(module.suite(engine_params,
 					connection_generators[gen]))
 			res.append(requests_suite)
 
