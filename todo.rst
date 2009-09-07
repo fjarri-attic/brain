@@ -9,9 +9,8 @@ Next release: 0.1.3
 * (done) fuzz test: add delete() by mask action
 * (done) fuzz test: add remove_conflicts parameter to modify() and insert() actions
 * (done) make fuzz test return times for each type of request separately
-* add non-atomic performance tests: time for functional tests and times for each request in fuzz test
+* (done) add non-atomic performance tests: time for functional tests and times for each request in fuzz test
 * (done) review functional tests structure and use named test suites from helpers.py
-* fuzz test: add search() action
 
 0.1.4
 =====
