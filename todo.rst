@@ -1,19 +1,5 @@
-Next release: 0.1.3
+Next release: 0.1.4
 ===================
-
-* (done) fixed several bugs with lists autocreation: when new lists are created during modify()
-  or insert(), their elements are filled with Nones
-* (done) fixed bug in read() logic - it did not raise error when reading from non-existent list element
-* (done) added read from random path to list of fuzz test actions
-* (done) fuzz test: add readByMasks() action
-* (done) fuzz test: add delete() by mask action
-* (done) fuzz test: add remove_conflicts parameter to modify() and insert() actions
-* (done) make fuzz test return times for each type of request separately
-* (done) add non-atomic performance tests: time for functional tests and times for each request in fuzz test
-* (done) review functional tests structure and use named test suites from helpers.py
-
-0.1.4
-=====
 
 * make rules for field names more strict (so that they could be passed to database as is) -
   probably same as rules for variable names in Python

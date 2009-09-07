@@ -121,3 +121,16 @@ Added support for insertion and deletion requests in nested lists.
 * added support for long search conditions
 * added note about mandatory keyword parameters dictionary in XML RPC server help.
 * not using 'brain.test' in tests (i.e, make brain and brain.test independent)
+
+0.1.3
+-----
+
+* fixed fuzz tests work (it was broken after moving FakeConnection to tests in previous release)
+* fixed several bugs with lists autocreation: when new lists are created during modify()
+  or insert(), their elements are filled with Nones
+* fixed bug in read() logic - it did not raise error when reading from non-existent list element
+* fuzz test: added tests for all parameters of read() and delete()
+* fuzz test: added tests for remove_conflicts parameter in modify() and insert() actions
+* made fuzz test return times for each type of request separately
+* added non-atomic performance tests: time for functional tests and times for each request in fuzz test
+* constructing test suites hierarchically
