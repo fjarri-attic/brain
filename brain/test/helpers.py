@@ -146,4 +146,4 @@ class TextTestRunner:
 			else:
 				self.__stream.writeln("OK: " + str(res.testsRun) + " testcases passed")
 
-		return res
+		return time2 - time1
