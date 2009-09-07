@@ -5,7 +5,8 @@ import unittest
 import brain
 import brain.op as op
 
-from public.requests import TestRequest
+import helpers
+from public.requests import TestRequest, getParameterized
 
 class Delete(TestRequest):
 	"""Test operation of DeleteRequest"""
@@ -333,5 +334,7 @@ class Delete(TestRequest):
 		self.assertEqual(res, ['aaa', [[]], 'bbb'])
 
 
-def get_class():
-	return Delete
+def suite(engine_params, connection_generator):
+	res = helpers.NamedTestSuite('delete')
+	res.addTestCaseClass(getParameterized(Delete, engine_params, connection_generator))
+	return res

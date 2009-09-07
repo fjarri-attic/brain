@@ -3,6 +3,8 @@
 import unittest
 
 import helpers
+
+import brain
 from brain.engine import *
 from brain.interface import Field
 
@@ -290,16 +292,63 @@ class EngineTest(helpers.NamedTestCase):
 		self.assertFalse(Field.isFieldTableName(self.engine, "blablabla"))
 
 
-def suite(engine_tag, *args, **kwds):
+class EngineTestParams:
 
-	class Derived(EngineTest):
-		def setUp(self):
-			self.engine = getEngineByTag(engine_tag)(*args, **kwds)
-			self.str_type = self.engine.getColumnType(str())
+	def __init__(self, engine_tag, storage_tag, in_memory, engine_args, engine_kwds):
+		self.test_tag = engine_tag + "." + storage_tag
+		self.in_memory = in_memory
+		self.engine_tag = engine_tag
+		self.engine_args = engine_args
+		self.engine_kwds = engine_kwds
 
-		def tearDown(self):
-			self.engine.close()
 
-	res = helpers.NamedTestSuite()
-	res.addTestCaseClass(Derived)
+def getEngineTestParams(db_path, all_engines, all_storages):
+
+	IN_MEMORY = 'memory' # tag for in-memory DB tests
+
+	storages = {
+		'sqlite3': [(IN_MEMORY, (None,), {}), ('file', ('test.db',),
+			{'open_existing': 0, 'db_path': db_path})],
+		'postgre': [('tempdb', ('tempdb',), {'open_existing': 0,
+			'port': 5432, 'user': 'postgres', 'password': ''})]
+	}
+
+	if not all_storages:
+		# leave only default storages
+		storages = {x: [storages[x][0]] for x in storages}
+
+	if not all_engines:
+		default_tag = brain.getDefaultEngineTag()
+		storages = {default_tag: storages[default_tag]}
+
+	res = []
+
+	for engine_tag in storages:
+		for storage_tag, args, kwds in storages[engine_tag]:
+			res.append(EngineTestParams(engine_tag, storage_tag,
+				(storage_tag == IN_MEMORY), args, kwds))
+
+	return res
+
+def suite(db_path, all_engines, all_storages):
+
+	res = helpers.NamedTestSuite('engine')
+
+	for params in getEngineTestParams(db_path, all_engines, all_storages):
+
+		args = params.engine_args
+		kwds = params.engine_kwds
+
+		class Derived(EngineTest):
+			def setUp(self):
+				self.engine = getEngineByTag(params.engine_tag)(*args, **kwds)
+				self.str_type = self.engine.getColumnType(str())
+
+			def tearDown(self):
+				self.engine.close()
+
+		engine_suite = helpers.NamedTestSuite(params.test_tag)
+		engine_suite.addTestCaseClass(Derived)
+		res.addTest(engine_suite)
+
 	return res

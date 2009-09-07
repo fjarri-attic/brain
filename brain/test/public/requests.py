@@ -63,3 +63,24 @@ class TestRequest(helpers.NamedTestCase):
 		self.id3 = self.conn.create({'name': 'Album 3', 'tracks': [
 				{'Length': None, 'Volume': 0, 'Rating': 0}
 			]})
+
+def getParameterized(base_class, engine_params, connection_generator):
+	"""Get parameterized requests test class with predefined setUp()"""
+
+	class Derived(base_class):
+		def setUp(self):
+			self.in_memory = engine_params.in_memory
+			self.gen = connection_generator
+			self.tag = engine_params.engine_tag
+
+			args = engine_params.engine_args
+			kwds = engine_params.engine_kwds
+
+			self.connection_args = args
+			self.connection_kwds = kwds
+			self.conn = self.gen.connect(engine_params.engine_tag, *args, **kwds)
+
+		def tearDown(self):
+			self.conn.close()
+
+	return Derived

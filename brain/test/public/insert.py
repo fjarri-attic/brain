@@ -5,7 +5,8 @@ import unittest
 import brain
 import brain.op as op
 
-from public.requests import TestRequest
+import helpers
+from public.requests import TestRequest, getParameterized
 
 class Insert(TestRequest):
 	"""Test operation of InsertRequest"""
@@ -279,5 +280,7 @@ class Insert(TestRequest):
 		self.assertEqual(self.conn.read(obj, [1, 0]), None)
 
 
-def get_class():
-	return Insert
+def suite(engine_params, connection_generator):
+	res = helpers.NamedTestSuite('insert')
+	res.addTestCaseClass(getParameterized(Insert, engine_params, connection_generator))
+	return res

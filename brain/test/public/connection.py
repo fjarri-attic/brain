@@ -6,7 +6,8 @@ import copy
 import brain
 import brain.op as op
 
-from public.requests import TestRequest
+import helpers
+from public.requests import TestRequest, getParameterized
 
 class Connection(TestRequest):
 	"""Test different uses of ModifyRequest"""
@@ -279,5 +280,7 @@ class Connection(TestRequest):
 		self.assertEqual(data_before, data_after)
 
 
-def get_class():
-	return Connection
+def suite(engine_params, connection_generator):
+	res = helpers.NamedTestSuite('connection')
+	res.addTestCaseClass(getParameterized(Connection, engine_params, connection_generator))
+	return res

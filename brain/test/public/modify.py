@@ -5,7 +5,8 @@ import unittest
 import brain
 import brain.op as op
 
-from public.requests import TestRequest
+import helpers
+from public.requests import TestRequest, getParameterized
 
 class Modify(TestRequest):
 	"""Test different uses of ModifyRequest"""
@@ -350,5 +351,7 @@ class Modify(TestRequest):
 		self.assertEqual(res, None)
 
 
-def get_class():
-	return Modify
+def suite(engine_params, connection_generator):
+	res = helpers.NamedTestSuite('modify')
+	res.addTestCaseClass(getParameterized(Modify, engine_params, connection_generator))
+	return res

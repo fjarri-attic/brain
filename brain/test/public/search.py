@@ -5,7 +5,8 @@ import unittest
 import brain
 import brain.op as op
 
-from public.requests import TestRequest
+import helpers
+from public.requests import TestRequest, getParameterized
 
 class Search(TestRequest):
 	"""Test operation of SearchRequest"""
@@ -382,5 +383,7 @@ class Search(TestRequest):
 			op.NOT, [op.NOT, ['name'], op.EQ, 'Alex'], op.OR, ['name'])
 
 
-def get_class():
-	return Search
+def suite(engine_params, connection_generator):
+	res = helpers.NamedTestSuite('search')
+	res.addTestCaseClass(getParameterized(Search, engine_params, connection_generator))
+	return res

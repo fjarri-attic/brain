@@ -4,7 +4,8 @@ import unittest
 
 import brain
 
-from public.requests import TestRequest
+import helpers
+from public.requests import TestRequest, getParameterized
 
 class Read(TestRequest):
 	"""Test operation of ReadRequest"""
@@ -147,5 +148,7 @@ class Read(TestRequest):
 		self.assertEqual(res, [{'Length': 240}, {'Length': 300}])
 
 
-def get_class():
-	return Read
+def suite(engine_params, connection_generator):
+	res = helpers.NamedTestSuite('read')
+	res.addTestCaseClass(getParameterized(Read, engine_params, connection_generator))
+	return res
