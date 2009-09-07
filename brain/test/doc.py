@@ -360,6 +360,10 @@ which has the following parameters:
 ``doc``:
   Test examples in this documentation using Python's ``doctest`` module.
 
+``perf``:
+  Simple non-atomic performance tests (measuring times of ``func`` tests plus combining
+  results of ``fuzz`` tests with several predefined seeds).
+
 **global parameters**:
   ``-v LEVEL``, ``--verbosity=LEVEL``:
     Integer from 0 (less verbose) to 3 (more verbose), specifying the amount of information
