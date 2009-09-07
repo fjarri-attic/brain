@@ -107,6 +107,9 @@ class NamedTestSuite(unittest.TestSuite):
 		if self.__tag is not None:
 			result.leave()
 
+	def getTag(self):
+		return self.__tag
+
 
 class NamedTestCase(unittest.TestCase):
 	"""Overridden TestCase class which uses just test name as a tag"""
