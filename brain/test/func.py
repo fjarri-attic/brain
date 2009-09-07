@@ -1,13 +1,9 @@
 """Functionality tests"""
 
-import unittest
-import sys
 import tempfile
-import os
 
 import helpers
 import internal
-from internal import engine
 import public
 
 import brain
@@ -26,7 +22,8 @@ def runFunctionalityTests(all_engines=False, all_connections=False, all_storages
 	suite = helpers.NamedTestSuite()
 
 	suite.addTest(internal.suite(db_path, all_engines, all_storages))
-	suite.addTest(public.suite(db_path, all_engines, all_storages, all_connections))
+	suite.addTest(public.suite(db_path, all_engines, all_storages, all_connections,
+		'http://localhost:8000'))
 
 	# Run tests
 
