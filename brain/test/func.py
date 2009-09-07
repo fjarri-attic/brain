@@ -75,11 +75,14 @@ def runFunctionalityTests(all_engines=False, all_connections=False, all_storages
 	db_path = tempfile.mkdtemp(prefix='braindb')
 
 	# add engine class tests
+	internal_engine_suite = helpers.NamedTestSuite('engine')
+	internal_suite.addTest(internal_engine_suite)
+
 	for engine_suite in getEngineTestSuites(db_path, all_engines, all_storages):
 		args = engine_suite.engine_args
 		kwds = engine_suite.engine_kwds
 		engine_suite.addTest(engine.suite(engine_suite.engine_tag, *args, **kwds))
-		internal_suite.addTest(engine_suite)
+		internal_engine_suite.addTest(engine_suite)
 
 	# add functionality tests
 
@@ -104,10 +107,9 @@ def runFunctionalityTests(all_engines=False, all_connections=False, all_storages
 			for func_test in func_tests:
 				args = engine_suite.engine_args
 				kwds = engine_suite.engine_kwds
-				func_suite = helpers.NamedTestSuite()
+				func_suite = helpers.NamedTestSuite(func_test)
 				func_suite.addTestCaseClass(public.getParameterized(
 					func_tests[func_test].get_class(),
-					func_test,
 					connection_generators[gen],
 					engine_suite.engine_tag,
 					engine_suite.in_memory,

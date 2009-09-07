@@ -300,7 +300,6 @@ def suite(engine_tag, *args, **kwds):
 		def tearDown(self):
 			self.engine.close()
 
-	Derived.__name__ = 'engine'
 	res = helpers.NamedTestSuite()
 	res.addTestCaseClass(Derived)
 	return res

@@ -109,10 +109,10 @@ class NamedTestSuite(unittest.TestSuite):
 
 
 class NamedTestCase(unittest.TestCase):
-	"""Overridden TestCase class which uses class name without module prefix as a tag"""
+	"""Overridden TestCase class which uses just test name as a tag"""
 
 	def id(self):
-		return self.__class__.__name__ + "." + self._testMethodName
+		return self._testMethodName
 
 
 class TextTestRunner:
