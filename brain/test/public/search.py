@@ -354,7 +354,7 @@ class Search(TestRequest):
 
 		self.assertSameElements(res, [self.id1, self.id3])
 
-	def testTrivialCompounCondition(self):
+	def testTrivialCompoundCondition(self):
 		"""Test that conditions like [NOT, condition] are supported"""
 		self.prepareStandNoList()
 		res = self.conn.search([op.NOT, [op.NOT, ['name'], op.EQ, 'Alex']],
