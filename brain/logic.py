@@ -307,11 +307,8 @@ class _StructureLayer:
 		op1 = condition.operand1 # it must be Field without value
 		op2 = condition.operand2 # it must be Field with value
 
-		# set proper type for the field
-		op1.type_str = op2.type_str
-
 		# If table with given field does not exist, just return empty query
-		if not self._engine.tableExists(op1.name_str):
+		if op1 is None:
 			if condition.invert:
 				return "SELECT DISTINCT " + self._ID_COLUMN + " FROM {}", \
 					[self._ID_TABLE], []
@@ -650,8 +647,34 @@ class LogicLayer:
 
 		return result_list
 
+	def removeNonExistentTables(self, table_names):
+		# TODO: probably there is more neat way to do it (not querying all
+		# table names from database)
+		existing_table_names = set(self._engine.getTablesList())
+		return table_names.intersection(existing_table_names)
+
 	def processSearchRequest(self, request):
 		"""Search for all objects using given search condition"""
+
+		def getMentionedFields(condition):
+			if isinstance(condition.operand1, interface.SearchRequest.Condition):
+				fields = getMentionedFields(condition.operand1)
+				return fields.union(getMentionedFields(condition.operand2))
+			else:
+				return {condition.operand1.name_str}
+
+		def updateCondition(condition, existing_tables):
+			if isinstance(condition.operand1, interface.SearchRequest.Condition):
+				updateCondition(condition.operand1, existing_tables)
+				updateCondition(condition.operand2, existing_tables)
+			else:
+				if condition.operand1.name_str not in existing_tables:
+					condition.operand1 = None
+
+		if request.condition is not None:
+			table_names = getMentionedFields(request.condition)
+			table_names = self.removeNonExistentTables(table_names)
+			updateCondition(request.condition, table_names)
 
 		request, tables, values = self._structure.buildSqlQuery(request.condition)
 		if request is None:
