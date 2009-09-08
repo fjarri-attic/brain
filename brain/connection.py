@@ -72,9 +72,10 @@ def _listToSearchCondition(arg, engine, invert=False):
 	if _isNotSearchCondition(arg[shift]):
 		if len(arg) - shift != 3:
 			raise interface.FormatError("Wrong number of elements in search condition")
-		return interface.SearchRequest.Condition(
-			Field(engine, arg[shift]), arg[shift + 1],
-			Field(engine, [], arg[shift + 2]), invert=invert)
+		field = Field(engine, arg[shift])
+		value = Field(engine, [], arg[shift + 2])
+		field.type_str = value.type_str
+		return interface.SearchRequest.Condition(field, arg[shift + 1], value, invert=invert)
 	else:
 		for i in range(shift, len(arg), 2):
 			if _isNotSearchCondition(arg[i]):
