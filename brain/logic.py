@@ -445,17 +445,26 @@ class _StructureLayer:
 			return True
 
 		types = self.getValueTypes(id, field)
+		if len(types) == 0:
+			return False
+
 		field_copy = Field(self._engine, field.name)
+		queries = []
+		tables = []
+		values = []
+		columns_condition = field_copy.columns_condition
 		for type in types:
 			field_copy.type_str = type
-			res = self._engine.execute("SELECT " + self._ID_COLUMN +
+			queries.append("SELECT " + self._ID_COLUMN +
 				" FROM {} WHERE " + self._ID_COLUMN + "=?" +
-				field_copy.columns_condition,
-				[field_copy.name_str], [id])
-			if len(res) > 0:
-				return True
+				columns_condition)
+			tables.append(field_copy.name_str)
+			values.append(id)
+		query = "SELECT COUNT(*) FROM (" + " UNION ".join(queries) + ")"
 
-		return False
+		res = self._engine.execute(query, tables, values)
+
+		return res[0][0] > 0
 
 
 class LogicLayer:
