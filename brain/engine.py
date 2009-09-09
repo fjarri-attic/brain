@@ -168,9 +168,9 @@ class _Sqlite3Engine(_Engine):
 		return cur.fetchall()
 
 	def tableExists(self, name):
-		res = self._cur.execute("SELECT * FROM sqlite_master WHERE type='table' AND name=?",
+		res = self._cur.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?",
 			(name,)).fetchall()
-		return len(res) > 0
+		return res[0][0] > 0
 
 	def getTablesList(self):
 		res = self._cur.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
@@ -307,8 +307,8 @@ class _PostgreEngine(_Engine):
 		return self._conn.prepare(sql_str)(*values)
 
 	def tableExists(self, name):
-		res = self._conn.prepare("SELECT * FROM pg_tables WHERE tablename=$1")(name)
-		return len(res) > 0
+		res = self._conn.prepare("SELECT COUNT(*) FROM pg_tables WHERE tablename=$1")(name)
+		return res[0][0] > 0
 
 	def getTablesList(self):
 		res = self._conn.prepare("SELECT tablename FROM pg_tables")()
