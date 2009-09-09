@@ -291,6 +291,19 @@ class EngineTest(helpers.NamedTestCase):
 		self.assertTrue(Field.isFieldTableName(self.engine, f.name_str))
 		self.assertFalse(Field.isFieldTableName(self.engine, "blablabla"))
 
+	def testSelectExistingTables(self):
+		"""Check that engine.selectExistingTables works"""
+		table_set1 = {'ttt1', 'ttt2', 'ttt3'}
+		table_set2 = {'ttt2', 'ttt3', 'ttt4'}
+
+		self.engine.begin()
+		for table in table_set1:
+			self.engine.execute("CREATE TABLE {} (col1 " + self.str_type + ")", [table])
+
+		result_set = set(self.engine.selectExistingTables(table_set2))
+		reference_set = table_set1.intersection(table_set2)
+		self.assertEqual(result_set, reference_set)
+
 
 class EngineTestParams:
 

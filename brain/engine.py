@@ -176,6 +176,13 @@ class _Sqlite3Engine(_Engine):
 		res = self._cur.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
 		return [x[0] for x in res]
 
+	def selectExistingTables(self, table_names):
+		"""Returns intersection of existing tables and tables from table_names"""
+		placeholders = ", ".join(["?"] * len(table_names))
+		res = self._cur.execute("SELECT name FROM sqlite_master WHERE name IN (" +
+			placeholders + ")", tuple(table_names)).fetchall()
+		return [x[0] for x in res]
+
 	def tableIsEmpty(self, name):
 		return self._cur.execute("SELECT COUNT(*) FROM " + self.getSafeName(name)).fetchall()[0][0] == 0
 
@@ -305,6 +312,14 @@ class _PostgreEngine(_Engine):
 
 	def getTablesList(self):
 		res = self._conn.prepare("SELECT tablename FROM pg_tables")()
+		return [x[0] for x in res]
+
+	def selectExistingTables(self, table_names):
+		"""Returns intersection of existing tables and tables from table_names"""
+		placeholders = ", ".join(["$" + str(i) for i in range(1, len(table_names) + 1)])
+		tables_tuple = tuple(table_names)
+		res = self._conn.prepare("SELECT tablename FROM sqlite_master WHERE name IN (" +
+			placeholders + ")")(*tables_tuple)
 		return [x[0] for x in res]
 
 	def tableIsEmpty(self, name):
