@@ -647,12 +647,6 @@ class LogicLayer:
 
 		return result_list
 
-	def removeNonExistentTables(self, table_names):
-		# TODO: probably there is more neat way to do it (not querying all
-		# table names from database)
-		existing_table_names = set(self._engine.getTablesList())
-		return table_names.intersection(existing_table_names)
-
 	def processSearchRequest(self, request):
 		"""Search for all objects using given search condition"""
 
@@ -673,7 +667,7 @@ class LogicLayer:
 
 		if request.condition is not None:
 			table_names = getMentionedFields(request.condition)
-			table_names = self.removeNonExistentTables(table_names)
+			table_names = self._engine.selectExistingTables(table_names)
 			updateCondition(request.condition, table_names)
 
 		request, tables, values = self._structure.buildSqlQuery(request.condition)
