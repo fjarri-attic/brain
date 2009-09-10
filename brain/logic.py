@@ -183,17 +183,10 @@ class _StructureLayer:
 
 		# add new refcounts
 		if len(to_add) > 0:
-
-			# this trick with SELECT is because SQLite does not support multiple INSERT
-			add_strings = ["SELECT ?, ?, ?, ?"] * len(to_add)
-			add_query = " UNION ALL ".join(add_strings)
-
 			add_values = []
 			for name_str, type_str, refcount in to_add:
-				add_values += [id, name_str, type_str, refcount]
-
-			self._engine.execute("INSERT INTO {} " + add_query,
-				[self._ID_TABLE], add_values)
+				add_values.append([id, name_str, type_str, refcount])
+			self._engine.insertMany(self._ID_TABLE, add_values)
 
 	def getValueTypes(self, id, field):
 		"""Returns list of value types already stored in given field"""
