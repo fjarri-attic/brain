@@ -290,12 +290,9 @@ class _StructureLayer:
 		"""
 		Read value of given field(s)
 
-		field should have definite type
+		Field should have definite type
+		Field table is assumed to be existing
 		"""
-
-		# if there is no such field - nothing to do
-		if not self._engine.tableExists(field.name_str):
-			return []
 
 		# Get field values
 		# If field is a mask (i.e., contains Nones), there will be more than one result
@@ -770,10 +767,13 @@ class LogicLayer:
 					field.name[col_num] = counter
 				counter += 1
 
-		# check that dictionary does not already exists at the place
+		# check that dictionary does not already exist at the place
 		# where request.path is pointing to
 		parent_field = Field(self._engine, request.path.name[:-1])
-		parent = self._structure.getFieldValue(request.id, parent_field)
+		if self._structure.objectHasField(request.id, parent_field):
+			parent = self._structure.getFieldValue(request.id, parent_field)
+		else:
+			parent = []
 
 		if len(parent) == 0 or parent[0].py_value != list():
 			if len(parent) == 0 or request.remove_conflicts:
