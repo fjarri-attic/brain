@@ -166,6 +166,35 @@ class _StructureLayer:
 				"AND " + self._TYPE_COLUMN + type_cond,
 				[self._ID_TABLE], [num, id, field.name_str_no_type] + type_cond_val)
 
+	def updateRefcounts(self, id, to_delete, to_add):
+
+		# delete old refcounts
+		if len(to_delete) > 0:
+			delete_strings = [self._FIELD_COLUMN + "=? AND " + self._TYPE_COLUMN + "=?"] * len(to_delete)
+			delete_condition = "((" + ") OR (".join(delete_strings) + "))"
+
+			delete_query_values = [id]
+			for name_str, type_str in to_delete:
+				delete_query_values += [name_str, type_str]
+
+			self._engine.execute("DELETE FROM {} " +
+					"WHERE " + self._ID_COLUMN + "=? AND " + delete_condition,
+					[self._ID_TABLE], delete_query_values)
+
+		# add new refcounts
+		if len(to_add) > 0:
+
+			# this trick with SELECT is because SQLite does not support multiple INSERT
+			add_strings = ["SELECT ?, ?, ?, ?"] * len(to_add)
+			add_query = " UNION ALL ".join(add_strings)
+
+			add_values = [id]
+			for name_str, type_str, refcount in to_add:
+				add_values += [id, name_str, type_str, refcount]
+
+			self._engine.execute("INSERT INTO {} " + add_query,
+				[self._ID_TABLE], add_values)
+
 	def getValueTypes(self, id, field):
 		"""Returns list of value types already stored in given field"""
 
@@ -525,6 +554,46 @@ class _StructureLayer:
 
 		return res[0][0] > 0
 
+	def deleteObject(self, id):
+		"""Delete object with given ID"""
+
+		fields_info = self.getRawFieldsInfo(id, include_refcounts=True)
+
+		to_delete = []
+		to_add = []
+		for name_str in fields_info:
+			field = Field.fromNameStrNoType(self._engine, name_str)
+			for type_str, refcount in fields_info[name_str]:
+
+				# prepare query for deletion
+				field.type_str = type_str
+
+				query_str = "FROM {} WHERE " + self._ID_COLUMN + "=?"
+				tables = [field.name_str]
+				values = [id]
+
+				# get number of records to be deleted
+				res = self._engine.execute("SELECT COUNT(*) " + query_str, tables,values)
+				del_num = res[0][0]
+
+				# if there are any, delete them
+				if del_num > 0:
+					typed_name_str = field.name_str
+
+					if del_num == refcount:
+						to_delete.append((name_str, type_str))
+					else:
+						to_delete.append((name_str, type_str))
+						to_add.append((name_str, type_str, [refcount - del_num]))
+
+					self._engine.execute("DELETE " + query_str, tables, values)
+
+					# check if the table is empty and if it is - delete it too
+					if self._engine.tableIsEmpty(typed_name_str):
+						self._engine.deleteTable(typed_name_str)
+
+		self.updateRefcounts(id, to_delete, to_add)
+
 
 class LogicLayer:
 	"""Class, representing DDB logic"""
@@ -592,17 +661,6 @@ class LogicLayer:
 		self._structure.assureFieldTableExists(field)
 		self._structure.increaseRefcount(id, field)
 		self._structure.addValueRecord(id, field) # Insert new value
-
-	def _deleteObject(self, id):
-		"""Delete object with given ID"""
-
-		fields = self._structure.getFieldsList(id)
-
-		# for each field, remove it from tables
-		for field in fields:
-			self._deleteField(id, field)
-
-		self._structure.deleteSpecification(id)
 
 	def _renumber(self, id, target_field, shift):
 		"""Renumber list elements before insertion or deletion"""
@@ -675,7 +733,7 @@ class LogicLayer:
 			return
 		else:
 			# delete whole object
-			self._deleteObject(request.id)
+			self._structure.deleteObject(request.id)
 
 	def processReadRequest(self, request):
 
