@@ -567,7 +567,7 @@ class _StructureLayer:
 				columns_condition)
 			tables.append(field_copy.name_str)
 			values.append(id)
-		query = "SELECT COUNT(*) FROM (" + " UNION ".join(queries) + ")"
+		query = "SELECT COUNT(*) FROM (" + " UNION ".join(queries) + ") AS temp"
 
 		res = self._engine.execute(query, tables, values)
 
