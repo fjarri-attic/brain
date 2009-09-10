@@ -218,7 +218,7 @@ class Field:
 		return (', ' + ', '.join(l) if len(l) > 0 else '')
 
 	@property
-	def columns_condition(self):
+	def raw_columns_condition(self):
 		"""Returns string with condition for operations on given field"""
 
 		# do not skip Nones, because we need them for
@@ -232,7 +232,14 @@ class Field:
 					"=" + str(column))
 			counter += 1
 
-		return (' AND '.join([''] + l) if len(l) > 0 else '')
+		return (' AND '.join(l) if len(l) > 0 else '')
+
+	@property
+	def columns_condition(self):
+		"""Returns string with condition for operations on given field, prefixed with AND"""
+
+		cond = self.raw_columns_condition
+		return '' if cond == '' else (' AND ' + cond)
 
 	def getDeterminedName(self, vals):
 		"""Returns name with Nones filled with supplied list of values"""
