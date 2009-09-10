@@ -91,6 +91,10 @@ class FakeConnection:
 						res_fields.append((field_path, value))
 						break
 
+			if len(res_fields) == 0:
+				raise brain.LogicError("Object " + str(id) +
+					" does not have fields matching given masks")
+
 			res = pathsToTree(res_fields)
 
 		return res
@@ -345,7 +349,13 @@ def _runTests(objects, actions, verbosity):
 
 			# create random action and test it on fake object
 			action = RandomAction(state_before)
-			fake_result = action(fake_conn, fake_objs[i])
+			fake_exception = None
+
+			# some fuzz actions can lead to exceptions
+			try:
+				fake_result = action(fake_conn, fake_objs[i])
+			except brain.BrainError as e:
+				fake_exception = e
 
 			# if object gets deleted, return its state to original
 			fake_state_after = fake_conn.read(fake_objs[i])
@@ -365,6 +375,9 @@ def _runTests(objects, actions, verbosity):
 				else:
 					times[method] += action_time
 
+			except brain.BrainError as e:
+				if not (fake_exception is not None and type(e) == type(fake_exception)):
+					raise
 			except:
 				print("Error performing action on object " + str(i) +
 					": " + action.dump(verbosity))
