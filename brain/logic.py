@@ -211,11 +211,7 @@ class _StructureLayer:
 
 		return res
 
-	def getFieldsInfo(self, id, masks=None):
-		"""
-		Get types of given fields from support table
-		if fields is equal to None, info for all object's fields are returned
-		"""
+	def getRawFieldsInfo(self, id, masks=None, include_refcounts=False):
 
 		regexp_vals = []
 		if masks is not None:
@@ -230,8 +226,9 @@ class _StructureLayer:
 			regexp_cond = ""
 
 		# Get information
-		l = self._engine.execute("SELECT " + self._FIELD_COLUMN + ", " + self._TYPE_COLUMN + " FROM {} " +
-			"WHERE " + self._ID_COLUMN + "=?" + regexp_cond,
+		l = self._engine.execute("SELECT " + self._FIELD_COLUMN + ", " + self._TYPE_COLUMN +
+			((", " + self._REFCOUNT_COLUMN) if include_refcounts else "") +
+			" FROM {} WHERE " + self._ID_COLUMN + "=?" + regexp_cond,
 			[self._ID_TABLE], [id] + regexp_vals)
 
 		# fill 'raw' information map - name strings to existing types correspondence
@@ -241,8 +238,23 @@ class _StructureLayer:
 			type_str = elem[1]
 			if name_str not in raw_fields_info:
 				raw_fields_info[name_str] = []
-			raw_fields_info[name_str].append(type_str)
 
+			if include_refcounts:
+				to_append = (type_str, elem[2])
+			else:
+				to_append = type_str
+
+			raw_fields_info[name_str].append(to_append)
+
+		return raw_fields_info
+
+	def getFieldsInfo(self, id, masks=None):
+		"""
+		Get types of given fields from support table
+		if fields is equal to None, info for all object's fields are returned
+		"""
+
+		raw_fields_info = self.getRawFieldsInfo(id, masks)
 		res = []
 
 		# construct resulting list of partially defined fields
@@ -673,8 +685,6 @@ class LogicLayer:
 		else:
 			# delete whole object
 			self._deleteObject(request.id)
-
-	#def getFieldsInfo(self, id,
 
 	def processReadRequest(self, request):
 
