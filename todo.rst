@@ -1,6 +1,11 @@
 Next release: 0.1.4
 ===================
 
+* (done) fixed minor bug in read(), when it returned empty list when no fields were found
+  which match given masks
+* (done) search() uses 2 requests to DB engine instead of (number_of_conditions + 1)
+* (done) delete() uses much less requests to DB engine (approximately one request per affected table)
+* (done) read() uses less requests to DB engine (number_of_fields + 1)
 * refactor modify() and insert() logic in order to reduce calls to database; something like
   prepare and sort list of fields to modify first
 * review autovivification rules in modify() and insert() and remove counterintuitive ones
