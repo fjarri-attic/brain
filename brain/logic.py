@@ -188,7 +188,7 @@ class _StructureLayer:
 			add_strings = ["SELECT ?, ?, ?, ?"] * len(to_add)
 			add_query = " UNION ALL ".join(add_strings)
 
-			add_values = [id]
+			add_values = []
 			for name_str, type_str, refcount in to_add:
 				add_values += [id, name_str, type_str, refcount]
 
@@ -267,41 +267,60 @@ class _StructureLayer:
 			if include_refcounts:
 				to_append = (type_str, elem[2])
 			else:
-				to_append = type_str
+				to_append = (type_str, None)
 
 			raw_fields_info[name_str].append(to_append)
 
 		return raw_fields_info
 
-	def getFieldsInfo(self, id, masks=None):
+	def getFieldsInfo(self, id, masks=None, include_refcounts=False):
 		"""
 		Get types of given fields from support table
 		if fields is equal to None, info for all object's fields are returned
 		"""
 
-		raw_fields_info = self.getRawFieldsInfo(id, masks)
-		res = []
+		raw_fields_info = self.getRawFieldsInfo(id, masks, include_refcounts=include_refcounts)
+		res = {}
 
 		# construct resulting list of partially defined fields
 		for name_str in raw_fields_info:
+
+			name_str_map = {}
+
 			if masks is None:
 			# just construct all possible fields from name strings
-				for type_str in raw_fields_info[name_str]:
+				for type_str, refcount in raw_fields_info[name_str]:
 					f = Field.fromNameStrNoType(self._engine, name_str)
 					f.type_str = type_str
-					res.append(f)
+					name_str_map[type_str] = ([f], refcount)
 			else:
 			# since we do not know, which name string was found using which mask,
 			# we should skip unmatched combinations of masks and name strings
 				temp = Field.fromNameStrNoType(self._engine, name_str)
 				for mask in masks:
 					if temp.matches(mask):
-						for type_str in raw_fields_info[name_str]:
+						for type_str, refcount in raw_fields_info[name_str]:
+
+							if type_str not in name_str_map:
+								name_str_map[type_str] = ([], refcount)
+
 							f = Field.fromNameStrNoType(self._engine, name_str)
 							f.name[:len(mask.name)] = mask.name
 							f.type_str = type_str
-							res.append(f)
+							name_str_map[type_str][0].append(f)
 
+			res[name_str] = name_str_map
+
+		return res
+
+	def getFlatFieldsInfo(self, id, masks=None):
+		fields_info = self.getFieldsInfo(id, masks)
+
+		res = []
+		for name_str in fields_info:
+			for type_str in fields_info[name_str]:
+				fields, refcount = fields_info[name_str][type_str]
+				res += fields
 		return res
 
 	def objectExists(self, id):
@@ -516,7 +535,7 @@ class _StructureLayer:
 		cond = field.renumber_condition
 
 		max = -1
-		for fld in self.getFieldsInfo(id, [field]):
+		for fld in self.getFlatFieldsInfo(id, [field]):
 			res = self._engine.execute("SELECT MAX(" + col_name + ") FROM {} WHERE " +
 				self._ID_COLUMN + "=?" + cond, [fld.name_str], [id])
 
@@ -554,21 +573,31 @@ class _StructureLayer:
 
 		return res[0][0] > 0
 
-	def deleteObject(self, id):
+	def deleteFields(self, id, masks=None):
 		"""Delete object with given ID"""
 
-		fields_info = self.getRawFieldsInfo(id, include_refcounts=True)
+		fields_info = self.getFieldsInfo(id, masks, include_refcounts=True)
 
 		to_delete = []
 		to_add = []
 		for name_str in fields_info:
-			field = Field.fromNameStrNoType(self._engine, name_str)
-			for type_str, refcount in fields_info[name_str]:
+			for type_str in fields_info[name_str]:
+
+				fields, refcount = fields_info[name_str][type_str]
 
 				# prepare query for deletion
-				field.type_str = type_str
+				conditions = []
+				for field in fields:
+					cond = field.raw_columns_condition
+					if cond != "":
+						conditions.append(cond)
 
-				query_str = "FROM {} WHERE " + self._ID_COLUMN + "=?"
+				if len(conditions) > 0:
+					condition_str = " AND (" + " OR ".join(conditions) + ")"
+				else:
+					condition_str = ""
+
+				query_str = "FROM {} WHERE " + self._ID_COLUMN + "=? " + condition_str
 				tables = [field.name_str]
 				values = [id]
 
@@ -580,17 +609,17 @@ class _StructureLayer:
 				if del_num > 0:
 					typed_name_str = field.name_str
 
-					if del_num == refcount:
-						to_delete.append((name_str, type_str))
-					else:
-						to_delete.append((name_str, type_str))
-						to_add.append((name_str, type_str, [refcount - del_num]))
-
 					self._engine.execute("DELETE " + query_str, tables, values)
 
 					# check if the table is empty and if it is - delete it too
 					if self._engine.tableIsEmpty(typed_name_str):
 						self._engine.deleteTable(typed_name_str)
+
+					if del_num == refcount:
+						to_delete.append((name_str, type_str))
+					else:
+						to_delete.append((name_str, type_str))
+						to_add.append((name_str, type_str, refcount - del_num))
 
 		self.updateRefcounts(id, to_delete, to_add)
 
@@ -601,17 +630,6 @@ class LogicLayer:
 	def __init__(self, engine):
 		self._engine = engine
 		self._structure = _StructureLayer(engine)
-
-	def _deleteField(self, id, field):
-		"""Delete given field(s)"""
-
-		if len(field.name) > 0 and field.pointsToListElement():
-			# deletion of list element requires renumbering of other elements
-			self._renumber(id, field, -1)
-		else:
-			# otherwise just delete values using given field mask
-			for fld in self._structure.getFieldsList(id, field):
-				self._structure.deleteValues(id, fld)
 
 	def _checkForConflicts(self, id, field, remove_conflicts):
 		"""
@@ -669,10 +687,6 @@ class LogicLayer:
 		fields_to_reenum = self._structure.getFieldsList(id, target_field)
 		for fld in fields_to_reenum:
 
-			# if shift is negative, we should delete elements first
-			if shift < 0:
-				self._structure.deleteValues(id, fld, target_field.columns_condition)
-
 			# shift numbers of all elements in list
 			self._structure.renumberList(id, target_field, fld, shift)
 
@@ -728,12 +742,15 @@ class LogicLayer:
 
 		if request.fields is not None:
 			# remove specified fields
+			self._structure.deleteFields(request.id, request.fields)
+
+			# deletion of list element requires renumbering of other elements
 			for field in request.fields:
-				self._deleteField(request.id, field)
-			return
+				if len(field.name) > 0 and field.pointsToListElement():
+					self._renumber(request.id, field, -1)
 		else:
 			# delete whole object
-			self._structure.deleteObject(request.id)
+			self._structure.deleteFields(request.id)
 
 	def processReadRequest(self, request):
 
@@ -753,7 +770,7 @@ class LogicLayer:
 					fields.append(mask)
 
 		# get list of typed fields to read (whose fields are guaranteed to exist)
-		fields_list = self._structure.getFieldsInfo(request.id, fields)
+		fields_list = self._structure.getFlatFieldsInfo(request.id, fields)
 
 		# read values
 		result_list = []
