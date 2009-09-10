@@ -176,18 +176,17 @@ class _StructureLayer:
 
 		return [x[0] for x in l]
 
-	def getFieldsList(self, id, field=None, exclude_self=False):
+	def getFieldsList(self, id, field=None):
 		"""
 		Get list of fields of all possible types for given object.
 		If field is given, return only those whose names start from its name
-		If exclude_self is true, exclude 'field' itself from results
 		"""
 
 		if field is not None:
 		# If field is given, return only fields, which contain its name in the beginning
 			regexp_cond = " AND " + self._FIELD_COLUMN + \
 				" " + self._engine.getRegexpOp() + " ?"
-			regexp_val = ["^" + re.escape(field.name_str_no_type) + "\.\."]
+			regexp_val = ["^" + re.escape(field.name_str_no_type) + "(\.\.|$)"]
 		else:
 			regexp_cond = ""
 			regexp_val = []
@@ -205,9 +204,6 @@ class _StructureLayer:
 			if field is not None:
 				fld.name[:len(field.name)] = field.name
 			res.append(fld)
-
-		if field is not None and not exclude_self:
-			res += [Field(self._engine, field.name)]
 
 		return res
 
@@ -548,7 +544,7 @@ class LogicLayer:
 			self._renumber(id, field, -1)
 		else:
 			# otherwise just delete values using given field mask
-			for fld in self._structure.getFieldsList(id, field, exclude_self=False):
+			for fld in self._structure.getFieldsList(id, field):
 				self._structure.deleteValues(id, fld)
 
 	def _checkForConflicts(self, id, field, remove_conflicts):
@@ -574,7 +570,7 @@ class LogicLayer:
 				if remove_conflicts:
 
 					# remove all conflicting values
-					for fld in self._structure.getFieldsList(id, tmp_field, exclude_self=False):
+					for fld in self._structure.getFieldsList(id, tmp_field):
 						self._structure.deleteValues(id, fld)
 
 					# create necessary hierarchy
@@ -644,7 +640,7 @@ class LogicLayer:
 
 		if self._structure.objectHasField(id, path):
 		# path already exists, delete it and all its children
-			for field in self._structure.getFieldsList(id, path, exclude_self=False):
+			for field in self._structure.getFieldsList(id, path):
 				self._structure.deleteValues(id, field, path.columns_condition)
 		else:
 		# path does not exist and is not root
