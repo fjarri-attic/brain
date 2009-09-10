@@ -494,14 +494,12 @@ class _StructureLayer:
 		cond = field.renumber_condition
 
 		max = -1
-		for fld in self.getFieldsList(id, field, exclude_self=False):
-			for type in self.getValueTypes(id, fld):
-				fld.type_str = type
-				res = self._engine.execute("SELECT MAX(" + col_name + ") FROM {} WHERE " +
-					self._ID_COLUMN + "=?" + cond, [fld.name_str], [id])
+		for fld in self.getFieldsInfo(id, [field]):
+			res = self._engine.execute("SELECT MAX(" + col_name + ") FROM {} WHERE " +
+				self._ID_COLUMN + "=?" + cond, [fld.name_str], [id])
 
-				if res[0][0] is not None and res[0][0] > max:
-					max = res[0][0]
+			if res[0][0] is not None and res[0][0] > max:
+				max = res[0][0]
 
 		return max if max != -1 else None
 
