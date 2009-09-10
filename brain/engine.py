@@ -36,37 +36,6 @@ class _Engine:
 
 	__FIELD_SEP = '.' # separator for field elements in table name
 
-	def close(self):
-		raise NotImplementedError
-
-	def dump(self):
-		"""Dump the whole database to string; used for debug purposes"""
-		raise NotImplementedError
-
-	def execute(self, sql_str):
-		"""Execute given SQL query"""
-		raise NotImplementedError
-
-	def getNewId(self):
-		"""Return new unique ID for this database"""
-		raise NotImplementedError
-
-	def getIdType(self):
-		"""Return type string for IDs used in this database"""
-		raise NotImplementedError
-
-	def tableExists(self, name): raise NotImplementedError
-	def tableIsEmpty(self, name): raise NotImplementedError
-	def deleteTable(self, name): raise NotImplementedError
-
-	def getColumnType(self, val):
-		"""Return SQL type for storing given value"""
-		raise NotImplementedError
-
-	def getValueClass(self, type_str):
-		"""Return Python class for the given SQL type"""
-		raise NotImplementedError
-
 	def getNameString(self, l):
 		"""Get field name from list"""
 		sep = self.__FIELD_SEP
@@ -83,18 +52,6 @@ class _Engine:
 	def getSafeName(self, s):
 		"""Transform string value so that it could be safely used as table name"""
 		return '"' + s.replace('"', '""') + '"'
-
-	def begin(self):
-		"""Begin transaction"""
-		raise NotImplementedError
-
-	def commit(self):
-		"""Commit current transaction"""
-		raise NotImplementedError
-
-	def rollback(self):
-		"""Rollback current transaction"""
-		raise NotImplementedError
 
 
 class _Sqlite3Engine(_Engine):
