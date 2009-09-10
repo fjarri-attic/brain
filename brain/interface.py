@@ -297,6 +297,24 @@ class Field:
 		self_copy.name[-1] = None
 		return self_copy.columns_condition
 
+	def matches(self, field):
+		"""
+		Returns True if this object can serve as a mask for given field
+		(i.e. each element is either equal to other field's element with the same number,
+		or is None when the corresponding element of other field is an integer)
+		"""
+		if len(field.name) > len(self.name):
+			return False
+
+		for i, e in enumerate(field.name):
+			match = (e == self.name[i]) or \
+				(self.name[i] is None and isinstance(e, int))
+
+			if not match:
+				return False
+
+		return True
+
 	def __str__(self):
 		return "Field (" + repr(self.name) + \
 			(", value=" + repr(self._value) if self._value is not None else "") + ")"

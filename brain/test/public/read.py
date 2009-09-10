@@ -25,8 +25,7 @@ class Read(TestRequest):
 	def testNonExistingField(self):
 		"""Check that non-existent field is ignored during read"""
 		self.prepareStandNoList()
-		res = self.conn.readByMask(self.id1, ['age'])
-		self.assertEqual(res, [])
+		self.assertRaises(brain.LogicError, self.conn.readByMask, self.id1, ['age'])
 
 	def testAddedList(self):
 		"""Check that list values can be read"""

@@ -224,8 +224,7 @@ class Delete(TestRequest):
 		"""Check that values of different types can be deleted at once by mask"""
 		self.prepareStandDifferentTypes()
 		self.conn.delete(self.id1, ['meta', None])
-		res = self.conn.readByMask(self.id1, ['meta', None])
-		self.assertEqual(res, [])
+		self.assertRaises(brain.LogicError, self.conn.readByMask, self.id1, ['meta', None])
 
 	def testNoneValue(self):
 		"""Check that Null values can be deleted"""

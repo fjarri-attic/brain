@@ -211,6 +211,62 @@ class _StructureLayer:
 
 		return res
 
+	def getFieldsInfo(self, id, masks=None):
+		"""
+		Get types of given fields from support table
+		if fields is equal to None, info for all object's fields are returned
+		"""
+
+		regexp_vals = []
+		if masks is not None:
+		# If fields list is given, return only fields, which contain its name in the beginning
+			regexp_cond_list = []
+			for mask in masks:
+				regexp_cond_list.append(self._FIELD_COLUMN +
+					" " + self._engine.getRegexpOp() + " ?")
+				regexp_vals.append("^" + re.escape(mask.name_str_no_type) + "(\.\.|$)")
+			regexp_cond = " AND (" + " OR ".join(regexp_cond_list) + ")"
+		else:
+			regexp_cond = ""
+
+		# Get information
+		l = self._engine.execute("SELECT " + self._FIELD_COLUMN + ", " + self._TYPE_COLUMN + " FROM {} " +
+			"WHERE " + self._ID_COLUMN + "=?" + regexp_cond,
+			[self._ID_TABLE], [id] + regexp_vals)
+
+		# fill 'raw' information map - name strings to existing types correspondence
+		raw_fields_info = {}
+		for elem in l:
+			name_str = elem[0]
+			type_str = elem[1]
+			if name_str not in raw_fields_info:
+				raw_fields_info[name_str] = []
+			raw_fields_info[name_str].append(type_str)
+
+		res = []
+
+		# construct resulting list of partially defined fields
+		for name_str in raw_fields_info:
+			if masks is None:
+			# just construct all possible fields from name strings
+				for type_str in raw_fields_info[name_str]:
+					f = Field.fromNameStrNoType(self._engine, name_str)
+					f.type_str = type_str
+					res.append(f)
+			else:
+			# since we do not know, which name string was found using which mask,
+			# we should skip unmatched combinations of masks and name strings
+				temp = Field.fromNameStrNoType(self._engine, name_str)
+				for mask in masks:
+					if temp.matches(mask):
+						for type_str in raw_fields_info[name_str]:
+							f = Field.fromNameStrNoType(self._engine, name_str)
+							f.name[:len(mask.name)] = mask.name
+							f.type_str = type_str
+							res.append(f)
+
+		return res
+
 	def objectExists(self, id):
 		"""Check if object exists in database"""
 
@@ -618,34 +674,48 @@ class LogicLayer:
 			# delete whole object
 			self._deleteObject(request.id)
 
+	#def getFieldsInfo(self, id,
+
 	def processReadRequest(self, request):
 
-		# check if object exists first
-		if not self._structure.objectExists(request.id):
-			raise interface.LogicError("Object " + str(request.id) + " does not exist")
+		path = None if (request.path is None or len(request.path.name) == 0) else request.path
+		masks = None if (request.masks is None or len(request.masks) == 0) else request.masks
 
-		if request.path is not None:
-			if not self._structure.objectHasField(request.id, request.path):
-				raise interface.LogicError("Object " + str(request.id) +
-					" does not have field " + str(request.path.name))
-
-		# if list of masks was not given, read all object's fields starting from path
-		if request.masks is None:
-			fields = self._structure.getFieldsList(request.id, request.path)
+		# construct list of masks for reading
+		if masks is None:
+			if path is None:
+				fields = None
+			else:
+				fields = [request.path]
 		else:
-			res = []
-			for mask in request.masks:
-				if request.path is None or \
-						mask.name[:len(request.path.name)] == request.path.name:
-					res += self._structure.getFieldsList(request.id, mask)
-			fields = res
+			fields = []
+			for mask in masks:
+				if path is None or mask.matches(path):
+					fields.append(mask)
+
+		# get list of typed fields to read (whose fields are guaranteed to exist)
+		fields_list = self._structure.getFieldsInfo(request.id, fields)
 
 		# read values
 		result_list = []
-		for field in fields:
-			for type in self._structure.getValueTypes(request.id, field):
-				field.type_str = type
-				result_list += self._structure.getFieldValue(request.id, field)
+		for field in fields_list:
+			result_list += self._structure.getFieldValue(request.id, field)
+
+		# if no fields were read - throw error (so that user could distinguish
+		# this case from the case when None was read, for example)
+		if len(result_list) == 0:
+
+			if masks is None:
+				if path is None:
+					path_str = "exist"
+				else:
+					path_str = "have field " + str(request.path.name)
+
+				raise interface.LogicError("Object " + str(request.id) +
+					" does not " + path_str)
+			else:
+				raise interface.LogicError("Object " + str(request.id) +
+					" does not have fields matching given masks")
 
 		# remove root path from values
 		if request.path is not None:
