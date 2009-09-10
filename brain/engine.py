@@ -318,7 +318,7 @@ class _PostgreEngine(_Engine):
 		"""Returns intersection of existing tables and tables from table_names"""
 		placeholders = ", ".join(["$" + str(i) for i in range(1, len(table_names) + 1)])
 		tables_tuple = tuple(table_names)
-		res = self._conn.prepare("SELECT tablename FROM sqlite_master WHERE name IN (" +
+		res = self._conn.prepare("SELECT tablename FROM pg_tables WHERE tablename IN (" +
 			placeholders + ")")(*tables_tuple)
 		return [x[0] for x in res]
 
