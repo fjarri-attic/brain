@@ -53,6 +53,17 @@ class _Engine:
 		"""Transform string value so that it could be safely used as table name"""
 		return '"' + s.replace('"', '""') + '"'
 
+	def insertMany(self, table_name, value_lists):
+		value_string = ", ".join(["?"] * len(value_lists[0]))
+		value_strings = ["(" + value_string + ")"] * len(value_lists)
+		query = ", ".join(value_strings)
+
+		values = []
+		for value_list in value_lists:
+			values += value_list
+
+		self.execute("INSERT INTO {} VALUES " + query, [table_name], values)
+
 
 class _Sqlite3Engine(_Engine):
 	"""Wrapper for Sqlite 3 db engine"""
@@ -176,6 +187,20 @@ class _Sqlite3Engine(_Engine):
 
 	def getRegexpOp(self):
 		return "REGEXP"
+
+	def insertMany(self, table_name, value_lists):
+
+		# SQLite does not support normal multiple insert,
+		# so we are using this trick
+		value_string = ", ".join(["?"] * len(value_lists[0]))
+		value_strings = ["SELECT " + value_string] * len(value_lists)
+		query = " UNION ALL ".join(value_strings)
+
+		values = []
+		for value_list in value_lists:
+			values += value_list
+
+		self.execute("INSERT INTO {} " + query, [table_name], values)
 
 
 class _PostgreEngine(_Engine):
