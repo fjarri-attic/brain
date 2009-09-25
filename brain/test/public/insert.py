@@ -171,7 +171,7 @@ class Insert(TestRequest):
 
 		self.conn.insertMany(self.id2,
 			['tracks', 2, 'Authors', None],
-			['Earl', 'Fred'])
+			['Earl', 'Fred'], remove_conflicts=True)
 
 		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
 		self.assertEqual(res, {'tracks': [

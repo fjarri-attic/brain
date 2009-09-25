@@ -229,6 +229,81 @@ class _StructureLayer:
 
 		return res
 
+	def getFieldAncestorsInfo(self, id, field):
+
+		field_copy = Field(self._engine, field.name)
+		condition_list = []
+		values = [id]
+
+		while len(field_copy.name) > 0:
+			condition_list.append(self._FIELD_COLUMN + "=?")
+			values.append(field.name_str_no_type)
+			field_copy.name.pop()
+
+		condition = "(" + " OR ".join(condition_list) + ")"
+
+		l = self._engine.execute("SELECT " + self._FIELD_COLUMN +
+			" FROM {} WHERE " + self._ID_COLUMN + "=? AND " + condition,
+			[self._ID_TABLE], values)
+
+		return sorted([x[0] for x in l])
+
+	def getFirstConflict(self, id, field):
+
+		temp_field = Field(self._engine, field.name)
+		values = [id]
+		queries = []
+		while len(temp_field.name) > 0:
+			temp_field.name.pop()
+			values.append(temp_field.name_str_no_type)
+			queries.append(self._FIELD_COLUMN + "=?")
+
+		query = ("AND (" + " OR ".join(queries) + ")") if len(queries) > 0 else ""
+		l = self._engine.execute("SELECT " + self._FIELD_COLUMN +
+			", " + self._TYPE_COLUMN + " FROM {} " +
+			" WHERE " + self._ID_COLUMN + "=? " + query,
+			[self._ID_TABLE], values)
+
+		result = {}
+		for name_str, type_str in l:
+			if name_str not in result:
+				result[name_str] = []
+			result[name_str].append(type_str)
+
+		existing_hierarchy = []
+
+		for name_str in sorted(result):
+			fld = Field.fromNameStrNoType(self._engine, name_str)
+
+			for i, e in enumerate(field.name):
+				if i >= len(fld.name) - 1:
+					break
+				if not isinstance(e, str):
+					fld.name[i] = e
+
+			possible_conflict = dict if isinstance(field.name[len(fld.name)], str) else list
+
+			for type_str in result[name_str]:
+				fld.type_str = type_str
+
+				l = self._engine.execute("SELECT " + self._VALUE_COLUMN + " FROM {} " +
+					"WHERE " + self._ID_COLUMN + "=? " + fld.columns_condition,
+					[fld.name_str], [id])
+
+				if len(l) > 0:
+					fld.db_value = l[0][0]
+					existing_elem = type(fld.py_value)
+
+					conflict = not ((existing_elem == list and possible_conflict == list) or
+						(existing_elem == dict and possible_conflict == dict))
+
+					if conflict:
+						return fld, existing_hierarchy
+
+			existing_hierarchy.append(fld.name_str_no_type)
+
+		return None, existing_hierarchy
+
 	def getRawFieldsInfo(self, id, masks=None, include_refcounts=False):
 
 		regexp_vals = []
@@ -629,41 +704,24 @@ class LogicLayer:
 		Check that adding this field does not break the database structure, namely:
 		given field can either contain value, or list, or map, not several at once
 		"""
-		name_copy = list(reversed(field.name))
-		tmp_field = Field(self._engine, [])
-		while len(name_copy) > 0:
-			next = name_copy.pop()
-			types = self._structure.getValueTypes(id, tmp_field)
-			values = []
-			for type in types:
-				tmp_field.type_str = type
-				values += self._structure.getFieldValue(id, tmp_field)
-			if len(values) == 0:
-				return
-			values = [value.py_value for value in values]
 
-			next_is_str = isinstance(next, str)
-			if not (next_is_str and dict() in values) and not (not next_is_str and list() in values):
-				if remove_conflicts:
+		conflict, existing_hierarchy = self._structure.getFirstConflict(id, field)
 
-					# remove all conflicting values
-					for fld in self._structure.getFieldsList(id, tmp_field):
-						self._structure.deleteValues(id, fld)
+		if conflict is not None:
+			if remove_conflicts:
+				self._structure.deleteFields(id, [conflict])
+			else:
+				raise interface.StructureError("Path " +
+					repr(conflict.name + [field.name[len(conflict.name)]]) +
+					" conflicts with existing structure")
 
-					# create necessary hierarchy
-					name_copy.append(next)
-					while len(name_copy) > 0:
-						tmp_field.py_value = (dict() if isinstance(name_copy[-1], str) else list())
-						if len(tmp_field.name) > 0 and isinstance(tmp_field.name[-1], int):
-							self._fillWithNones(id, tmp_field)
-						self._setFieldValue(id, tmp_field)
-						tmp_field.name.append(name_copy.pop())
-
-					return
-				else:
-					raise interface.StructureError("Path " + repr(tmp_field.name + [next]) +
-						" conflicts with existing structure")
-			tmp_field.name.append(next)
+		hierarchy = []
+		for i in range(0, len(field.name)):
+			fld = Field(self._engine, field.name[:i])
+			if fld.name_str_no_type not in existing_hierarchy:
+				fld.py_value = dict() if isinstance(field.name[i], str) else list()
+				hierarchy.append(fld)
+		return hierarchy
 
 	def _setFieldValue(self, id, field):
 		"""Set value of given field"""
@@ -700,6 +758,9 @@ class LogicLayer:
 	def _modifyFields(self, id, path, fields, remove_conflicts):
 		"""Store values of given fields"""
 
+		for field in fields:
+			field.name = path.name + field.name
+
 		if self._structure.objectHasField(id, path):
 		# path already exists, delete it and all its children
 			for field in self._structure.getFieldsList(id, path):
@@ -708,7 +769,8 @@ class LogicLayer:
 		# path does not exist and is not root
 
 			# check for list/map conflicts
-			self._checkForConflicts(id, path, remove_conflicts)
+			hierarchy = self._checkForConflicts(id, path, remove_conflicts)
+			fields += hierarchy
 
 			# fill autocreated list elements (if any) with Nones
 			field_copy = Field(self._engine, path.name)
@@ -719,7 +781,6 @@ class LogicLayer:
 
 		# store field values
 		for field in fields:
-			field.name = path.name + field.name
 			self._setFieldValue(id, field)
 
 	def processCreateRequest(self, request):
