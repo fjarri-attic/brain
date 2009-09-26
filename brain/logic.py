@@ -763,8 +763,7 @@ class LogicLayer:
 
 		if self._structure.objectHasField(id, path):
 		# path already exists, delete it and all its children
-			for field in self._structure.getFieldsList(id, path):
-				self._structure.deleteValues(id, field, path.columns_condition)
+			self._structure.deleteFields(id, [path])
 		else:
 		# path does not exist and is not root
 
