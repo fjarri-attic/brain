@@ -276,7 +276,7 @@ class _StructureLayer:
 			fld = Field.fromNameStrNoType(self._engine, name_str)
 
 			for i, e in enumerate(field.name):
-				if i >= len(fld.name) - 1:
+				if i >= len(fld.name):
 					break
 				if not isinstance(e, str):
 					fld.name[i] = e
