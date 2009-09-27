@@ -278,16 +278,6 @@ class Field:
 				result.append(elem)
 		return result
 
-	@property
-	def columns_values(self):
-		"""Returns string with values of list columns that can be used in insertion"""
-		res = ""
-		for elem in self.name:
-			if not isinstance(elem, str):
-				res += ", " + str(elem)
-
-		return res
-
 	def _getListElements(self):
 		"""Returns list of non-string name elements (i.e. corresponding to lists)"""
 		return list(filter(lambda x: not isinstance(x, str), self.name))
