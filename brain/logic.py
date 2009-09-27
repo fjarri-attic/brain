@@ -108,11 +108,6 @@ class _StructureLayer:
 			self._engine.execute("INSERT INTO {} VALUES (?, ?, ?, ?)",
 				[self._ID_TABLE], values_list)
 
-	def deleteSpecification(self, id):
-		"""Delete all information about object from specification table"""
-		self._engine.execute("DELETE FROM {} WHERE " + self._ID_COLUMN + "=?",
-			[self._ID_TABLE], [id])
-
 	def increaseRefcount(self, id, field):
 		"""
 		Increase reference counter of given field and type (or create it)
@@ -135,36 +130,6 @@ class _StructureLayer:
 				"WHERE " + self._ID_COLUMN + "=? AND " + self._FIELD_COLUMN + "=? " +
 				"AND " + self._TYPE_COLUMN + "=?",
 				[self._ID_TABLE], [id, field.name_str_no_type, field.type_str])
-
-	def decreaseRefcount(self, id, field, num=1):
-		"""
-		Decrease reference count for given field and type
-		one can specify a decrement if deleting values by mask
-
-		field should have definite type
-		"""
-		type_cond = '=?'
-		type_cond_val = [field.type_str]
-
-		# get current value of reference counter
-		l = self._engine.execute("SELECT " + self._REFCOUNT_COLUMN + " FROM {} " +
-			"WHERE " + self._ID_COLUMN + "=? AND " + self._FIELD_COLUMN + "=? " +
-			"AND " + self._TYPE_COLUMN + type_cond,
-			[self._ID_TABLE], [id, field.name_str_no_type] + type_cond_val)
-
-		if l[0][0] == num:
-		# if these references are the last ones, delete this counter
-			self._engine.execute("DELETE FROM {} " +
-				"WHERE " + self._ID_COLUMN + "=? AND " + self._FIELD_COLUMN + "=? " +
-				"AND " + self._TYPE_COLUMN + type_cond,
-				[self._ID_TABLE], [id, field.name_str_no_type] + type_cond_val)
-		else:
-		# otherwise just decrease the counter by given value
-			ref_col = self._REFCOUNT_COLUMN
-			self._engine.execute("UPDATE {} SET " + ref_col + "=" + ref_col + "-? " +
-				"WHERE " + self._ID_COLUMN + "=? AND " + self._FIELD_COLUMN + "=? " +
-				"AND " + self._TYPE_COLUMN + type_cond,
-				[self._ID_TABLE], [num, id, field.name_str_no_type] + type_cond_val)
 
 	def updateRefcounts(self, id, to_delete, to_add):
 
@@ -862,11 +827,13 @@ class LogicLayer:
 			start = max + 1
 		end = path.name[-1]
 
+		result = []
 		path_copy = Field(self._engine, path.name)
 		for i in range(start, end):
 			path_copy.name[-1] = i
-			path_copy.py_value = None
-			self._setFieldValue(id, path_copy)
+			result.append(Field(self._engine, path_copy.name, None))
+
+		return result
 
 	def _modifyFields(self, id, path, fields, remove_conflicts):
 		"""Store values of given fields"""
@@ -888,7 +855,7 @@ class LogicLayer:
 			field_copy = Field(self._engine, path.name)
 			while len(field_copy.name) > 0:
 				if isinstance(field_copy.name[-1], int):
-					self._fillWithNones(id, field_copy)
+					fields += self._fillWithNones(id, field_copy)
 				field_copy.name.pop()
 
 		self._setFieldValues(id, fields)
@@ -1008,7 +975,7 @@ class LogicLayer:
 		# where request.path is pointing to
 		parent_field = Field(self._engine, request.path.name[:-1])
 		if self._structure.objectHasField(request.id, parent_field):
-			parent = self._structure.getFieldValue(request.id, parent_field)
+			parent = self._structure.getFieldValues(request.id, [parent_field])
 		else:
 			parent = []
 
@@ -1024,12 +991,15 @@ class LogicLayer:
 
 		# if path does not point to beginning of the list, fill
 		# missing elements with Nones
+		fields = []
 		if request.path.name[-1] is not None and request.path.name[-1] > 0:
-			self._fillWithNones(request.id, request.path)
+			fields += self._fillWithNones(request.id, request.path)
+			max = request.path.name[-1]
+		else:
+			max = self._structure.getMaxListIndex(request.id, request.path)
 
 		target_col = len(request.path.name) - 1 # last column in name of target field
 
-		max = self._structure.getMaxListIndex(request.id, request.path)
 		if max is None:
 		# list does not exist yet
 			enumerate(request.field_groups, target_col, 0)
@@ -1042,7 +1012,7 @@ class LogicLayer:
 			self._renumber(request.id, request.path, len(request.field_groups))
 			enumerate(request.field_groups, target_col, request.path.name[target_col])
 
-		fields = functools.reduce(list.__add__, request.field_groups, [])
+		fields += functools.reduce(list.__add__, request.field_groups, [])
 		self._setFieldValues(request.id, fields)
 
 	def processObjectExistsRequest(self, request):
