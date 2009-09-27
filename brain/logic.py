@@ -304,6 +304,22 @@ class _StructureLayer:
 
 		return None, existing_hierarchy
 
+	def getRefcounts(self, id, name_type_pairs):
+
+		elem = "(" + self._FIELD_COLUMN + "=? AND " + self._TYPE_COLUMN + "=?)"
+		cond = " OR ".join([elem] * len(name_type_pairs))
+
+		values = [id]
+		for name_str, type_str in name_type_pairs:
+			values += [name_str, type_str]
+
+		l = self._engine.execute("SELECT " + self._FIELD_COLUMN + ", " + self._TYPE_COLUMN +
+			", " + self._REFCOUNT_COLUMN +
+			" FROM {} WHERE " + self._ID_COLUMN + "=? AND (" + cond + ")",
+			[self._ID_TABLE], values)
+
+		return {(name_str, type_str): refcount for name_str, type_str, refcount in l}
+
 	def getRawFieldsInfo(self, id, masks=None, include_refcounts=False):
 
 		regexp_vals = []
@@ -344,7 +360,7 @@ class _StructureLayer:
 	def getFieldsInfo(self, id, masks=None, include_refcounts=False):
 		"""
 		Get types of given fields from support table
-		if fields is equal to None, info for all object's fields are returned
+		if masks is equal to None, info for all object's fields is returned
 		"""
 
 		raw_fields_info = self.getRawFieldsInfo(id, masks, include_refcounts=include_refcounts)
@@ -434,17 +450,20 @@ class _StructureLayer:
 		return res
 
 	def assureFieldTableExists(self, field):
+		if not self._engine.tableExists(field.name_str):
+			self.createFieldTable(field)
+
+	def createFieldTable(self, field):
 		"""
 		Create table for storing values of this field if it does not exist yet
 
 		field should have definite type
 		"""
 
-		if not self._engine.tableExists(field.name_str):
-			table_spec = field.getCreationStr(self._ID_COLUMN,
-				self._VALUE_COLUMN, self._ID_TYPE, self._INT_TYPE)
-			self._engine.execute("CREATE TABLE {} (" + table_spec + ")",
-				[field.name_str])
+		table_spec = field.getCreationStr(self._ID_COLUMN,
+			self._VALUE_COLUMN, self._ID_TYPE, self._INT_TYPE)
+		self._engine.execute("CREATE TABLE IF NOT EXISTS {} (" + table_spec + ")",
+			[field.name_str])
 
 	def buildSqlQuery(self, condition):
 		"""Recursive function to transform condition into SQL query"""
@@ -583,6 +602,12 @@ class _StructureLayer:
 				# check if the table is empty and if it is - delete it too
 				if self._engine.tableIsEmpty(field_copy.name_str):
 					self._engine.deleteTable(field_copy.name_str)
+
+	def addValueRecords(self, id, fields):
+		"""All fields must have the same path and type"""
+
+		values = [[id] + field.value_record for field in fields]
+		self._engine.insertMany(fields[0].name_str, values)
 
 	def addValueRecord(self, id, field):
 		"""
@@ -723,6 +748,44 @@ class LogicLayer:
 				hierarchy.append(fld)
 		return hierarchy
 
+	def _setFieldValues(self, id, fields):
+
+		sorted = {}
+		for field in fields:
+			key = (field.name_str_no_type, field.type_str)
+			if key not in sorted:
+				sorted[key] = []
+
+			sorted[key].append(field)
+
+		refcounts = self._structure.getRefcounts(id, sorted.keys())
+
+		refcounts_to_delete = []
+		refcounts_to_add = []
+		tables_to_create = []
+		for name_type_pair in sorted:
+			if name_type_pair in refcounts:
+				refcounts_to_delete.append(name_type_pair)
+				existing_refcount = refcounts[name_type_pair]
+			else:
+				# the fact that table was not found by getRefcounts does
+				# not necessarily mean that it does not exist - getRefcounts
+				# searches using object id; but we will try create the table anyway,
+				# because 'create if not exists' is faster than two DB queries
+				tables_to_create.append(sorted[name_type_pair][0])
+				existing_refcount = 0
+
+			name_str, type_str = name_type_pair
+			refcounts_to_add.append((name_str, type_str,
+				existing_refcount + len(sorted[name_type_pair])))
+
+		for field in tables_to_create:
+			self._structure.createFieldTable(field)
+
+		self._structure.updateRefcounts(id, refcounts_to_delete, refcounts_to_add)
+		for key in sorted:
+			self._structure.addValueRecords(id, sorted[key])
+
 	def _setFieldValue(self, id, field):
 		"""Set value of given field"""
 
@@ -778,9 +841,7 @@ class LogicLayer:
 					self._fillWithNones(id, field_copy)
 				field_copy.name.pop()
 
-		# store field values
-		for field in fields:
-			self._setFieldValue(id, field)
+		self._setFieldValues(id, fields)
 
 	def processCreateRequest(self, request):
 		new_id = self._engine.getNewId()
@@ -934,8 +995,7 @@ class LogicLayer:
 			enumerate(request.field_groups, target_col, request.path.name[target_col])
 
 		fields = functools.reduce(list.__add__, request.field_groups, [])
-		for field in fields:
-			self._setFieldValue(request.id, field)
+		self._setFieldValues(request.id, fields)
 
 	def processObjectExistsRequest(self, request):
 		return self._structure.objectExists(request.id)
