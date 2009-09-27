@@ -109,19 +109,25 @@ class _StructureLayer:
 				[self._ID_TABLE], values_list)
 
 	def updateRefcounts(self, id, to_delete, to_add):
+		"""
+		Update reference counters, first deleting and then creating entries.
+		to_delete - list of tuples (path string, type string)
+		to_add - list of tuples (path string, type string, value)
+		"""
 
 		# delete old refcounts
 		if len(to_delete) > 0:
-			delete_strings = [self._FIELD_COLUMN + "=? AND " + self._TYPE_COLUMN + "=?"] * len(to_delete)
-			delete_condition = "((" + ") OR (".join(delete_strings) + "))"
-
+			delete_strings = ["(" + self._FIELD_COLUMN + "=? AND " +
+				self._TYPE_COLUMN + "=?)"] * len(to_delete)
+			delete_condition = "(" + " OR ".join(delete_strings) + ")"
 			delete_query_values = [id]
+
 			for name_str, type_str in to_delete:
 				delete_query_values += [name_str, type_str]
 
-			self._engine.execute("DELETE FROM {} " +
-					"WHERE " + self._ID_COLUMN + "=? AND " + delete_condition,
-					[self._ID_TABLE], delete_query_values)
+			self._engine.execute("DELETE FROM {} WHERE " +
+				self._ID_COLUMN + "=? AND " + delete_condition,
+				[self._ID_TABLE], delete_query_values)
 
 		# add new refcounts
 		if len(to_add) > 0:
@@ -139,32 +145,6 @@ class _StructureLayer:
 			[self._ID_TABLE], [id, field.name_str_no_type])
 
 		return [x[0] for x in l]
-
-	def getFieldsList(self, id, field):
-		"""
-		Get list of fields of all possible types for given object, whose names
-		start from given one.
-		"""
-
-		regexp_cond = " AND " + self._FIELD_COLUMN + \
-			" " + self._engine.getRegexpOp() + " ?"
-		regexp_val = ["^" + re.escape(field.name_str_no_type) + "(\.\.|$)"]
-
-		# Get list of fields
-		l = self._engine.execute("SELECT DISTINCT " + self._FIELD_COLUMN + " FROM {} " +
-			"WHERE " + self._ID_COLUMN + "=?" + regexp_cond,
-			[self._ID_TABLE], [id] + regexp_val)
-
-		# fill the beginnings of found field names with the name of
-		# given field (if any) or just construct result list
-		res = []
-		for elem in l:
-			fld = Field.fromNameStrNoType(self._engine, elem[0])
-			if field is not None:
-				fld.name[:len(field.name)] = field.name
-			res.append(fld)
-
-		return res
 
 	def getFirstConflict(self, id, field):
 
@@ -396,11 +376,7 @@ class _StructureLayer:
 			num = tmp_field.list_indexes_number
 
 			value = elem[1]
-			try:
-				list_indexes = elem[2:num + 2]
-			except:
-				print(elem, num)
-				raise
+			list_indexes = elem[2:num + 2]
 
 			new_field = Field(self._engine, tmp_field.getDeterminedName(list_indexes))
 			new_field.type_str = tmp_field.type_str
@@ -527,26 +503,22 @@ class _StructureLayer:
 
 		return result, tables, values
 
-	def renumberList(self, id, target_field, field, shift):
-		"""
-		Shift indexes in given list
-		target_field - points to list which is being processed
-		field - child field for one of the elements of this list
-		"""
+	def renumberLists(self, id, field, shift):
 
 		# Get the name and the value of last numerical column
-		col_name, col_val = target_field.getLastListColumn()
-		cond = target_field.renumber_condition
+		col_name, col_val = field.getLastListColumn()
+		cond = field.renumber_condition
 
-		# renumber list indexes for all types
-		types = self.getValueTypes(id, field)
-		for type in types:
-			field.type_str = type
+		# Get all child field names
+		fields_to_reenum = self.getFlatFieldsInfo(id, [field])
+
+		for fld in fields_to_reenum:
+
 			self._engine.execute("UPDATE {} " +
 				"SET " + col_name + "=" + col_name + "+? " +
 				"WHERE " + self._ID_COLUMN + "=?" + cond +
 				" AND " + col_name + ">=?",
-				[field.name_str], [shift, id, col_val])
+				[fld.name_str], [shift, id, col_val])
 
 	def addValueRecords(self, id, fields):
 		"""All fields must have the same path and type"""
@@ -715,16 +687,6 @@ class LogicLayer:
 		for key in sorted:
 			self._structure.addValueRecords(id, sorted[key])
 
-	def _renumber(self, id, target_field, shift):
-		"""Renumber list elements before insertion or deletion"""
-
-		# Get all child field names
-		fields_to_reenum = self._structure.getFieldsList(id, target_field)
-		for fld in fields_to_reenum:
-
-			# shift numbers of all elements in list
-			self._structure.renumberList(id, target_field, fld, shift)
-
 	def _fillWithNones(self, id, path):
 		max = self._structure.getMaxListIndex(id, path)
 		if max is None:
@@ -784,7 +746,7 @@ class LogicLayer:
 			# deletion of list element requires renumbering of other elements
 			for field in request.fields:
 				if len(field.name) > 0 and field.pointsToListElement():
-					self._renumber(request.id, field, -1)
+					self._structure.renumberLists(request.id, field, -1)
 		else:
 			# delete whole object
 			self._structure.deleteFields(request.id)
@@ -915,7 +877,7 @@ class LogicLayer:
 			enumerate(request.field_groups, target_col, starting_num)
 		else:
 		# list exists and we are inserting elements to the beginning or to the middle
-			self._renumber(request.id, request.path, len(request.field_groups))
+			self._structure.renumberLists(request.id, request.path, len(request.field_groups))
 			enumerate(request.field_groups, target_col, request.path.name[target_col])
 
 		fields += functools.reduce(list.__add__, request.field_groups, [])
