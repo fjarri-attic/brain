@@ -249,9 +249,9 @@ class Field:
 		return '' if cond == '' else (' AND ' + cond)
 
 	def getDeterminedName(self, vals):
-		"""Returns name with Nones filled with supplied list of values"""
+		"""Fill list indexes with given values"""
 		vals_copy = list(vals)
-		func = lambda x: vals_copy.pop(0) if x is None else x
+		func = lambda x: vals_copy.pop(0) if not isinstance(x, str) else x
 		return list(map(func, self.name))
 
 	def getCreationStr(self, id_column, value_column, id_type, list_index_type):

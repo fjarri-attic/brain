@@ -369,16 +369,15 @@ class _StructureLayer:
 			if num > max_list_indexes:
 				max_list_indexes = num
 
-		for field in fields:
-			values.append(field.name_str)
+		for i, field in enumerate(fields):
+
 			num = field.list_indexes_number
 			if num < max_list_indexes:
-				stub_columns = ", " + ", ".join(["?"] * (max_list_indexes - num))
-				values += [None] * (max_list_indexes - num)
+				stub_columns = ", " + ", ".join(["0"] * (max_list_indexes - num))
 			else:
 				stub_columns = ""
 
-			query = "SELECT ?, " + self._VALUE_COLUMN + field.columns_query + stub_columns + \
+			query = "SELECT " + str(i) + ", " + self._VALUE_COLUMN + field.columns_query + stub_columns + \
 				" FROM {} WHERE " + self._ID_COLUMN + "=?" + field.columns_condition
 
 			values.append(id)
@@ -390,12 +389,18 @@ class _StructureLayer:
 		res = []
 		for elem in l:
 
-			table_name = elem[0]
-			tmp_field = Field.fromNameStr(self._engine, table_name)
+			elem = tuple(elem) # get rid of weird engine-specific row wrappers
+
+			index = elem[0]
+			tmp_field = fields[index]
 			num = tmp_field.list_indexes_number
 
 			value = elem[1]
-			list_indexes = elem[2:num + 2]
+			try:
+				list_indexes = elem[2:num + 2]
+			except:
+				print(elem, num)
+				raise
 
 			new_field = Field(self._engine, tmp_field.getDeterminedName(list_indexes))
 			new_field.type_str = tmp_field.type_str
