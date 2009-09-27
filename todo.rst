@@ -6,9 +6,10 @@ Next release: 0.1.4
 * (done) search() uses 2 requests to DB engine instead of (number_of_conditions + 1)
 * (done) delete() uses much less requests to DB engine (approximately one request per affected table)
 * (done) read() uses less requests to DB engine (number_of_fields + 1)
-* refactor modify() and insert() logic in order to reduce calls to database; something like
-  prepare and sort list of fields to modify first
-* review autovivification rules in modify() and insert() and remove counterintuitive ones
+* (done) refactored modify() and insert() logic in order to reduce calls to database:
+  now using slightly more than one query per table affected
+* (done) conflicts checking logic is slightly more strict now - creating list/map
+  in place of value is considered a conflict too
 
 Future
 ======
