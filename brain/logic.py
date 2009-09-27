@@ -108,29 +108,6 @@ class _StructureLayer:
 			self._engine.execute("INSERT INTO {} VALUES (?, ?, ?, ?)",
 				[self._ID_TABLE], values_list)
 
-	def increaseRefcount(self, id, field):
-		"""
-		Increase reference counter of given field and type (or create it)
-
-		field should have definite type
-		"""
-		new_type = field.type_str not in self.getValueTypes(id, field)
-
-		if new_type:
-		# if adding a value of new type to existing field,
-		# add a reference counter for this field and this type
-			self._engine.execute("INSERT INTO {} VALUES (?, ?, ?, 1)",
-				[self._ID_TABLE], [id, field.name_str_no_type,
-				field.type_str])
-		else:
-		# otherwise increase the existing reference counter
-			ref_col = self._REFCOUNT_COLUMN
-			self._engine.execute("UPDATE {} " +
-				"SET " + ref_col + "="+ ref_col + "+1 " +
-				"WHERE " + self._ID_COLUMN + "=? AND " + self._FIELD_COLUMN + "=? " +
-				"AND " + self._TYPE_COLUMN + "=?",
-				[self._ID_TABLE], [id, field.name_str_no_type, field.type_str])
-
 	def updateRefcounts(self, id, to_delete, to_add):
 
 		# delete old refcounts
@@ -163,20 +140,15 @@ class _StructureLayer:
 
 		return [x[0] for x in l]
 
-	def getFieldsList(self, id, field=None):
+	def getFieldsList(self, id, field):
 		"""
-		Get list of fields of all possible types for given object.
-		If field is given, return only those whose names start from its name
+		Get list of fields of all possible types for given object, whose names
+		start from given one.
 		"""
 
-		if field is not None:
-		# If field is given, return only fields, which contain its name in the beginning
-			regexp_cond = " AND " + self._FIELD_COLUMN + \
-				" " + self._engine.getRegexpOp() + " ?"
-			regexp_val = ["^" + re.escape(field.name_str_no_type) + "(\.\.|$)"]
-		else:
-			regexp_cond = ""
-			regexp_val = []
+		regexp_cond = " AND " + self._FIELD_COLUMN + \
+			" " + self._engine.getRegexpOp() + " ?"
+		regexp_val = ["^" + re.escape(field.name_str_no_type) + "(\.\.|$)"]
 
 		# Get list of fields
 		l = self._engine.execute("SELECT DISTINCT " + self._FIELD_COLUMN + " FROM {} " +
@@ -193,25 +165,6 @@ class _StructureLayer:
 			res.append(fld)
 
 		return res
-
-	def getFieldAncestorsInfo(self, id, field):
-
-		field_copy = Field(self._engine, field.name)
-		condition_list = []
-		values = [id]
-
-		while len(field_copy.name) > 0:
-			condition_list.append(self._FIELD_COLUMN + "=?")
-			values.append(field.name_str_no_type)
-			field_copy.name.pop()
-
-		condition = "(" + " OR ".join(condition_list) + ")"
-
-		l = self._engine.execute("SELECT " + self._FIELD_COLUMN +
-			" FROM {} WHERE " + self._ID_COLUMN + "=? AND " + condition,
-			[self._ID_TABLE], values)
-
-		return sorted([x[0] for x in l])
 
 	def getFirstConflict(self, id, field):
 
@@ -433,41 +386,6 @@ class _StructureLayer:
 
 		return res
 
-	def getFieldValue(self, id, field):
-		"""
-		Read value of given field(s)
-
-		Field should have definite type
-		Field table is assumed to be existing
-		"""
-
-		# Get field values
-		# If field is a mask (i.e., contains Nones), there will be more than one result
-		columns_query = field.columns_query
-
-		val_col = self._VALUE_COLUMN
-		l = self._engine.execute("SELECT " + val_col + columns_query + " FROM {} " +
-			"WHERE " + self._ID_COLUMN + "=?" + field.columns_condition,
-			[field.name_str], [id])
-
-		# Convert results to list of Fields
-		res = []
-		l = [tuple(x) for x in l]
-		for elem in l:
-			list_indexes = elem[1:]
-			value = elem[0]
-
-			new_field = Field(self._engine, field.getDeterminedName(list_indexes))
-			new_field.type_str = field.type_str
-			new_field.db_value = value
-			res.append(new_field)
-
-		return res
-
-	def assureFieldTableExists(self, field):
-		if not self._engine.tableExists(field.name_str):
-			self.createFieldTable(field)
-
 	def createFieldTable(self, field):
 		"""
 		Create table for storing values of this field if it does not exist yet
@@ -587,54 +505,11 @@ class _StructureLayer:
 				" AND " + col_name + ">=?",
 				[field.name_str], [shift, id, col_val])
 
-	def deleteValues(self, id, field, condition=None):
-		"""Delete value of given field(s)"""
-
-		field_copy = Field(self._engine, field.name)
-
-		# if there is no special condition, take the mask of given field
-		if condition is None:
-			condition = field.columns_condition
-
-		types = self.getValueTypes(id, field_copy)
-		for type in types:
-
-			# prepare query for deletion
-			field_copy.type_str = type
-			query_str = "FROM {} WHERE " + self._ID_COLUMN + "=?" + condition
-			tables = [field_copy.name_str]
-			values = [id]
-
-			# get number of records to be deleted
-			res = self._engine.execute("SELECT COUNT(*) " + query_str, tables,values)
-			del_num = res[0][0]
-
-			# if there are any, delete them
-			if del_num > 0:
-				self.decreaseRefcount(id, field_copy, num=del_num)
-				self._engine.execute("DELETE " + query_str, tables, values)
-
-				# check if the table is empty and if it is - delete it too
-				if self._engine.tableIsEmpty(field_copy.name_str):
-					self._engine.deleteTable(field_copy.name_str)
-
 	def addValueRecords(self, id, fields):
 		"""All fields must have the same path and type"""
 
 		values = [[id] + field.value_record for field in fields]
 		self._engine.insertMany(fields[0].name_str, values)
-
-	def addValueRecord(self, id, field):
-		"""
-		Add value to the corresponding table
-
-		field should have definite type
-		"""
-
-		new_value = ", ?"
-		self._engine.execute("INSERT INTO {} " +
-			"VALUES (?" + new_value + field.columns_values + ")",
-			[field.name_str], [id, field.db_value])
 
 	def getMaxListIndex(self, id, field):
 		"""Get maximum index in list, specified by given field"""
@@ -800,14 +675,6 @@ class LogicLayer:
 		self._structure.updateRefcounts(id, refcounts_to_delete, refcounts_to_add)
 		for key in sorted:
 			self._structure.addValueRecords(id, sorted[key])
-
-	def _setFieldValue(self, id, field):
-		"""Set value of given field"""
-
-		# Create field table if it does not exist yet
-		self._structure.assureFieldTableExists(field)
-		self._structure.increaseRefcount(id, field)
-		self._structure.addValueRecord(id, field) # Insert new value
 
 	def _renumber(self, id, target_field, shift):
 		"""Renumber list elements before insertion or deletion"""
