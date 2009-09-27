@@ -264,6 +264,14 @@ class Field:
 			value_type=self.type_str)
 
 	@property
+	def value_record(self):
+		result = [self.db_value]
+		for elem in self.name:
+			if not isinstance(elem, str):
+				result.append(elem)
+		return result
+
+	@property
 	def columns_values(self):
 		"""Returns string with values of list columns that can be used in insertion"""
 		res = ""
