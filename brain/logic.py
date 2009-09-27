@@ -342,6 +342,24 @@ class _StructureLayer:
 		Fields should have definite types and column indexes
 		Field tables are assumed to exist
 		"""
+
+		# we need to get values of each type separately, because some databases
+		# have strict type checks
+		sorted_by_type = {}
+		for field in fields:
+			if field.type_str not in sorted_by_type:
+				sorted_by_type[field.type_str] = []
+
+			sorted_by_type[field.type_str].append(field)
+
+		result = []
+		for typed_fields in sorted_by_type.values():
+			result += self._getFieldValuesSameType(id, typed_fields)
+		return result
+
+
+	def _getFieldValuesSameType(self, id, fields):
+
 		queries = []
 		values = []
 		tables = []
