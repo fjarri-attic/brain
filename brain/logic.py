@@ -386,7 +386,27 @@ class _StructureLayer:
 
 		return res
 
-	def createFieldTable(self, field):
+	def ensureTablesExist(self, fields):
+
+		elem = "(" + self._FIELD_COLUMN + "=? AND " + self._TYPE_COLUMN + "=?)"
+		cond = " OR ".join([elem] * len(fields))
+
+		values = []
+		tables = {(field.name_str_no_type, field.type_str): field for field in fields}
+		for name_str, type_str in tables:
+			values += [name_str, type_str]
+
+		l = self._engine.execute("SELECT " + self._FIELD_COLUMN + ", " + self._TYPE_COLUMN +
+			" FROM {} WHERE " + cond, [self._ID_TABLE], values)
+
+		for name_str, type_str in l:
+			if (name_str, type_str) in tables:
+				del tables[(name_str, type_str)]
+
+		for field in tables.values():
+			self._createFieldTable(field)
+
+	def _createFieldTable(self, field):
 		"""
 		Create table for storing values of this field if it does not exist yet
 
@@ -395,7 +415,7 @@ class _StructureLayer:
 
 		table_spec = field.getCreationStr(self._ID_COLUMN,
 			self._VALUE_COLUMN, self._ID_TYPE, self._INT_TYPE)
-		self._engine.execute("CREATE TABLE IF NOT EXISTS {} (" + table_spec + ")",
+		self._engine.execute("CREATE TABLE {} (" + table_spec + ")",
 			[field.name_str])
 
 	def buildSqlQuery(self, condition):
@@ -658,10 +678,6 @@ class LogicLayer:
 				refcounts_to_delete.append(name_type_pair)
 				existing_refcount = refcounts[name_type_pair]
 			else:
-				# the fact that table was not found by getRefcounts does
-				# not necessarily mean that it does not exist - getRefcounts
-				# searches using object id; but we will try create the table anyway,
-				# because 'create if not exists' is faster than two DB queries
 				tables_to_create.append(sorted[name_type_pair][0])
 				existing_refcount = 0
 
@@ -669,8 +685,8 @@ class LogicLayer:
 			refcounts_to_add.append((name_str, type_str,
 				existing_refcount + len(sorted[name_type_pair])))
 
-		for field in tables_to_create:
-			self._structure.createFieldTable(field)
+		if len(tables_to_create) > 0:
+			self._structure.ensureTablesExist(tables_to_create)
 
 		self._structure.updateRefcounts(id, refcounts_to_delete, refcounts_to_add)
 		for key in sorted:
