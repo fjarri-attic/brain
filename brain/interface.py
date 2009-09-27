@@ -203,14 +203,21 @@ class Field:
 		return self._engine.getNameString(['field', self.type_str] + self.name)
 
 	@property
+	def list_indexes_number(self):
+		counter = 0
+		for elem in self.name:
+			if not isinstance(elem, str):
+				counter += 1
+		return counter
+
+	@property
 	def columns_query(self):
-		"""Returns string with additional values list necessary to query the value of this field"""
+		"""Returns string with list column names for this field"""
 		numeric_columns = filter(lambda x: not isinstance(x, str), self.name)
 		counter = 0
 		l = []
 		for column in numeric_columns:
-			if column is None:
-				l.append(self._getListColumnName(counter))
+			l.append(self._getListColumnName(counter))
 			counter += 1
 
 		# if value is null, this condition will be used alone,

@@ -417,6 +417,56 @@ class _StructureLayer:
 
 		return l[0][0] > 0
 
+	def getFieldValues(self, id, fields):
+		"""
+		Read value of given fields
+
+		Fields should have definite types and column indexes
+		Field tables are assumed to exist
+		"""
+		queries = []
+		values = []
+		tables = []
+		max_list_indexes = 0
+		for field in fields:
+			num = field.list_indexes_number
+			if num > max_list_indexes:
+				max_list_indexes = num
+
+		for field in fields:
+			values.append(field.name_str)
+			num = field.list_indexes_number
+			if num < max_list_indexes:
+				stub_columns = ", " + ", ".join(["?"] * (max_list_indexes - num))
+				values += [None] * (max_list_indexes - num)
+			else:
+				stub_columns = ""
+
+			query = "SELECT ?, " + self._VALUE_COLUMN + field.columns_query + stub_columns + \
+				" FROM {} WHERE " + self._ID_COLUMN + "=?" + field.columns_condition
+
+			values.append(id)
+			tables.append(field.name_str)
+			queries.append(query)
+
+		l = self._engine.execute(" UNION ".join(queries), tables, values)
+
+		res = []
+		for elem in l:
+
+			table_name = elem[0]
+			tmp_field = Field.fromNameStr(self._engine, table_name)
+			num = tmp_field.list_indexes_number
+
+			value = elem[1]
+			list_indexes = elem[2:num + 2]
+
+			new_field = Field(self._engine, tmp_field.getDeterminedName(list_indexes))
+			new_field.type_str = tmp_field.type_str
+			new_field.db_value = value
+			res.append(new_field)
+
+		return res
 
 	def getFieldValue(self, id, field):
 		"""
@@ -883,13 +933,11 @@ class LogicLayer:
 				if path is None or mask.matches(path):
 					fields.append(mask)
 
-		# get list of typed fields to read (whose fields are guaranteed to exist)
+		# get list of typed fields to read (whose tables are guaranteed to exist)
 		fields_list = self._structure.getFlatFieldsInfo(request.id, fields)
 
 		# read values
-		result_list = []
-		for field in fields_list:
-			result_list += self._structure.getFieldValue(request.id, field)
+		result_list = self._structure.getFieldValues(request.id, fields_list)
 
 		# if no fields were read - throw error (so that user could distinguish
 		# this case from the case when None was read, for example)
