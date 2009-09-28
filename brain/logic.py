@@ -654,27 +654,38 @@ class LogicLayer:
 		"""
 		Check that adding this field does not break the database structure, namely:
 		given field can either contain value, or list, or map, not several at once
+		Returns list of fields to create additionally (if conflict was removed,
+		part of hierarchy needs to be recreated)
 		"""
 
 		conflict, existing_hierarchy = self._structure.getFirstConflict(id, field)
 
+		hierarchy = []
+
+		# if conflict was found, remove it or raise an error
 		if conflict is not None:
 			if remove_conflicts:
 				self._structure.deleteFields(id, [conflict])
+
+				# we need to recreate part of hierarchy from conflict to given field
+				for i in range(0, len(field.name)):
+					temp = Field(self._engine, field.name[:i])
+					if temp.name_str not in existing_hierarchy:
+						temp.py_value = dict() if isinstance(field.name[i], str) \
+							else list()
+						hierarchy.append(temp)
 			else:
 				raise interface.StructureError("Path " +
 					repr(conflict.name + [field.name[len(conflict.name)]]) +
 					" conflicts with existing structure")
 
-		hierarchy = []
-		for i in range(0, len(field.name)):
-			fld = Field(self._engine, field.name[:i])
-			if fld.name_str not in existing_hierarchy:
-				fld.py_value = dict() if isinstance(field.name[i], str) else list()
-				hierarchy.append(fld)
 		return hierarchy
 
 	def _setFieldValues(self, id, fields):
+		"""
+		Add values of given fields to database. This function assumes that all conflicts
+		were already removed.
+		"""
 
 		sorted = {}
 		for field in fields:
