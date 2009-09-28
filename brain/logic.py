@@ -585,12 +585,15 @@ class _StructureLayer:
 			values.append(id)
 		query = "SELECT COUNT(*) FROM (" + " UNION ".join(queries) + ") AS temp"
 
-		res = self._engine.execute(query, tables, values)
+		rows = self._engine.execute(query, tables, values)
 
-		return res[0][0] > 0
+		return rows[0][0] > 0
 
 	def deleteFields(self, id, masks=None):
-		"""Delete object with given ID"""
+		"""
+		Delete all object fields which match any of given masks.
+		If masks is None, object is deleted completely.
+		"""
 
 		fields_info = self.getFieldsInfo(id, masks, include_refcounts=True)
 
@@ -615,8 +618,10 @@ class _StructureLayer:
 			values = [id]
 
 			# get number of records to be deleted
-			res = self._engine.execute("SELECT COUNT(*) " + query_str, tables,values)
-			del_num = res[0][0]
+			# (unfortunately, some databases (like sqlite) do not return number of
+			# deleted rows as a result of DELETE query)
+			rows = self._engine.execute("SELECT COUNT(*) " + query_str, tables,values)
+			del_num = rows[0][0]
 
 			# if there are any, delete them
 			if del_num > 0:
@@ -630,9 +635,8 @@ class _StructureLayer:
 				if self._engine.tableIsEmpty(table_name):
 					self._engine.deleteTable(table_name)
 
-				if del_num == refcount:
-					to_delete.append((name_str, type_str))
-				else:
+				to_delete.append((name_str, type_str))
+				if del_num != refcount:
 					to_delete.append((name_str, type_str))
 					to_add.append((name_str, type_str, refcount - del_num))
 
