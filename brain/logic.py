@@ -221,6 +221,7 @@ class _StructureLayer:
 		return None, existing_hierarchy
 
 	def getRefcounts(self, id, name_type_pairs):
+		"""Returns reference counts for given (name string, type string) pairs."""
 
 		elem = "(" + self._FIELD_COLUMN + "=? AND " + self._TYPE_COLUMN + "=?)"
 		cond = " OR ".join([elem] * len(name_type_pairs))
@@ -229,12 +230,12 @@ class _StructureLayer:
 		for name_str, type_str in name_type_pairs:
 			values += [name_str, type_str]
 
-		l = self._engine.execute("SELECT " + self._FIELD_COLUMN + ", " + self._TYPE_COLUMN +
-			", " + self._REFCOUNT_COLUMN +
+		rows = self._engine.execute("SELECT " + self._FIELD_COLUMN + ", " +
+			self._TYPE_COLUMN + ", " + self._REFCOUNT_COLUMN +
 			" FROM {} WHERE " + self._ID_COLUMN + "=? AND (" + cond + ")",
 			[self._ID_TABLE], values)
 
-		return {(name_str, type_str): refcount for name_str, type_str, refcount in l}
+		return {(name_str, type_str): refcount for name_str, type_str, refcount in rows}
 
 	def getRawFieldsInfo(self, id, masks=None, include_refcounts=False):
 
