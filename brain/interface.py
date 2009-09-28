@@ -139,8 +139,7 @@ class Field:
 		name = name_list[2:]
 		type_str = name_list[1]
 
-		obj = cls(engine, name)
-		obj.type_str = type_str
+		obj = cls(engine, name, type_str=type_str)
 
 		return obj
 
