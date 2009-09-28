@@ -390,6 +390,12 @@ class _StructureLayer:
 		return res
 
 	def ensureTablesExist(self, fields):
+		"""
+		For given list of fields, make sure that corresponding field table exists
+		for each of them.
+		"""
+
+		# check which field tables already exist
 
 		elem = "(" + self._FIELD_COLUMN + "=? AND " + self._TYPE_COLUMN + "=?)"
 		cond = " OR ".join([elem] * len(fields))
@@ -399,13 +405,15 @@ class _StructureLayer:
 		for name_str, type_str in tables:
 			values += [name_str, type_str]
 
-		l = self._engine.execute("SELECT " + self._FIELD_COLUMN + ", " + self._TYPE_COLUMN +
+		rows = self._engine.execute("SELECT " + self._FIELD_COLUMN + ", " + self._TYPE_COLUMN +
 			" FROM {} WHERE " + cond, [self._ID_TABLE], values)
 
-		for name_str, type_str in l:
+		# delete existing field table from list - we do not need to create it
+		for name_str, type_str in rows:
 			if (name_str, type_str) in tables:
 				del tables[(name_str, type_str)]
 
+		# create all remaining tables
 		for field in tables.values():
 			self._createFieldTable(field)
 
@@ -508,6 +516,7 @@ class _StructureLayer:
 		return result, tables, values
 
 	def renumberLists(self, id, field, shift):
+		"""Renumber list elements in field and its descendants"""
 
 		# Get the name and the value of last numerical column
 		col_name, col_val = field.getLastListColumn()
@@ -517,7 +526,6 @@ class _StructureLayer:
 		fields_to_reenum = self.getFlatFieldsInfo(id, [field])
 
 		for fld in fields_to_reenum:
-
 			self._engine.execute("UPDATE {} " +
 				"SET " + col_name + "=" + col_name + "+? " +
 				"WHERE " + self._ID_COLUMN + "=?" + cond +
@@ -525,7 +533,10 @@ class _StructureLayer:
 				[fld.table_name], [shift, id, col_val])
 
 	def addValueRecords(self, id, fields):
-		"""All fields must have the same path and type"""
+		"""
+		Create records for given fields.
+		All fields must have the same path and type.
+		"""
 
 		values = [[id] + field.value_record for field in fields]
 		self._engine.insertMany(fields[0].table_name, values)
@@ -537,12 +548,15 @@ class _StructureLayer:
 		cond = field.renumber_condition
 
 		max = -1
-		for fld in self.getFlatFieldsInfo(id, [field]):
-			res = self._engine.execute("SELECT MAX(" + col_name + ") FROM {} WHERE " +
-				self._ID_COLUMN + "=?" + cond, [fld.table_name], [id])
+		for type_str in self._getValueTypes(id, field):
+			temp = Field(self._engine, field.name, type_str=type_str)
+			rows = self._engine.execute("SELECT MAX(" + col_name + ") FROM {} WHERE " +
+				self._ID_COLUMN + "=?" + cond, [temp.table_name], [id])
 
-			if res[0][0] is not None and res[0][0] > max:
-				max = res[0][0]
+			max_for_type, = rows[0]
+
+			if max_for_type is not None and max_for_type > max:
+				max = max_for_type
 
 		return max if max != -1 else None
 
