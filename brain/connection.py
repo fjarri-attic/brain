@@ -211,7 +211,7 @@ class Connection:
 			# fields to insert have relative names
 			for field_group in request.field_groups:
 				for field in field_group:
-					field.name = request.path.name + field.name
+					field.addNamePrefix(request.path.name)
 
 		elif isinstance(request, interface.SearchRequest) and \
 				request.condition is not None:
@@ -335,7 +335,7 @@ class Connection:
 			path = Field(self._engine, path)
 			if masks is not None:
 				for mask in masks:
-					mask.name = path.name + mask.name
+					mask.addNamePrefix(path.name)
 
 		self._requests.append(interface.ReadRequest(id,
 			path=path, masks=masks))
@@ -434,7 +434,7 @@ class Connection:
 		fields = [Field(self._engine, path, val) for path, val in treeToPaths(data)]
 
 		for field in fields:
-			field.name = path + field.name
+			field.addNamePrefix(path)
 
 		self._requests.append(interface.CreateRequest(fields))
 

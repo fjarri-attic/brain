@@ -751,7 +751,7 @@ class LogicLayer:
 		"""Store values of given fields"""
 
 		for field in fields:
-			field.name = path.name + field.name
+			field.addNamePrefix(path.name)
 
 		if self._structure.objectHasField(id, path):
 		# path already exists, delete it and all its children

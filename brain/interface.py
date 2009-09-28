@@ -113,7 +113,7 @@ class Field:
 			raise FormatError("Wrong value class: " + str(type(py_value)))
 
 		self._engine = engine
-		self.name = name[:]
+		self._name = name[:]
 
 		if py_value is not None:
 			self.py_value = py_value
@@ -155,6 +155,13 @@ class Field:
 	def _getListColumnName(self, index):
 		"""Get name of additional list column corresponding to given index"""
 		return "c" + str(index)
+
+	@property
+	def name(self):
+		return self._name
+
+	def addNamePrefix(self, prefix):
+		self._name = prefix + self._name
 
 	# Property, containing field value type
 
@@ -203,17 +210,17 @@ class Field:
 	@property
 	def name_str(self):
 		"""Returns name string with no type specifier"""
-		return self._engine.getNameString(['field'] + self.name)
+		return self._engine.getNameString(['field'] + self._name)
 
 	@property
 	def table_name(self):
 		"""Returns field name in string form"""
-		return self._engine.getNameString(['field', self.type_str] + self.name)
+		return self._engine.getNameString(['field', self.type_str] + self._name)
 
 	@property
 	def list_indexes_number(self):
 		counter = 0
-		for elem in self.name:
+		for elem in self._name:
 			if not isinstance(elem, str):
 				counter += 1
 		return counter
@@ -221,7 +228,7 @@ class Field:
 	@property
 	def list_indexes_query(self):
 		"""Returns string with list column names for this field"""
-		numeric_columns = filter(lambda x: not isinstance(x, str), self.name)
+		numeric_columns = filter(lambda x: not isinstance(x, str), self._name)
 		counter = 0
 		l = []
 		for column in numeric_columns:
@@ -238,7 +245,7 @@ class Field:
 
 		# do not skip Nones, because we need them for
 		# getting proper index of list column
-		numeric_columns = filter(lambda x: not isinstance(x, str), self.name)
+		numeric_columns = filter(lambda x: not isinstance(x, str), self._name)
 		counter = 0
 		l = []
 		for column in numeric_columns:
@@ -259,24 +266,24 @@ class Field:
 	def fillListIndexes(self, vals):
 		"""Fill list indexes with given values"""
 		reversed_vals = list(reversed(vals))
-		for i, e in enumerate(self.name):
+		for i, e in enumerate(self._name):
 			if not isinstance(e, str):
-				self.name[i] = reversed_vals.pop()
+				self._name[i] = reversed_vals.pop()
 
 	def fillListIndexesFromField(self, field):
 		"""Fill list indexes using other field as an example"""
-		for i, e in enumerate(self.name):
+		for i, e in enumerate(self._name):
 			if i >= len(field.name):
 				break
 
 			if not isinstance(e, str):
-				self.name[i] = field.name[i]
+				self._name[i] = field.name[i]
 
 	def getCreationStr(self, id_column, value_column, id_type, list_index_type):
 		"""Returns string containing list of columns necessary to create field table"""
 		counter = 0
 		res = ""
-		for elem in self.name:
+		for elem in self._name:
 			if not isinstance(elem, str):
 				res += ", " + self._getListColumnName(counter) + " " + list_index_type
 				counter += 1
@@ -291,18 +298,18 @@ class Field:
 	@property
 	def value_record(self):
 		result = [self.db_value]
-		for elem in self.name:
+		for elem in self._name:
 			if not isinstance(elem, str):
 				result.append(elem)
 		return result
 
 	def _getListIndexes(self):
 		"""Returns list of non-string name elements (i.e. corresponding to lists)"""
-		return list(filter(lambda x: not isinstance(x, str), self.name))
+		return list(filter(lambda x: not isinstance(x, str), self._name))
 
 	def pointsToListElement(self):
 		"""Returns True if field points to element of the list"""
-		return isinstance(self.name[-1], int)
+		return isinstance(self._name[-1], int)
 
 	def getLastListColumn(self):
 		"""
@@ -323,7 +330,7 @@ class Field:
 
 		This function makes sense only if self.pointsToListElement() is True
 		"""
-		self_copy = Field(self._engine, self.name)
+		self_copy = Field(self._engine, self._name)
 		self_copy.name[-1] = None
 		return self_copy.list_indexes_condition
 
@@ -333,12 +340,12 @@ class Field:
 		(i.e. each element is either equal to other field's element with the same number,
 		or is None when the corresponding element of other field is an integer)
 		"""
-		if len(field.name) > len(self.name):
+		if len(field.name) > len(self._name):
 			return False
 
 		for i, e in enumerate(field.name):
-			match = (e == self.name[i]) or \
-				(self.name[i] is None and isinstance(e, int))
+			match = (e == self._name[i]) or \
+				(self._name[i] is None and isinstance(e, int))
 
 			if not match:
 				return False
@@ -351,7 +358,7 @@ class Field:
 		(including self and root field, starting from root field).
 		All resulting fields are untyped.
 		"""
-		name_copy = self.name[:]
+		name_copy = self._name[:]
 		result = [Field(self._engine, name_copy)]
 		while len(name_copy) > 0:
 			name_copy.pop()
@@ -359,7 +366,7 @@ class Field:
 		return list(reversed(result))
 
 	def __str__(self):
-		return "Field (" + repr(self.name) + \
+		return "Field (" + repr(self._name) + \
 			(", value=" + repr(self._value) if self._value is not None else "") + ")"
 
 	def __repr__(self):
@@ -372,7 +379,7 @@ class Field:
 		if not isinstance(other, Field):
 			return False
 
-		return (self.name == other.name) and (self.py_value == other.py_value)
+		return (self._name == other.name) and (self.py_value == other.py_value)
 
 
 #
