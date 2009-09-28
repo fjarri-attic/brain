@@ -180,7 +180,7 @@ class _StructureLayer:
 		- storing list in place of map
 		- storing map in place of list
 
-		Returns tuple (field object for conflict, field objects for each node of
+		Returns tuple (field object for conflict, name strings for each node of
 		path leading to the conflict)
 		"""
 
@@ -190,29 +190,33 @@ class _StructureLayer:
 		existing_hierarchy = []
 
 		for name_str in sorted(ancestors_types):
-			fld = Field.fromNameStr(self._engine, name_str)
-			fld.fillListIndexesFromField(field)
+			ancestor = Field.fromNameStr(self._engine, name_str)
+			ancestor.fillListIndexesFromField(field)
 
-			possible_conflict = dict if isinstance(field.name[len(fld.name)], str) else list
+			new_structure_type = dict if isinstance(field.name[len(ancestor.name)], str) else list
 
+			# for each possible ancestor type, get ancestor value
 			for type_str in ancestors_types[name_str]:
-				fld.type_str = type_str
+				ancestor.type_str = type_str
 
-				l = self._engine.execute("SELECT " + self._VALUE_COLUMN + " FROM {} " +
-					"WHERE " + self._ID_COLUMN + "=? " + fld.list_indexes_condition,
-					[fld.table_name], [id])
+				rows = self._engine.execute("SELECT " + self._VALUE_COLUMN +
+					" FROM {} WHERE " + self._ID_COLUMN + "=? " +
+					ancestor.list_indexes_condition,
+					[ancestor.table_name], [id])
 
-				if len(l) > 0:
-					fld.db_value = l[0][0]
-					existing_elem = type(fld.py_value)
+				if len(rows) > 0:
+					ancestor.db_value, = rows[0]
+					existing_value = type(ancestor.py_value)
 
-					conflict = not ((existing_elem == list and possible_conflict == list) or
-						(existing_elem == dict and possible_conflict == dict))
+					# there is no conflict, if we want to add/change key in map
+					# or add/change index in list; otherwise there is a conflict
+					conflict = not ((existing_value == list and new_structure_type == list) or
+						(existing_value == dict and new_structure_type == dict))
 
 					if conflict:
-						return fld, existing_hierarchy
+						return ancestor, existing_hierarchy
 
-			existing_hierarchy.append(fld.name_str)
+			existing_hierarchy.append(ancestor.name_str)
 
 		return None, existing_hierarchy
 
