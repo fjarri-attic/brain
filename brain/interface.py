@@ -211,7 +211,7 @@ class Field:
 		return counter
 
 	@property
-	def columns_query(self):
+	def list_indexes_query(self):
 		"""Returns string with list column names for this field"""
 		numeric_columns = filter(lambda x: not isinstance(x, str), self.name)
 		counter = 0
@@ -225,7 +225,7 @@ class Field:
 		return (', ' + ', '.join(l) if len(l) > 0 else '')
 
 	@property
-	def raw_columns_condition(self):
+	def raw_list_indexes_condition(self):
 		"""Returns string with condition for operations on given field"""
 
 		# do not skip Nones, because we need them for
@@ -242,13 +242,13 @@ class Field:
 		return (' AND '.join(l) if len(l) > 0 else '')
 
 	@property
-	def columns_condition(self):
+	def list_indexes_condition(self):
 		"""Returns string with condition for operations on given field, prefixed with AND"""
 
-		cond = self.raw_columns_condition
+		cond = self.raw_list_indexes_condition
 		return '' if cond == '' else (' AND ' + cond)
 
-	def getDeterminedName(self, vals):
+	def fillListIndexes(self, vals):
 		"""Fill list indexes with given values"""
 		vals_copy = list(vals)
 		func = lambda x: vals_copy.pop(0) if not isinstance(x, str) else x
@@ -278,7 +278,7 @@ class Field:
 				result.append(elem)
 		return result
 
-	def _getListElements(self):
+	def _getListIndexes(self):
 		"""Returns list of non-string name elements (i.e. corresponding to lists)"""
 		return list(filter(lambda x: not isinstance(x, str), self.name))
 
@@ -290,9 +290,9 @@ class Field:
 		"""
 		Returns name and value of column corresponding to the last name element
 
-		This function makes sense only if self.pointsToList() is True
+		This function makes sense only if self.pointsToListElement() is True
 		"""
-		list_elems = self._getListElements()
+		list_elems = self._getListIndexes()
 		col_num = len(list_elems) - 1 # index of last column
 		col_name = self._getListColumnName(col_num)
 		col_val = list_elems[col_num]
@@ -303,11 +303,11 @@ class Field:
 		"""
 		Returns condition for renumbering after deletion of this element
 
-		This function makes sense only if self.pointsToList() is True
+		This function makes sense only if self.pointsToListElement() is True
 		"""
 		self_copy = Field(self._engine, self.name)
 		self_copy.name[-1] = None
-		return self_copy.columns_condition
+		return self_copy.list_indexes_condition
 
 	def matches(self, field):
 		"""

@@ -185,7 +185,7 @@ class _StructureLayer:
 				fld.type_str = type_str
 
 				l = self._engine.execute("SELECT " + self._VALUE_COLUMN + " FROM {} " +
-					"WHERE " + self._ID_COLUMN + "=? " + fld.columns_condition,
+					"WHERE " + self._ID_COLUMN + "=? " + fld.list_indexes_condition,
 					[fld.table_name], [id])
 
 				if len(l) > 0:
@@ -357,8 +357,8 @@ class _StructureLayer:
 			else:
 				stub_columns = ""
 
-			query = "SELECT " + str(i) + ", " + self._VALUE_COLUMN + field.columns_query + stub_columns + \
-				" FROM {} WHERE " + self._ID_COLUMN + "=?" + field.columns_condition
+			query = "SELECT " + str(i) + ", " + self._VALUE_COLUMN + field.list_indexes_query + stub_columns + \
+				" FROM {} WHERE " + self._ID_COLUMN + "=?" + field.list_indexes_condition
 
 			values.append(id)
 			tables.append(field.table_name)
@@ -378,7 +378,7 @@ class _StructureLayer:
 			value = elem[1]
 			list_indexes = elem[2:num + 2]
 
-			new_field = Field(self._engine, tmp_field.getDeterminedName(list_indexes))
+			new_field = Field(self._engine, tmp_field.fillListIndexes(list_indexes))
 			new_field.type_str = tmp_field.type_str
 			new_field.db_value = value
 			res.append(new_field)
@@ -486,7 +486,7 @@ class _StructureLayer:
 
 		# construct query
 		result = "SELECT DISTINCT " + self._ID_COLUMN + " FROM {} " + \
-			comp_str + " " + op1.columns_condition
+			comp_str + " " + op1.list_indexes_condition
 		tables = [condition.operand1.table_name]
 
 		if condition.invert:
@@ -557,12 +557,12 @@ class _StructureLayer:
 		queries = []
 		tables = []
 		values = []
-		columns_condition = field_copy.columns_condition
+		list_indexes_condition = field_copy.list_indexes_condition
 		for type in types:
 			field_copy.type_str = type
 			queries.append("SELECT " + self._ID_COLUMN +
 				" FROM {} WHERE " + self._ID_COLUMN + "=?" +
-				columns_condition)
+				list_indexes_condition)
 			tables.append(field_copy.table_name)
 			values.append(id)
 		query = "SELECT COUNT(*) FROM (" + " UNION ".join(queries) + ") AS temp"
@@ -586,7 +586,7 @@ class _StructureLayer:
 				# prepare query for deletion
 				conditions = []
 				for field in fields:
-					cond = field.raw_columns_condition
+					cond = field.raw_list_indexes_condition
 					if cond != "":
 						conditions.append(cond)
 
