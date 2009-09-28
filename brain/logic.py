@@ -79,8 +79,8 @@ class _StructureLayer:
 		for table in tables:
 			res = self._engine.execute("SELECT id FROM {}", [table])
 			ids = [x[0] for x in res]
-			field = Field.fromNameStr(self._engine, table)
-			name_str_no_type = field.name_str_no_type
+			field = Field.fromTableName(self._engine, table)
+			name_str_no_type = field.name_str
 			type_str = field.type_str
 
 			for obj_id in ids:
@@ -142,7 +142,7 @@ class _StructureLayer:
 		# just query specification table for all types for given object and field
 		l = self._engine.execute("SELECT " + self._TYPE_COLUMN + " FROM {} " +
 			"WHERE " + self._ID_COLUMN + "=? AND " + self._FIELD_COLUMN + "=?",
-			[self._ID_TABLE], [id, field.name_str_no_type])
+			[self._ID_TABLE], [id, field.name_str])
 
 		return [x[0] for x in l]
 
@@ -153,7 +153,7 @@ class _StructureLayer:
 		queries = []
 		while len(temp_field.name) > 0:
 			temp_field.name.pop()
-			values.append(temp_field.name_str_no_type)
+			values.append(temp_field.name_str)
 			queries.append(self._FIELD_COLUMN + "=?")
 
 		query = ("AND (" + " OR ".join(queries) + ")") if len(queries) > 0 else ""
@@ -171,7 +171,7 @@ class _StructureLayer:
 		existing_hierarchy = []
 
 		for name_str in sorted(result):
-			fld = Field.fromNameStrNoType(self._engine, name_str)
+			fld = Field.fromNameStr(self._engine, name_str)
 
 			for i, e in enumerate(field.name):
 				if i >= len(fld.name):
@@ -186,7 +186,7 @@ class _StructureLayer:
 
 				l = self._engine.execute("SELECT " + self._VALUE_COLUMN + " FROM {} " +
 					"WHERE " + self._ID_COLUMN + "=? " + fld.columns_condition,
-					[fld.name_str], [id])
+					[fld.table_name], [id])
 
 				if len(l) > 0:
 					fld.db_value = l[0][0]
@@ -198,7 +198,7 @@ class _StructureLayer:
 					if conflict:
 						return fld, existing_hierarchy
 
-			existing_hierarchy.append(fld.name_str_no_type)
+			existing_hierarchy.append(fld.name_str)
 
 		return None, existing_hierarchy
 
@@ -227,7 +227,7 @@ class _StructureLayer:
 			for mask in masks:
 				regexp_cond_list.append(self._FIELD_COLUMN +
 					" " + self._engine.getRegexpOp() + " ?")
-				regexp_vals.append("^" + re.escape(mask.name_str_no_type) + "(\.\.|$)")
+				regexp_vals.append("^" + re.escape(mask.name_str) + "(\.\.|$)")
 			regexp_cond = " AND (" + " OR ".join(regexp_cond_list) + ")"
 		else:
 			regexp_cond = ""
@@ -272,13 +272,13 @@ class _StructureLayer:
 			if masks is None:
 			# just construct all possible fields from name strings
 				for type_str, refcount in raw_fields_info[name_str]:
-					f = Field.fromNameStrNoType(self._engine, name_str)
+					f = Field.fromNameStr(self._engine, name_str)
 					f.type_str = type_str
 					name_str_map[type_str] = ([f], refcount)
 			else:
 			# since we do not know, which name string was found using which mask,
 			# we should skip unmatched combinations of masks and name strings
-				temp = Field.fromNameStrNoType(self._engine, name_str)
+				temp = Field.fromNameStr(self._engine, name_str)
 				for mask in masks:
 					if temp.matches(mask):
 						for type_str, refcount in raw_fields_info[name_str]:
@@ -286,7 +286,7 @@ class _StructureLayer:
 							if type_str not in name_str_map:
 								name_str_map[type_str] = ([], refcount)
 
-							f = Field.fromNameStrNoType(self._engine, name_str)
+							f = Field.fromNameStr(self._engine, name_str)
 							f.name[:len(mask.name)] = mask.name
 							f.type_str = type_str
 							name_str_map[type_str][0].append(f)
@@ -361,7 +361,7 @@ class _StructureLayer:
 				" FROM {} WHERE " + self._ID_COLUMN + "=?" + field.columns_condition
 
 			values.append(id)
-			tables.append(field.name_str)
+			tables.append(field.table_name)
 			queries.append(query)
 
 		l = self._engine.execute(" UNION ".join(queries), tables, values)
@@ -391,7 +391,7 @@ class _StructureLayer:
 		cond = " OR ".join([elem] * len(fields))
 
 		values = []
-		tables = {(field.name_str_no_type, field.type_str): field for field in fields}
+		tables = {(field.name_str, field.type_str): field for field in fields}
 		for name_str, type_str in tables:
 			values += [name_str, type_str]
 
@@ -415,7 +415,7 @@ class _StructureLayer:
 		table_spec = field.getCreationStr(self._ID_COLUMN,
 			self._VALUE_COLUMN, self._ID_TYPE, self._INT_TYPE)
 		self._engine.execute("CREATE TABLE {} (" + table_spec + ")",
-			[field.name_str])
+			[field.table_name])
 
 	def buildSqlQuery(self, condition):
 		"""Recursive function to transform condition into SQL query"""
@@ -487,7 +487,7 @@ class _StructureLayer:
 		# construct query
 		result = "SELECT DISTINCT " + self._ID_COLUMN + " FROM {} " + \
 			comp_str + " " + op1.columns_condition
-		tables = [condition.operand1.name_str]
+		tables = [condition.operand1.table_name]
 
 		if condition.invert:
 		# we will add objects that do not even have such field
@@ -499,7 +499,7 @@ class _StructureLayer:
 			result += "SELECT " + self._ID_COLUMN + " FROM " + \
 				"(SELECT DISTINCT " + self._ID_COLUMN + " FROM {} " + \
 				"EXCEPT SELECT DISTINCT " + self._ID_COLUMN + " FROM {}) as temp"
-			tables += [self._ID_TABLE, condition.operand1.name_str]
+			tables += [self._ID_TABLE, condition.operand1.table_name]
 
 		return result, tables, values
 
@@ -518,13 +518,13 @@ class _StructureLayer:
 				"SET " + col_name + "=" + col_name + "+? " +
 				"WHERE " + self._ID_COLUMN + "=?" + cond +
 				" AND " + col_name + ">=?",
-				[fld.name_str], [shift, id, col_val])
+				[fld.table_name], [shift, id, col_val])
 
 	def addValueRecords(self, id, fields):
 		"""All fields must have the same path and type"""
 
 		values = [[id] + field.value_record for field in fields]
-		self._engine.insertMany(fields[0].name_str, values)
+		self._engine.insertMany(fields[0].table_name, values)
 
 	def getMaxListIndex(self, id, field):
 		"""Get maximum index in list, specified by given field"""
@@ -535,7 +535,7 @@ class _StructureLayer:
 		max = -1
 		for fld in self.getFlatFieldsInfo(id, [field]):
 			res = self._engine.execute("SELECT MAX(" + col_name + ") FROM {} WHERE " +
-				self._ID_COLUMN + "=?" + cond, [fld.name_str], [id])
+				self._ID_COLUMN + "=?" + cond, [fld.table_name], [id])
 
 			if res[0][0] is not None and res[0][0] > max:
 				max = res[0][0]
@@ -563,7 +563,7 @@ class _StructureLayer:
 			queries.append("SELECT " + self._ID_COLUMN +
 				" FROM {} WHERE " + self._ID_COLUMN + "=?" +
 				columns_condition)
-			tables.append(field_copy.name_str)
+			tables.append(field_copy.table_name)
 			values.append(id)
 		query = "SELECT COUNT(*) FROM (" + " UNION ".join(queries) + ") AS temp"
 
@@ -596,7 +596,7 @@ class _StructureLayer:
 					condition_str = ""
 
 				query_str = "FROM {} WHERE " + self._ID_COLUMN + "=? " + condition_str
-				tables = [field.name_str]
+				tables = [field.table_name]
 				values = [id]
 
 				# get number of records to be deleted
@@ -605,7 +605,7 @@ class _StructureLayer:
 
 				# if there are any, delete them
 				if del_num > 0:
-					typed_name_str = field.name_str
+					typed_name_str = field.table_name
 
 					self._engine.execute("DELETE " + query_str, tables, values)
 
@@ -648,7 +648,7 @@ class LogicLayer:
 		hierarchy = []
 		for i in range(0, len(field.name)):
 			fld = Field(self._engine, field.name[:i])
-			if fld.name_str_no_type not in existing_hierarchy:
+			if fld.name_str not in existing_hierarchy:
 				fld.py_value = dict() if isinstance(field.name[i], str) else list()
 				hierarchy.append(fld)
 		return hierarchy
@@ -657,7 +657,7 @@ class LogicLayer:
 
 		sorted = {}
 		for field in fields:
-			key = (field.name_str_no_type, field.type_str)
+			key = (field.name_str, field.type_str)
 			if key not in sorted:
 				sorted[key] = []
 
@@ -805,14 +805,14 @@ class LogicLayer:
 				fields = getMentionedFields(condition.operand1)
 				return fields.union(getMentionedFields(condition.operand2))
 			else:
-				return {condition.operand1.name_str}
+				return {condition.operand1.table_name}
 
 		def updateCondition(condition, existing_tables):
 			if isinstance(condition.operand1, interface.SearchRequest.Condition):
 				updateCondition(condition.operand1, existing_tables)
 				updateCondition(condition.operand2, existing_tables)
 			else:
-				if condition.operand1.name_str not in existing_tables:
+				if condition.operand1.table_name not in existing_tables:
 					condition.operand1 = None
 
 		if request.condition is not None:
