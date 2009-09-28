@@ -77,8 +77,8 @@ class _StructureLayer:
 		# collect info from field tables and create refcounters table in memory
 		refcounters = {}
 		for table in tables:
-			res = self._engine.execute("SELECT id FROM {}", [table])
-			ids = [x[0] for x in res]
+			rows = self._engine.execute("SELECT id FROM {}", [table])
+			ids = [x[0] for x in rows]
 			field = Field.fromTableName(self._engine, table)
 			name_str = field.name_str
 			type_str = field.type_str
@@ -136,28 +136,21 @@ class _StructureLayer:
 				add_values.append([id, name_str, type_str, refcount])
 			self._engine.insertMany(self._ID_TABLE, add_values)
 
-	def getValueTypes(self, id, field):
+	def _getValueTypes(self, id, field):
 		"""Returns list of value types already stored in given field"""
 
 		# just query specification table for all types for given object and field
-		l = self._engine.execute("SELECT " + self._TYPE_COLUMN + " FROM {} " +
+		rows = self._engine.execute("SELECT " + self._TYPE_COLUMN + " FROM {} " +
 			"WHERE " + self._ID_COLUMN + "=? AND " + self._FIELD_COLUMN + "=?",
 			[self._ID_TABLE], [id, field.name_str])
 
-		return [x[0] for x in l]
+		return [type_str for type_str, in rows]
 
-	def getFirstConflict(self, id, field):
+	def _getAncestorsValueTypes(self, id, field):
 		"""
-		Returns field object, pointing to first (highest in the hierarchy)
-		path, conflicting with given field.
-		Possible conflicts:
-		- storing list or map in place of value
-		- storing list in place of map
-		- storing map in place of list
+		Returns possible types for field ancestors (not including the field itself)
+		in form of {name_str: [type_str, ...], ...}
 		"""
-
-		# get possible types for all field ancestors
-
 		ancestors = field.getAncestors()
 		ancestors.pop() # remove last element, which is equal to 'field'
 
@@ -165,20 +158,38 @@ class _StructureLayer:
 		queries = [self._FIELD_COLUMN + "=?"] * len(ancestors)
 		query = ("AND (" + " OR ".join(queries) + ")") if len(queries) > 0 else ""
 
-		l = self._engine.execute("SELECT " + self._FIELD_COLUMN +
+		rows = self._engine.execute("SELECT " + self._FIELD_COLUMN +
 			", " + self._TYPE_COLUMN + " FROM {} " +
 			" WHERE " + self._ID_COLUMN + "=? " + query,
 			[self._ID_TABLE], values)
 
 		result = {}
-		for name_str, type_str in l:
+		for name_str, type_str in rows:
 			if name_str not in result:
 				result[name_str] = []
 			result[name_str].append(type_str)
 
+		return result
+
+	def getFirstConflict(self, id, field):
+		"""
+		Find field, pointing to first (highest in the hierarchy)
+		path, conflicting with given field.
+		Possible conflicts:
+		- storing list or map in place of value
+		- storing list in place of map
+		- storing map in place of list
+
+		Returns tuple (field object for conflict, field objects for each node of
+		path leading to the conflict)
+		"""
+
+		ancestors_types = self._getAncestorsValueTypes(id, field)
+
+		# we will store field objects for all hierarchy leading to conflict here
 		existing_hierarchy = []
 
-		for name_str in sorted(result):
+		for name_str in sorted(ancestors_types):
 			fld = Field.fromNameStr(self._engine, name_str)
 
 			for i, e in enumerate(field.name):
@@ -189,7 +200,7 @@ class _StructureLayer:
 
 			possible_conflict = dict if isinstance(field.name[len(fld.name)], str) else list
 
-			for type_str in result[name_str]:
+			for type_str in ancestors_types[name_str]:
 				fld.type_str = type_str
 
 				l = self._engine.execute("SELECT " + self._VALUE_COLUMN + " FROM {} " +
@@ -557,7 +568,7 @@ class _StructureLayer:
 		if len(field.name) == 0:
 			return True
 
-		types = self.getValueTypes(id, field)
+		types = self._getValueTypes(id, field)
 		if len(types) == 0:
 			return False
 
