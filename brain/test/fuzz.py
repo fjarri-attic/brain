@@ -413,7 +413,7 @@ def _runTests(objects, actions, verbosity):
 				raise Exception("Functionality error")
 
 			# compare action return values (if any)
-			if result != fake_result:
+			if result != fake_result and fake_exception is None:
 				print("Action return values are different:")
 				print("State before: " + repr(fake_state_before))
 				print("Action: " + action.dump(verbosity))
