@@ -327,6 +327,19 @@ class Field:
 
 		return True
 
+	def getAncestors(self):
+		"""
+		Returns list of field objects for each node in hierarchy, leading to this field
+		(including self and root field, starting from root field).
+		All resulting fields are untyped.
+		"""
+		name_copy = self.name[:]
+		result = [Field(self._engine, name_copy)]
+		while len(name_copy) > 0:
+			name_copy.pop()
+			result.append(Field(self._engine, name_copy))
+		return list(reversed(result))
+
 	def __str__(self):
 		return "Field (" + repr(self.name) + \
 			(", value=" + repr(self._value) if self._value is not None else "") + ")"

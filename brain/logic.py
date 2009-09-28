@@ -147,16 +147,24 @@ class _StructureLayer:
 		return [x[0] for x in l]
 
 	def getFirstConflict(self, id, field):
+		"""
+		Returns field object, pointing to first (highest in the hierarchy)
+		path, conflicting with given field.
+		Possible conflicts:
+		- storing list or map in place of value
+		- storing list in place of map
+		- storing map in place of list
+		"""
 
-		temp_field = Field(self._engine, field.name)
-		values = [id]
-		queries = []
-		while len(temp_field.name) > 0:
-			temp_field.name.pop()
-			values.append(temp_field.name_str)
-			queries.append(self._FIELD_COLUMN + "=?")
+		# get possible types for all field ancestors
 
+		ancestors = field.getAncestors()
+		ancestors.pop() # remove last element, which is equal to 'field'
+
+		values = [id] + [ancestor.name_str for ancestor in ancestors]
+		queries = [self._FIELD_COLUMN + "=?"] * len(ancestors)
 		query = ("AND (" + " OR ".join(queries) + ")") if len(queries) > 0 else ""
+
 		l = self._engine.execute("SELECT " + self._FIELD_COLUMN +
 			", " + self._TYPE_COLUMN + " FROM {} " +
 			" WHERE " + self._ID_COLUMN + "=? " + query,
@@ -720,11 +728,13 @@ class LogicLayer:
 			fields += hierarchy
 
 			# fill autocreated list elements (if any) with Nones
-			field_copy = Field(self._engine, path.name)
-			while len(field_copy.name) > 0:
-				if isinstance(field_copy.name[-1], int):
-					fields += self._fillWithNones(id, field_copy)
-				field_copy.name.pop()
+
+			ancestors = path.getAncestors()
+			del ancestors[0] # remove root object
+
+			for ancestor in ancestors:
+				if ancestor.pointsToListElement():
+					fields += self._fillWithNones(id, ancestor)
 
 		self._setFieldValues(id, fields)
 
