@@ -191,12 +191,7 @@ class _StructureLayer:
 
 		for name_str in sorted(ancestors_types):
 			fld = Field.fromNameStr(self._engine, name_str)
-
-			for i, e in enumerate(field.name):
-				if i >= len(fld.name):
-					break
-				if not isinstance(e, str):
-					fld.name[i] = e
+			fld.fillListIndexesFromField(field)
 
 			possible_conflict = dict if isinstance(field.name[len(fld.name)], str) else list
 
@@ -391,14 +386,14 @@ class _StructureLayer:
 			elem = tuple(elem) # get rid of weird engine-specific row wrappers
 
 			index = elem[0]
-			tmp_field = fields[index]
-			num = tmp_field.list_indexes_number
+			num = fields[index].list_indexes_number
 
 			value = elem[1]
 			list_indexes = elem[2:num + 2]
 
-			new_field = Field(self._engine, tmp_field.fillListIndexes(list_indexes))
-			new_field.type_str = tmp_field.type_str
+			new_field = Field(self._engine, fields[index].name)
+			new_field.fillListIndexes(list_indexes)
+			new_field.type_str = fields[index].type_str
 			new_field.db_value = value
 			res.append(new_field)
 

@@ -250,9 +250,16 @@ class Field:
 
 	def fillListIndexes(self, vals):
 		"""Fill list indexes with given values"""
-		vals_copy = list(vals)
-		func = lambda x: vals_copy.pop(0) if not isinstance(x, str) else x
-		return list(map(func, self.name))
+		reversed_vals = list(reversed(vals))
+		for i, e in enumerate(self.name):
+			if not isinstance(e, str):
+				self.name[i] = reversed_vals.pop()
+
+	def fillListIndexesFromField(self, field):
+		"""Fill list indexes using other field as an example"""
+		for i, e in enumerate(self.name):
+			if not isinstance(e, str):
+				self.name[i] = field.name[i]
 
 	def getCreationStr(self, id_column, value_column, id_type, list_index_type):
 		"""Returns string containing list of columns necessary to create field table"""
