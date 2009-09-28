@@ -356,7 +356,6 @@ class _StructureLayer:
 			result += self._getFieldValuesSameType(id, typed_fields)
 		return result
 
-
 	def _getFieldValuesSameType(self, id, fields):
 
 		queries = []
@@ -383,19 +382,10 @@ class _StructureLayer:
 			tables.append(field.table_name)
 			queries.append(query)
 
-		l = self._engine.execute(" UNION ".join(queries), tables, values)
+		rows = self._engine.execute(" UNION ".join(queries), tables, values)
 
 		res = []
-		for elem in l:
-
-			elem = tuple(elem) # get rid of weird engine-specific row wrappers
-
-			index = elem[0]
-			num = fields[index].list_indexes_number
-
-			value = elem[1]
-			list_indexes = elem[2:num + 2]
-
+		for index, value, *list_indexes in rows:
 			new_field = Field(self._engine, fields[index].name)
 			new_field.fillListIndexes(list_indexes)
 			new_field.type_str = fields[index].type_str
