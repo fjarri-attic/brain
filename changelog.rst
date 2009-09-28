@@ -134,3 +134,16 @@ Added support for insertion and deletion requests in nested lists.
 * made fuzz test return times for each type of request separately
 * added non-atomic performance tests: time for functional tests and times for each request in fuzz test
 * constructing test suites hierarchically
+
+0.1.4
+=====
+
+* fixed minor bug in read(), when it returned empty list when no fields were found
+  which match given masks
+* search() uses 2 requests to DB engine instead of (number_of_conditions + 1)
+* delete() uses much less requests to DB engine (approximately one request per affected table)
+* read() uses less requests to DB engine (number_of_fields + 1)
+* refactored modify() and insert() logic in order to reduce calls to database:
+  now using slightly more than one query per table affected
+* conflicts checking logic is slightly more strict now - creating list/map
+  in place of value is considered a conflict too
