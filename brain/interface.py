@@ -258,6 +258,9 @@ class Field:
 	def fillListIndexesFromField(self, field):
 		"""Fill list indexes using other field as an example"""
 		for i, e in enumerate(self.name):
+			if i >= len(field.name):
+				break
+
 			if not isinstance(e, str):
 				self.name[i] = field.name[i]
 
