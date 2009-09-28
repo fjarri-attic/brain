@@ -313,10 +313,10 @@ class _StructureLayer:
 
 		# We need just check if there is at least one row with its id
 		# in specification table
-		l = self._engine.execute("SELECT COUNT(*) FROM {} WHERE " + self._ID_COLUMN + "=?",
+		rows = self._engine.execute("SELECT COUNT(*) FROM {} WHERE " + self._ID_COLUMN + "=?",
 			[self._ID_TABLE], [id])
 
-		return l[0][0] > 0
+		return rows[0][0] > 0
 
 	def getFieldValues(self, id, fields):
 		"""
@@ -341,26 +341,38 @@ class _StructureLayer:
 		return result
 
 	def _getFieldValuesSameType(self, id, fields):
+		"""
+		Read values of given fields; all fields should have the same type.
+		Returns list of defined field objects.
+		"""
 
 		queries = []
 		values = []
 		tables = []
+
+		# get maximum number of list indexes for fields in list
 		max_list_indexes = 0
 		for field in fields:
 			num = field.list_indexes_number
 			if num > max_list_indexes:
 				max_list_indexes = num
 
+		# create queries for each field
 		for i, field in enumerate(fields):
 
+			# if number of list indexes is less than maximum, we should add stub columns
+			# to query, so that UNION could later merge resulting tables for each field
 			num = field.list_indexes_number
 			if num < max_list_indexes:
 				stub_columns = ", " + ", ".join(["0"] * (max_list_indexes - num))
 			else:
 				stub_columns = ""
 
-			query = "SELECT " + str(i) + ", " + self._VALUE_COLUMN + field.list_indexes_query + stub_columns + \
-				" FROM {} WHERE " + self._ID_COLUMN + "=?" + field.list_indexes_condition
+			# construct query for reading
+			query = "SELECT " + str(i) + ", " + self._VALUE_COLUMN + \
+				field.list_indexes_query + stub_columns + \
+				" FROM {} WHERE " + self._ID_COLUMN + "=?" + \
+				field.list_indexes_condition
 
 			values.append(id)
 			tables.append(field.table_name)
