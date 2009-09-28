@@ -93,7 +93,7 @@ class Pointer:
 class Field:
 	"""Class for more convenient handling of Field objects"""
 
-	def __init__(self, engine, name, value=None):
+	def __init__(self, engine, name, py_value=None, type_str=None, db_value=None):
 
 		if not isinstance(name, list):
 			raise FormatError("Field name should be list")
@@ -109,19 +109,27 @@ class Field:
 				raise FormatError("Field name element should not be an empty string")
 
 		# check value type
-		if type(value) not in _SUPPORTED_TYPES:
-			raise FormatError("Wrong value class: " + str(type(value)))
+		if type(py_value) not in _SUPPORTED_TYPES:
+			raise FormatError("Wrong value class: " + str(type(py_value)))
 
 		self._engine = engine
 		self.name = name[:]
-		self.py_value = value
+
+		if py_value is not None:
+			self.py_value = py_value
+		elif type_str is not None:
+			self.type_str = type_str
+			if db_value is not None:
+				self.db_value = db_value
+		else:
+			self.py_value = None
 
 	@classmethod
-	def fromNameStr(cls, engine, name_str, value=None):
+	def fromNameStr(cls, engine, name_str, type_str=None):
 		"""Create field object using stringified name"""
 
 		# cut prefix 'field' from the resulting list
-		return cls(engine, engine.getNameList(name_str)[1:], value)
+		return cls(engine, engine.getNameList(name_str)[1:], type_str=type_str)
 
 	@classmethod
 	def fromTableName(cls, engine, name_str):

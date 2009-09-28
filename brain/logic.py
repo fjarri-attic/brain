@@ -280,21 +280,19 @@ class _StructureLayer:
 		# construct resulting list of partially defined fields
 		res = []
 		for name_str, type_str, refcount in raw_fields_info:
-			temp = Field.fromNameStr(self._engine, name_str)
-			temp.type_str = type_str
+			raw_match = Field.fromNameStr(self._engine, name_str, type_str=type_str)
 
 			if masks is None:
-				fields_list = [temp]
+				fields_list = [raw_match]
 			else:
 			# since we do not know, which name string was found using which mask,
 			# we should skip unmatched combinations of masks and name strings
 				fields_list = []
 				for mask in masks:
-					if temp.matches(mask):
-						temp2 = Field(self._engine, temp.name)
-						temp2.type_str = temp.type_str
-						temp2.fillListIndexesFromField(mask)
-						fields_list.append(temp2)
+					if raw_match.matches(mask):
+						match = Field(self._engine, raw_match.name, type_str=type_str)
+						match.fillListIndexesFromField(mask)
+						fields_list.append(match)
 
 			res.append((fields_list, refcount))
 
@@ -372,10 +370,9 @@ class _StructureLayer:
 
 		res = []
 		for index, value, *list_indexes in rows:
-			new_field = Field(self._engine, fields[index].name)
+			new_field = Field(self._engine, fields[index].name,
+				type_str=fields[index].type_str, db_value=value)
 			new_field.fillListIndexes(list_indexes)
-			new_field.type_str = fields[index].type_str
-			new_field.db_value = value
 			res.append(new_field)
 
 		return res
