@@ -291,9 +291,10 @@ class _StructureLayer:
 				fields_list = []
 				for mask in masks:
 					if temp.matches(mask):
-						temp.fillListIndexesFromField(mask)
-						fields_list.append(temp)
-						break
+						temp2 = Field(self._engine, temp.name)
+						temp2.type_str = temp.type_str
+						temp2.fillListIndexesFromField(mask)
+						fields_list.append(temp2)
 
 			res.append((fields_list, refcount))
 
