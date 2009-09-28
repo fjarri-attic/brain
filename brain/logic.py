@@ -237,91 +237,76 @@ class _StructureLayer:
 
 		return {(name_str, type_str): refcount for name_str, type_str, refcount in rows}
 
-	def getRawFieldsInfo(self, id, masks=None, include_refcounts=False):
+	def _getRawFieldsInfo(self, id, masks=None, include_refcounts=False):
+		"""
+		Returns list of all entries in specifictaion table, whose names match one of given masks
+		Return value: [(name string, type_string, refcount or None), ...]
+		"""
 
-		regexp_vals = []
+		# If masks list is given, return only fields, which contain its name in the beginning
 		if masks is not None:
-		# If fields list is given, return only fields, which contain its name in the beginning
-			regexp_cond_list = []
-			for mask in masks:
-				regexp_cond_list.append(self._FIELD_COLUMN +
-					" " + self._engine.getRegexpOp() + " ?")
-				regexp_vals.append("^" + re.escape(mask.name_str) + "(\.\.|$)")
-			regexp_cond = " AND (" + " OR ".join(regexp_cond_list) + ")"
+			regexp_cond_elem = self._FIELD_COLUMN + " " + self._engine.getRegexpOp() + " ?"
+			regexp_cond = " AND (" + " OR ".join([regexp_cond_elem] * len(masks)) + ")"
+			regexp_vals = ["^" + re.escape(mask.name_str) + "(\.\.|$)" for mask in masks]
 		else:
+			regexp_vals = []
 			regexp_cond = ""
 
 		# Get information
-		l = self._engine.execute("SELECT " + self._FIELD_COLUMN + ", " + self._TYPE_COLUMN +
+		rows = self._engine.execute("SELECT " + self._FIELD_COLUMN + ", " + self._TYPE_COLUMN +
 			((", " + self._REFCOUNT_COLUMN) if include_refcounts else "") +
 			" FROM {} WHERE " + self._ID_COLUMN + "=?" + regexp_cond,
 			[self._ID_TABLE], [id] + regexp_vals)
 
-		# fill 'raw' information map - name strings to existing types correspondence
-		raw_fields_info = {}
-		for elem in l:
-			name_str = elem[0]
-			type_str = elem[1]
-			if name_str not in raw_fields_info:
-				raw_fields_info[name_str] = []
-
+		result = []
+		for name_str, type_str, *refcount in rows:
 			if include_refcounts:
-				to_append = (type_str, elem[2])
+				result.append((name_str, type_str, refcount[0]))
 			else:
-				to_append = (type_str, None)
+				result.append((name_str, type_str, None))
 
-			raw_fields_info[name_str].append(to_append)
-
-		return raw_fields_info
+		return result
 
 	def getFieldsInfo(self, id, masks=None, include_refcounts=False):
 		"""
-		Get types of given fields from support table
-		if masks is equal to None, info for all object's fields is returned
+		Get field objects and refcounts, which matches one of given masks.
+		List indexes of each field object are defined using indexes from corresponding mask.
+		If masks is equal to None, info for all object's fields is returned
+		Return value: [(fields_list, refcount or None)]
 		"""
 
-		raw_fields_info = self.getRawFieldsInfo(id, masks, include_refcounts=include_refcounts)
-		res = {}
+		raw_fields_info = self._getRawFieldsInfo(id, masks, include_refcounts=include_refcounts)
 
 		# construct resulting list of partially defined fields
-		for name_str in raw_fields_info:
-
-			name_str_map = {}
+		res = []
+		for name_str, type_str, refcount in raw_fields_info:
+			temp = Field.fromNameStr(self._engine, name_str)
+			temp.type_str = type_str
 
 			if masks is None:
-			# just construct all possible fields from name strings
-				for type_str, refcount in raw_fields_info[name_str]:
-					f = Field.fromNameStr(self._engine, name_str)
-					f.type_str = type_str
-					name_str_map[type_str] = ([f], refcount)
+				fields_list = [temp]
 			else:
 			# since we do not know, which name string was found using which mask,
 			# we should skip unmatched combinations of masks and name strings
-				temp = Field.fromNameStr(self._engine, name_str)
+				fields_list = []
 				for mask in masks:
 					if temp.matches(mask):
-						for type_str, refcount in raw_fields_info[name_str]:
+						temp.fillListIndexesFromField(mask)
+						fields_list.append(temp)
+						break
 
-							if type_str not in name_str_map:
-								name_str_map[type_str] = ([], refcount)
-
-							f = Field.fromNameStr(self._engine, name_str)
-							f.name[:len(mask.name)] = mask.name
-							f.type_str = type_str
-							name_str_map[type_str][0].append(f)
-
-			res[name_str] = name_str_map
+			res.append((fields_list, refcount))
 
 		return res
 
 	def getFlatFieldsInfo(self, id, masks=None):
+		"""Returns list of typed and defined fields, matching given masks"""
+
 		fields_info = self.getFieldsInfo(id, masks)
 
 		res = []
-		for name_str in fields_info:
-			for type_str in fields_info[name_str]:
-				fields, refcount = fields_info[name_str][type_str]
-				res += fields
+		for fields, refcount in fields_info:
+			res += fields
 		return res
 
 	def objectExists(self, id):
@@ -587,46 +572,45 @@ class _StructureLayer:
 
 		to_delete = []
 		to_add = []
-		for name_str in fields_info:
-			for type_str in fields_info[name_str]:
+		for fields, refcount in fields_info:
 
-				fields, refcount = fields_info[name_str][type_str]
+			# prepare query for deletion
+			conditions = []
+			for field in fields:
+				cond = field.raw_list_indexes_condition
+				if cond != "":
+					conditions.append(cond)
 
-				# prepare query for deletion
-				conditions = []
-				for field in fields:
-					cond = field.raw_list_indexes_condition
-					if cond != "":
-						conditions.append(cond)
+			if len(conditions) > 0:
+				condition_str = " AND (" + " OR ".join(conditions) + ")"
+			else:
+				condition_str = ""
 
-				if len(conditions) > 0:
-					condition_str = " AND (" + " OR ".join(conditions) + ")"
+			query_str = "FROM {} WHERE " + self._ID_COLUMN + "=? " + condition_str
+			tables = [field.table_name]
+			values = [id]
+
+			# get number of records to be deleted
+			res = self._engine.execute("SELECT COUNT(*) " + query_str, tables,values)
+			del_num = res[0][0]
+
+			# if there are any, delete them
+			if del_num > 0:
+				table_name = field.table_name
+				name_str = field.name_str
+				type_str = field.type_str
+
+				self._engine.execute("DELETE " + query_str, tables, values)
+
+				# check if the table is empty and if it is - delete it too
+				if self._engine.tableIsEmpty(table_name):
+					self._engine.deleteTable(table_name)
+
+				if del_num == refcount:
+					to_delete.append((name_str, type_str))
 				else:
-					condition_str = ""
-
-				query_str = "FROM {} WHERE " + self._ID_COLUMN + "=? " + condition_str
-				tables = [field.table_name]
-				values = [id]
-
-				# get number of records to be deleted
-				res = self._engine.execute("SELECT COUNT(*) " + query_str, tables,values)
-				del_num = res[0][0]
-
-				# if there are any, delete them
-				if del_num > 0:
-					typed_name_str = field.table_name
-
-					self._engine.execute("DELETE " + query_str, tables, values)
-
-					# check if the table is empty and if it is - delete it too
-					if self._engine.tableIsEmpty(typed_name_str):
-						self._engine.deleteTable(typed_name_str)
-
-					if del_num == refcount:
-						to_delete.append((name_str, type_str))
-					else:
-						to_delete.append((name_str, type_str))
-						to_add.append((name_str, type_str, refcount - del_num))
+					to_delete.append((name_str, type_str))
+					to_add.append((name_str, type_str, refcount - del_num))
 
 		self.updateRefcounts(id, to_delete, to_add)
 
