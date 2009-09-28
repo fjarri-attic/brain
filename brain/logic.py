@@ -80,28 +80,28 @@ class _StructureLayer:
 			res = self._engine.execute("SELECT id FROM {}", [table])
 			ids = [x[0] for x in res]
 			field = Field.fromTableName(self._engine, table)
-			name_str_no_type = field.name_str
+			name_str = field.name_str
 			type_str = field.type_str
 
 			for obj_id in ids:
 				if obj_id not in refcounters:
 					refcounters[obj_id] = {}
 
-				if name_str_no_type not in refcounters[obj_id]:
-					refcounters[obj_id][name_str_no_type] = {}
+				if name_str not in refcounters[obj_id]:
+					refcounters[obj_id][name_str] = {}
 
-				if type_str not in refcounters[obj_id][name_str_no_type]:
-					refcounters[obj_id][name_str_no_type][type_str] = 1
+				if type_str not in refcounters[obj_id][name_str]:
+					refcounters[obj_id][name_str][type_str] = 1
 				else:
-					refcounters[obj_id][name_str_no_type][type_str] += 1
+					refcounters[obj_id][name_str][type_str] += 1
 
 		# flatten refcounters hierarchy
 		values = []
 		for obj_id in refcounters:
-			for name_str_no_type in refcounters[obj_id]:
-				for type_str in refcounters[obj_id][name_str_no_type]:
-					values.append([obj_id, name_str_no_type, type_str,
-						refcounters[obj_id][name_str_no_type][type_str]])
+			for name_str in refcounters[obj_id]:
+				for type_str in refcounters[obj_id][name_str]:
+					values.append([obj_id, name_str, type_str,
+						refcounters[obj_id][name_str][type_str]])
 
 		# fill refcounters table
 		for values_list in values:
