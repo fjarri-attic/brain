@@ -728,7 +728,12 @@ class LogicLayer:
 		for typed_fields in sorted_fields.values():
 			self._structure.addValueRecords(id, typed_fields)
 
-	def _fillWithNones(self, id, path):
+	def _getMissingListElements(self, id, path):
+		"""
+		Returns list of field objects, pointing to list elements, which should be autocreated
+		when creating path (if some list elements in path are greater than current maximum + 1
+		for corresponding list)
+		"""
 		max = self._structure.getMaxListIndex(id, path)
 		if max is None:
 			start = 0
@@ -737,10 +742,8 @@ class LogicLayer:
 		end = path.name[-1]
 
 		result = []
-		path_copy = Field(self._engine, path.name)
 		for i in range(start, end):
-			path_copy.name[-1] = i
-			result.append(Field(self._engine, path_copy.name, None))
+			result.append(Field(self._engine, path.name[:-1] + [i]))
 
 		return result
 
@@ -767,7 +770,7 @@ class LogicLayer:
 
 			for ancestor in ancestors:
 				if ancestor.pointsToListElement():
-					fields += self._fillWithNones(id, ancestor)
+					fields += self._getMissingListElements(id, ancestor)
 
 		self._setFieldValues(id, fields)
 
@@ -904,7 +907,7 @@ class LogicLayer:
 		# missing elements with Nones
 		fields = []
 		if request.path.name[-1] is not None and request.path.name[-1] > 0:
-			fields += self._fillWithNones(request.id, request.path)
+			fields += self._getMissingListElements(request.id, request.path)
 			max = request.path.name[-1]
 		else:
 			max = self._structure.getMaxListIndex(request.id, request.path)
