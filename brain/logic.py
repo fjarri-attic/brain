@@ -687,37 +687,46 @@ class LogicLayer:
 		were already removed.
 		"""
 
-		sorted = {}
+		# separate fields based on their name and type (i.e., based on table
+		# name where their values will be stored)
+		sorted_fields = {}
 		for field in fields:
 			key = (field.name_str, field.type_str)
-			if key not in sorted:
-				sorted[key] = []
+			if key not in sorted_fields:
+				sorted_fields[key] = []
 
-			sorted[key].append(field)
+			sorted_fields[key].append(field)
 
-		refcounts = self._structure.getRefcounts(id, sorted.keys())
+		# get current reference counts for all affected tables
+		refcounts = self._structure.getRefcounts(id, sorted_fields.keys())
 
 		refcounts_to_delete = []
 		refcounts_to_add = []
 		tables_to_create = []
-		for name_type_pair in sorted:
+		for name_type_pair in sorted_fields:
 			if name_type_pair in refcounts:
+			# object already has some values in this table
 				refcounts_to_delete.append(name_type_pair)
 				existing_refcount = refcounts[name_type_pair]
 			else:
-				tables_to_create.append(sorted[name_type_pair][0])
+			# object does not have values in this table yet
+
+				# table may not exist yet
+				tables_to_create.append(sorted_fields[name_type_pair][0])
+
 				existing_refcount = 0
 
 			name_str, type_str = name_type_pair
 			refcounts_to_add.append((name_str, type_str,
-				existing_refcount + len(sorted[name_type_pair])))
+				existing_refcount + len(sorted_fields[name_type_pair])))
 
 		if len(tables_to_create) > 0:
 			self._structure.ensureTablesExist(tables_to_create)
 
 		self._structure.updateRefcounts(id, refcounts_to_delete, refcounts_to_add)
-		for key in sorted:
-			self._structure.addValueRecords(id, sorted[key])
+
+		for typed_fields in sorted_fields.values():
+			self._structure.addValueRecords(id, typed_fields)
 
 	def _fillWithNones(self, id, path):
 		max = self._structure.getMaxListIndex(id, path)
