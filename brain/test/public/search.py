@@ -51,9 +51,9 @@ class Search(TestRequest):
 
 		res = self.conn.search(
 			op.NOT,
-			[['phone'], op.EQ, '1111'],
+			[[['phone'], op.EQ, '1111'],
 			op.AND,
-			[op.NOT, ['age'], op.EQ, '22'],
+			[op.NOT, ['age'], op.EQ, '22']],
 		)
 
 		self.assertSameElements(res, [self.id2, self.id3, self.id4, self.id5])
@@ -64,9 +64,9 @@ class Search(TestRequest):
 
 		res = self.conn.search(
 			op.NOT,
-			[['phone'], op.EQ, '1111'],
+			[[['phone'], op.EQ, '1111'],
 			op.OR,
-			[op.NOT, ['age'], op.EQ, '27']
+			[op.NOT, ['age'], op.EQ, '27']]
 		)
 
 		self.assertEqual(res, [self.id3])
@@ -347,12 +347,12 @@ class Search(TestRequest):
 		"""Test work of long search conditions"""
 		self.prepareStandNoList()
 
-		# inversion should be applied to the final result of condition
+		# inversion should be applied to the next operand only
 		res = self.conn.search(op.NOT, [op.NOT, ['name'], op.EQ, 'Alex'], op.AND,
 			[op.NOT, ['phone'], op.EQ, '3333'], op.OR,
 			[['age'], op.EQ, '22'])
 
-		self.assertSameElements(res, [self.id1, self.id3])
+		self.assertSameElements(res, [self.id1, self.id5])
 
 	def testTrivialCompoundCondition(self):
 		"""Test that conditions like [NOT, condition] are supported"""
@@ -365,13 +365,14 @@ class Search(TestRequest):
 	def testWrongNumberOfElements(self):
 		"""Test request validity checker - number of elements"""
 		arg_sets = [
-		    (['age']),
-		    (op.NOT, ['age']),
-		    (['age'], '22'),
-		    (op.NOT, ['age'], '22'),
-		    (['age'], op.EQ, '22', 23, 24),
-		    (op.NOT, ['age'], op.EQ, '22', 23, 24),
-		    (op.NOT, [op.NOT, ['name'], op.EQ, 'Alex'], op.OR)
+			(['age']),
+			(op.NOT, ['age']),
+			(['age'], '22'),
+			(op.NOT, ['age'], '22'),
+			(['age'], op.EQ, '22', 23, 24),
+			(op.NOT, ['age'], op.EQ, '22', 23, 24),
+			(op.NOT, [op.NOT, ['name'], op.EQ, 'Alex'], op.OR),
+			(op.NOT, [op.NOT, ['name'], op.EQ, 'Alex'], op.OR, op.NOT)
 		]
 
 		for arg_set in arg_sets:

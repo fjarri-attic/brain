@@ -981,11 +981,15 @@ Search for objects in database which satisfy given conditions.
 ``condition``:
   One of three possibilities:
 
-  * List [``brain.op.NOT``, ] ``condition``, [[logical_operator, ``condition``, ] ... ]
+  * List ``condition``
 
-  * List [``brain.op.NOT``, ] `path`_, comparison_operator, value
+  * Tuple ``condition``
 
   * Empty list (only at root level, cannot be a part of condition)
+
+  Simple ``condition`` is a list [``brain.op.NOT``, ] `path`_, comparison_operator, value; complex
+  ``condition`` is a list [``brain.op.NOT``, ] ``condition``, [[logical_operator,
+  [``brain.op.NOT``, ] ``condition``, ] ... ], where each ``condition`` can be either simple or complex.
 
   On the root level, you may not wrap condition in a list, but rather just pass
   it as a tuple of arguments to function.
@@ -1003,9 +1007,9 @@ Search for objects in database which satisfy given conditions.
   Compound conditions are evaluated successively: ``[cond1, op1, cond2, op2, cond3]`` is evaluated
   as ``[[cond1, op1, cond2], op2, cond3]``.
 
-  In compound conditions ``NOT`` applies to the result of the whole condition, not to the first
-  operand: ``[NOT, cond1, op1, cond2, op2, cond3]`` is evaluated as
-  ``[NOT, [[cond1, op1, cond2], op2, cond3]]``.
+  In compound conditions ``NOT`` applies to the condition next to it:
+  ``[NOT, cond1, op1, cond2, op2, NOT, cond3]`` is evaluated as
+  ``[[[NOT cond1], op1, cond2], op2, [NOT, cond3]]``.
 
 **Returns**: list of object IDs, satisfying given conditions (note that order can
 depend on DB engine).

@@ -147,3 +147,4 @@ Added support for insertion and deletion requests in nested lists.
   now using slightly more than one query per table affected
 * conflicts checking logic is slightly more strict now - creating list/map
   in place of value is considered a conflict too
+* changed search() behavior a little - now NOT acts more logically

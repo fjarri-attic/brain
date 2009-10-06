@@ -51,44 +51,60 @@ def _isNotSearchCondition(arg):
 
 	return True
 
-def _listToSearchCondition(arg, engine, invert=False):
+def _getFirstSearchCondition(arg, position, engine):
+	"""
+	Find the first search condition in given list, starting from position,
+	construct Condition object and return tuple (condition, new_position)
+	"""
+
+	# check if condition is inverted
+	invert = False
+	shift = position
+	if arg[shift] == op.NOT:
+		invert = True
+		shift += 1
+
+	# if nothing else is left, there is an error in condition
+	if len(arg) == shift:
+		raise interface.FormatError("Wrong number of elements in search condition")
+
+	if _isNotSearchCondition(arg[shift]):
+	# simple condition (field-comparison-value)
+
+		if len(arg) - shift < 3:
+			raise interface.FormatError("Wrong number of elements in search condition")
+
+		value = Field(engine, [], arg[shift + 2])
+		field = Field(engine, arg[shift], type_str=value.type_str)
+		condition = interface.SearchRequest.Condition(field, arg[shift + 1], value, invert=invert)
+
+		return condition, position + 3 + shift
+	else:
+	# complex condition
+		condition = _listToSearchCondition(arg[shift], engine)
+		if invert:
+			condition.invert = not condition.invert
+
+		return condition, 1 + shift
+
+def _listToSearchCondition(arg, engine):
 	"""Recursively transform list to Condition object"""
 
 	if len(arg) == 0:
 		return None
 
-	shift = 0
-	if arg[0] == op.NOT:
-		invert = not invert
-		shift = 1
-
-	# if number of arguments is even, something is wrong
-	if (len(arg) - shift) % 2 == 0:
-		raise interface.FormatError("Wrong number of elements in search condition")
-
-	# condition should have one of two formats:
-	#   condition, [operator, condition, [...]]
-	#   path, comparison, value
-	if _isNotSearchCondition(arg[shift]):
-		if len(arg) - shift != 3:
+	# convolute long conditions starting from the beginning
+	# (result will depend on calculation order)
+	condition, position = _getFirstSearchCondition(arg, 0, engine)
+	while position < len(arg):
+		if len(arg) - position == 1:
 			raise interface.FormatError("Wrong number of elements in search condition")
-		field = Field(engine, arg[shift])
-		value = Field(engine, [], arg[shift + 2])
-		field.type_str = value.type_str
-		return interface.SearchRequest.Condition(field, arg[shift + 1], value, invert=invert)
-	else:
-		for i in range(shift, len(arg), 2):
-			if _isNotSearchCondition(arg[i]):
-				raise interface.FormatError("Wrong compound search condition")
+		operator = arg[position]
+		next_condition, position = _getFirstSearchCondition(arg, position + 1, engine)
+		condition = interface.SearchRequest.Condition(condition, operator,
+			next_condition)
 
-		result = _listToSearchCondition(arg[shift], engine)
-		for i in range(shift + 1, len(arg), 2):
-			operator = arg[i]
-			operand2 = _listToSearchCondition(arg[i + 1], engine)
-			result = interface.SearchRequest.Condition(result, operator, operand2)
-		if invert:
-			result.invert = not result.invert
-		return result
+	return condition
 
 @decorator
 def _transacted(func, obj, *args, **kwds):
