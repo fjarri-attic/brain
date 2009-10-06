@@ -1,10 +1,16 @@
+# Currently only py3k is supported
+import sys
+major, minor, micro, releaselevel, serial = sys.version_info
+if major != 3:
+	print("Python " + str(sys.version_info) + " is used; brain supports py3k only.")
+	sys.exit(1)
+
 try:
     from setuptools import setup
 except ImportError:
     from distutils.core import setup
 
 import os.path
-import sys
 
 from brain.test.doc import DOCUMENTATION
 
