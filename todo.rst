@@ -1,13 +1,15 @@
 Next release: 0.1.5
 ===================
 
+- create a caching connection and use it in fuzz tests
+
+Future
+======
+
 Add ability to use lambda as an argument to search()
 ----------------------------------------------------
 
 This will require some code-walking library.
-
-Future
-======
 
 Cross-references in text values
 -------------------------------
