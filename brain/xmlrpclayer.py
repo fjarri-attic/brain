@@ -23,9 +23,11 @@ class BrainXMLRPCError(brain.BrainError):
 	pass
 
 # methods, calls to which will be forwared to connection object
-_CONNECTION_METHODS = ['create', 'modify', 'read', 'delete', 'insert',
+_TRANSACTED_METHODS = ['create', 'modify', 'read', 'delete', 'insert',
 	'readByMask', 'readByMasks', 'insertMany', 'deleteMany', 'objectExists', 'search',
-	'begin', 'beginSync', 'beginAsync', 'commit', 'rollback', 'dump', 'repair']
+	'dump', 'repair']
+_PURE_METHODS = ['begin', 'beginSync', 'beginAsync', 'commit', 'rollback']
+_CONNECTION_METHODS = _PURE_METHODS + _TRANSACTED_METHODS
 
 
 class _Dispatcher:
@@ -87,7 +89,9 @@ class _Dispatcher:
 		"""Returns instance function object by name"""
 
 		func = None
-		if method_name in _CONNECTION_METHODS + ['close']:
+		if method_name in _TRANSACTED_METHODS:
+			func = getattr(brain.connection.Connection, "_prepare_" + method_name)
+		elif method_name in _PURE_METHODS + ['close']:
 			func = getattr(brain.connection.Connection, method_name)
 		elif method_name == 'connect':
 			func = brain.connect
