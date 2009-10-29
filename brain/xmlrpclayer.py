@@ -15,6 +15,7 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import brain
 from brain import FacadeError, FormatError, LogicError, StructureError
+from brain.connection import TransactedConnection
 from brain.xmlrpchelpers import MyXMLRPCServer, MyServerProxy, MyMultiCall
 
 class BrainXMLRPCError(brain.BrainError):
@@ -184,72 +185,45 @@ class Client:
 		return _RemoteConnection(self._client, *args, **kwds)
 
 
-class _RemoteConnection:
+class _RemoteConnection(TransactedConnection):
 	"""Class which mimics local DB connection"""
 
 	def __init__(self, client, *args, **kwds):
+		TransactedConnection.__init__(self)
 		self._client = client
 		self._session_id = client.connect(*args, **kwds)
 		self._multicall = None
-		self._transaction = False
 
-	def __getattr__(self, name):
-		# close() will be called for connection object, but it should be passed to
-		# dispatcher, because it has to delete corresponding session after
-		# closing it
-		if name not in _CONNECTION_METHODS + ['close']:
-			raise AttributeError("Cannot find method " + str(name))
+	def _prepareRequest(self, name, *args, **kwds):
+		return name, args, kwds
 
-		# Pass method call to server, adding session ID to it
-		def wrapper_session(*args, **kwds):
-			return method(self._session_id, *args, **kwds)
+	def _handleRequests(self, requests):
 
-		if self._multicall is not None:
-			method = getattr(self._multicall, name)
-			return method
+		if self._multicall is None:
+			res = []
+			for name, args, kwds in requests:
+				res.append(getattr(self._client, name)(self._session_id, *args, **kwds))
+			return res
 		else:
-			method = getattr(self._client, name)
-			return wrapper_session
+			for name, args, kwds in requests:
+				getattr(self._multicall, name)(*args, **kwds)
+			return list(self._multicall())
 
 	def begin(self, sync):
-		if self._transaction:
-			raise FacadeError("Transaction is already in progress")
-
-		if sync:
-			self.__getattr__('beginSync')()
-		else:
+		if not sync:
 			self._multicall = MyMultiCall(self._client, self._session_id)
-			self._multicall.beginAsync()
+		TransactedConnection.begin(self, sync)
 
-		self._transaction = True
+	def _begin(self):
+		self._client.beginSync(self._session_id)
 
-	def beginSync(self):
-		self.begin(sync=True)
+	def _rollback(self):
+		self._multicall = None
+		self._client.rollback(self._session_id)
 
-	def beginAsync(self):
-		self.begin(sync=False)
+	def _commit(self):
+		self._multicall = None
+		self._client.commit(self._session_id)
 
-	def rollback(self):
-		if not self._transaction:
-			raise FacadeError("Transaction is not in progress")
-
-		self._transaction = False
-		if self._multicall is None:
-			self.__getattr__('rollback')()
-		else:
-			self._multicall = None
-
-	def commit(self):
-		if not self._transaction:
-			raise FacadeError("Transaction is not in progress")
-		self._transaction = False
-
-		if self._multicall is None:
-			return self.__getattr__('commit')()
-		else:
-			try:
-				self._multicall.commit()
-				res = list(self._multicall())
-				return res[-1]
-			finally:
-				self._multicall = None
+	def close(self):
+		self._client.close(self._session_id)

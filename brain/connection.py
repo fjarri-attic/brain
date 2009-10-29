@@ -160,10 +160,10 @@ class TransactedConnection:
 		"""
 		self.begin(sync=True)
 
-	def __prepareRequest(self, name, *args, **kwds):
+	def _prepareRequest(self, name, *args, **kwds):
 		return self.__getattribute__("_prepare_" + name)(*args, **kwds)
 
-	def __processResult(self, name, result):
+	def _processResult(self, name, result):
 		try:
 			return self.__getattribute__("_process_" + name)(result)
 		except AttributeError:
@@ -184,23 +184,25 @@ class TransactedConnection:
 			finally:
 				self.__sync = False
 		else:
+			prepared_requests = []
+			names = []
+			for name, args, kwds in self.__requests:
+				names.append(name)
+				prepared_requests.append(self._prepareRequest(
+					name, *args, **kwds))
+
+			self._begin()
 			try:
-				prepared_requests = []
-				names = []
-				for name, args, kwds in self.__requests:
-					names.append(name)
-					prepared_requests.append(self.__prepareRequest(
-						name, *args, **kwds))
-
 				results = self._handleRequests(prepared_requests)
-
-				return [self.__processResult(name, result) for name, result
-					in zip(names, results)]
 			except:
-				self._rollback()
+				self._onError()
 				raise
 			finally:
 				self.__requests = []
+			self._commit()
+
+			return [self._processResult(name, result) for name, result
+				in zip(names, results)]
 
 	def rollback(self):
 		"""Rollback current transaction"""
@@ -213,6 +215,10 @@ class TransactedConnection:
 		else:
 			self.__requests = []
 
+	def _onError(self):
+		self.__transaction = False
+		self.__requests = []
+
 	def __transacted(self, name, *args, **kwds):
 
 		if self.__sync:
@@ -220,11 +226,11 @@ class TransactedConnection:
 
 			# try to process request, rollback on error
 			try:
-				prepared_request = self.__prepareRequest(name, *args, **kwds)
+				prepared_request = self._prepareRequest(name, *args, **kwds)
 				results = self._handleRequests([prepared_request])
-				processed = self.__processResult(name, results[0])
+				processed = self._processResult(name, results[0])
 			except:
-				self.rollback()
+				self._onError()
 				raise
 
 			return processed
@@ -263,6 +269,10 @@ class Connection(TransactedConnection):
 
 	def _rollback(self):
 		self._engine.rollback()
+
+	def _onError(self):
+		self._rollback()
+		TransactedConnection._onError(self)
 
 	def _handleRequests(self, requests):
 		"""Start/stop transaction, handle exceptions"""
