@@ -199,18 +199,26 @@ class _RemoteConnection(TransactedConnection):
 		self._multicall = None
 
 	def _prepareRequest(self, name, *args, **kwds):
-		return name, args, kwds
+
+		def wrapper(*args, **kwds):
+			return method(self._session_id, *args, **kwds)
+
+		if self._multicall is None:
+			method = getattr(self._client, name)
+			return wrapper, args, kwds
+		else:
+			return getattr(self._multicall, name), args, kwds
 
 	def _handleRequests(self, requests):
 
 		if self._multicall is None:
 			res = []
-			for name, args, kwds in requests:
-				res.append(getattr(self._client, name)(self._session_id, *args, **kwds))
+			for handler, args, kwds in requests:
+				res.append(handler(*args, **kwds))
 			return res
 		else:
-			for name, args, kwds in requests:
-				getattr(self._multicall, name)(*args, **kwds)
+			for handler, args, kwds in requests:
+				handler(*args, **kwds)
 			return list(self._multicall())
 
 	def begin(self, sync):
@@ -225,9 +233,18 @@ class _RemoteConnection(TransactedConnection):
 		self._multicall = None
 		self._client.rollback(self._session_id)
 
+	def _onError(self):
+		self._multicall = None
+		TransactedConnection._onError(self)
+
 	def _commit(self):
 		self._multicall = None
 		self._client.commit(self._session_id)
+
+	def commit(self):
+		res = TransactedConnection.commit(self)
+		self._multicall = None
+		return res
 
 	def close(self):
 		self._client.close(self._session_id)

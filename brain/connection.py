@@ -142,6 +142,8 @@ class TransactedConnection:
 
 		if sync:
 			self._begin()
+		else:
+			self.__requests.append(('beginSync', (), {}))
 
 		self.__transaction = True
 		self.__sync = sync
@@ -186,23 +188,23 @@ class TransactedConnection:
 		else:
 			prepared_requests = []
 			names = []
-			for name, args, kwds in self.__requests:
-				names.append(name)
-				prepared_requests.append(self._prepareRequest(
-					name, *args, **kwds))
+			requests = self.__requests + [('commit', (), {})]
 
-			self._begin()
 			try:
+				for name, args, kwds in requests:
+					names.append(name)
+					prepared_requests.append(self._prepareRequest(
+						name, *args, **kwds))
+
 				results = self._handleRequests(prepared_requests)
 			except:
 				self._onError()
 				raise
 			finally:
 				self.__requests = []
-			self._commit()
 
 			return [self._processResult(name, result) for name, result
-				in zip(names, results)]
+				in zip(names[1:-1], results[1:-1])]
 
 	def rollback(self):
 		"""Rollback current transaction"""
@@ -270,6 +272,9 @@ class Connection(TransactedConnection):
 	def _rollback(self):
 		self._engine.rollback()
 
+	def _prepare_beginSync(self):
+		return self._begin, (), {}
+
 	def _onError(self):
 		self._rollback()
 		TransactedConnection._onError(self)
@@ -305,6 +310,9 @@ class Connection(TransactedConnection):
 		All uncommitted changes will be lost.
 		"""
 		self._engine.close()
+
+	def _prepare_commit(self):
+		return self._commit, (), {}
 
 	def _prepare_modify(self, id, path, value, remove_conflicts=None):
 		"""
