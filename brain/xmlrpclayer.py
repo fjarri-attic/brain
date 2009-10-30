@@ -213,22 +213,16 @@ class _RemoteConnection(TransactedConnection):
 
 	def _begin(self, sync):
 		if sync:
+			self._multicall = None
 			self._client.beginSync(self._session_id)
 		else:
 			self._multicall = MyMultiCall(self._client, self._session_id)
 
 	def _rollback(self):
-		self._multicall = None
 		self._client.rollback(self._session_id)
 
 	def _commit(self):
-		self._multicall = None
 		self._client.commit(self._session_id)
-
-	def commit(self):
-		res = TransactedConnection.commit(self)
-		self._multicall = None
-		return res
 
 	def close(self):
 		self._client.close(self._session_id)
