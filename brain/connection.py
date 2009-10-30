@@ -142,6 +142,7 @@ class TransactedConnection:
 
 		self._begin(sync)
 
+		self.__requests = []
 		self.__transaction = True
 		self.__sync = sync
 
@@ -200,8 +201,6 @@ class TransactedConnection:
 			except:
 				self._onError()
 				raise
-			finally:
-				self.__requests = []
 
 			return [self._processResult(name, result) for name, result
 				in zip(names[1:-1], results[1:-1])]
@@ -214,12 +213,9 @@ class TransactedConnection:
 		self.__transaction = False
 		if self.__sync:
 			self._rollback()
-		else:
-			self.__requests = []
 
 	def _onError(self):
 		self.__transaction = False
-		self.__requests = []
 
 	def __transacted(self, name, *args, **kwds):
 
