@@ -163,7 +163,10 @@ class TransactedConnection:
 		self.begin(sync=True)
 
 	def _prepareRequest(self, name, *args, **kwds):
-		return self.__getattribute__("_prepare_" + name)(*args, **kwds)
+		try:
+			return self.__getattribute__("_prepare_" + name)(*args, **kwds)
+		except AttributeError:
+			return args, kwds
 
 	def _processResult(self, name, result):
 		try:
@@ -193,8 +196,8 @@ class TransactedConnection:
 			try:
 				for name, args, kwds in requests:
 					names.append(name)
-					prepared_requests.append(self._prepareRequest(
-						name, *args, **kwds))
+					prepared_args, prepared_kwds = self._prepareRequest(name, *args, **kwds)
+					prepared_requests.append((name, prepared_args, prepared_kwds))
 
 				results = self._handleRequests(prepared_requests)
 			except:
@@ -223,30 +226,28 @@ class TransactedConnection:
 
 	def __transacted(self, name, *args, **kwds):
 
-		if self.__sync:
+		if not self.__transaction:
+			self.beginAsync()
+			self.__getattr__(name)(*args, **kwds)
+			return self.commit()[0]
+
+		elif self.__sync:
 		# synchronous transaction is currently in progress
 
 			# try to process request, rollback on error
 			try:
-				prepared_request = self._prepareRequest(name, *args, **kwds)
-				results = self._handleRequests([prepared_request])
+				prepared_args, prepared_kwds = self._prepareRequest(name, *args, **kwds)
+				results = self._handleRequests([(name, prepared_args, prepared_kwds)])
 				processed = self._processResult(name, results[0])
 			except:
 				self._onError()
 				raise
 
 			return processed
+
 		else:
-		# no transaction or asynchronous transaction
-
-			# if no transaction, create a new one
-			create_transaction = not self.__transaction
-
-			if create_transaction:
-				self.beginAsync()
+		# asynchronous transaction is currently in progress
 			self.__requests.append((name, args, kwds))
-			if create_transaction:
-				return self.commit()[0]
 
 	def __getattr__(self, name):
 		def handler(*args, **kwds):
@@ -263,6 +264,24 @@ class Connection(TransactedConnection):
 		self._logic = logic.LogicLayer(self._engine)
 		self._remove_conflicts = remove_conflicts
 
+		self._handlers = {
+			'commit': self._engine.commit,
+			'beginSync': self._begin,
+			'create': self._logic.processCreateRequest,
+			'read': self._logic.processReadRequest,
+			'readByMask': self._logic.processReadRequest,
+			'readByMasks': self._logic.processReadRequest,
+			'delete': self._logic.processDeleteRequest,
+			'deleteMany': self._logic.processDeleteRequest,
+			'search': self._logic.processSearchRequest,
+			'modify': self._logic.processModifyRequest,
+			'insert': self._logic.processInsertRequest,
+			'insertMany': self._logic.processInsertRequest,
+			'objectExists': self._logic.processObjectExistsRequest,
+			'dump': self._logic.processDumpRequest,
+			'repair': self._logic.processRepairRequest
+		}
+
 	def _begin(self):
 		self._engine.begin()
 
@@ -271,9 +290,6 @@ class Connection(TransactedConnection):
 
 	def _rollback(self):
 		self._engine.rollback()
-
-	def _prepare_beginSync(self):
-		return self._begin, (), {}
 
 	def _onError(self):
 		self._rollback()
@@ -284,8 +300,8 @@ class Connection(TransactedConnection):
 
 		# Handle request inside a transaction
 		res = []
-		for handler, handler_args, handler_kwds in requests:
-			res.append(handler(*handler_args, **handler_kwds))
+		for name, args, kwds in requests:
+			res.append(self._handlers[name](*args, **kwds))
 		return res
 
 	def _process_read(self, result):
@@ -311,9 +327,6 @@ class Connection(TransactedConnection):
 		"""
 		self._engine.close()
 
-	def _prepare_commit(self):
-		return self._commit, (), {}
-
 	def _prepare_modify(self, id, path, value, remove_conflicts=None):
 		"""
 		Modify existing object.
@@ -330,8 +343,7 @@ class Connection(TransactedConnection):
 			remove_conflicts = self._remove_conflicts
 
 		fields = [Field(self._engine, path, val) for path, val in treeToPaths(value)]
-		return self._logic.processModifyRequest, \
-			(interface.ModifyRequest(id, Field(self._engine, path), fields, remove_conflicts),), {}
+		return (interface.ModifyRequest(id, Field(self._engine, path), fields, remove_conflicts),), {}
 
 	def _prepare_read(self, id, path=None, masks=None):
 		"""
@@ -349,8 +361,7 @@ class Connection(TransactedConnection):
 				for mask in masks:
 					mask.addNamePrefix(path.name)
 
-		return self._logic.processReadRequest, (interface.ReadRequest(id,
-			path=path, masks=masks),), {}
+		return (interface.ReadRequest(id, path=path, masks=masks),), {}
 
 	def _prepare_readByMask(self, id, mask=None):
 		"""
@@ -401,7 +412,7 @@ class Connection(TransactedConnection):
 			for field in field_group:
 				field.addNamePrefix(request.path.name)
 
-		return self._logic.processInsertRequest, (request,), {}
+		return (request,), {}
 
 	def _prepare_delete(self, id, path=None):
 		"""
@@ -417,9 +428,8 @@ class Connection(TransactedConnection):
 		id - object ID
 		paths - list of paths to delete
 		"""
-		return self._logic.processDeleteRequest, (interface.DeleteRequest(id,
-			[Field(self._engine, path) for path in paths] if paths is not None else None
-		),), {}
+		return (interface.DeleteRequest(id, [Field(self._engine, path) for path in paths]
+			if paths is not None else None),), {}
 
 	def _prepare_search(self, *condition):
 		"""
@@ -439,7 +449,7 @@ class Connection(TransactedConnection):
 		if request.condition is not None:
 			_propagateInversion(request.condition)
 
-		return self._logic.processSearchRequest, (request,), {}
+		return (request,), {}
 
 	def _prepare_create(self, data, path=None):
 		"""
@@ -455,7 +465,7 @@ class Connection(TransactedConnection):
 		for field in fields:
 			field.addNamePrefix(path)
 
-		return self._logic.processCreateRequest, (interface.CreateRequest(fields),), {}
+		return (interface.CreateRequest(fields),), {}
 
 	def _prepare_objectExists(self, id):
 		"""
@@ -463,15 +473,15 @@ class Connection(TransactedConnection):
 		id - object ID
 		Returns True or False.
 		"""
-		return self._logic.processObjectExistsRequest, (interface.ObjectExistsRequest(id),), {}
+		return (interface.ObjectExistsRequest(id),), {}
 
 	def _prepare_dump(self):
 		"""
 		Dump the whole database contents.
 		Returns list [obj_id1, contents1, obj_id2, contents2, ...]
 		"""
-		return self._logic.processDumpRequest, (interface.DumpRequest(),), {}
+		return (interface.DumpRequest(),), {}
 
 	def _prepare_repair(self):
 		"""Rebuild caching tables in database using existing contents."""
-		return self._logic.processRepairRequest, (interface.RepairRequest(),), {}
+		return (interface.RepairRequest(),), {}
