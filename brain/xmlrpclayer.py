@@ -221,10 +221,6 @@ class _RemoteConnection(TransactedConnection):
 		self._multicall = None
 		self._client.rollback(self._session_id)
 
-	def _onError(self):
-		self._multicall = None
-		TransactedConnection._onError(self)
-
 	def _commit(self):
 		self._multicall = None
 		self._client.commit(self._session_id)
