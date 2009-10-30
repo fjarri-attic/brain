@@ -211,13 +211,11 @@ class _RemoteConnection(TransactedConnection):
 				getattr(self._multicall, name)(*args, **kwds)
 			return list(self._multicall())
 
-	def begin(self, sync):
-		if not sync:
+	def _begin(self, sync):
+		if sync:
+			self._client.beginSync(self._session_id)
+		else:
 			self._multicall = MyMultiCall(self._client, self._session_id)
-		TransactedConnection.begin(self, sync)
-
-	def _begin(self):
-		self._client.beginSync(self._session_id)
 
 	def _rollback(self):
 		self._multicall = None

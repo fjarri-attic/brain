@@ -140,10 +140,7 @@ class TransactedConnection:
 		if self.__transaction:
 			raise interface.FacadeError("Transaction is already in progress")
 
-		if sync:
-			self._begin()
-		else:
-			self.__requests.append(('beginSync', (), {}))
+		self._begin(sync)
 
 		self.__transaction = True
 		self.__sync = sync
@@ -191,7 +188,7 @@ class TransactedConnection:
 		else:
 			prepared_requests = []
 			names = []
-			requests = self.__requests + [('commit', (), {})]
+			requests = [('begin', (), {'sync': True})] + self.__requests + [('commit', (), {})]
 
 			try:
 				for name, args, kwds in requests:
@@ -266,7 +263,7 @@ class Connection(TransactedConnection):
 
 		self._handlers = {
 			'commit': self._engine.commit,
-			'beginSync': self._begin,
+			'begin': self._begin,
 			'create': self._logic.processCreateRequest,
 			'read': self._logic.processReadRequest,
 			'readByMask': self._logic.processReadRequest,
@@ -282,8 +279,9 @@ class Connection(TransactedConnection):
 			'repair': self._logic.processRepairRequest
 		}
 
-	def _begin(self):
-		self._engine.begin()
+	def _begin(self, sync):
+		if sync:
+			self._engine.begin()
 
 	def _commit(self):
 		self._engine.commit()
