@@ -34,7 +34,8 @@ def connect(engine_tag, *args, remove_conflicts=False, **kwds):
 
 	engine_obj = engine_class(*args, **engine_kwds)
 
-	return Connection(engine_obj, remove_conflicts=remove_conflicts)
+	conn = Connection(engine_obj, remove_conflicts=remove_conflicts)
+	return CachedConnection(conn)
 
 def _isNotSearchCondition(arg):
 	"""
@@ -479,3 +480,30 @@ class Connection(TransactedConnection):
 	def _prepare_repair(self):
 		"""Rebuild caching tables in database using existing contents."""
 		return (interface.RepairRequest(),), {}
+
+
+class CachedConnection(TransactedConnection):
+
+	def __init__(self, conn):
+		TransactedConnection.__init__(self)
+		self._conn = conn
+		self._cache = {}
+
+	def _begin(self, sync):
+		if sync:
+			self._conn.beginSync()
+
+	def _commit(self):
+		self._conn.commit()
+
+	def _rollback(self):
+		self._conn.rollback()
+
+	def close(self):
+		self._conn.close()
+
+	def _handleRequests(self, requests):
+		res = []
+		for name, args, kwds in requests:
+			res.append(getattr(self._conn, name)(*args, **kwds))
+		return res
