@@ -28,8 +28,7 @@ def saveToTree(obj, ptr, path, value, remove_conflicts=False):
 
 	if len(path) == 0:
 	# if we are in leaf now, store value
-		if (value != [] and value != {}) or obj[ptr] is None:
-			obj[ptr] = value
+		obj[ptr] = value
 	else:
 	# if not, create required structure and call this function recursively
 		if obj[ptr] is None:
@@ -53,7 +52,16 @@ def pathsToTree(fields):
 	# we need some starting object, whose pointer we can pass to recursive saveTo()
 	res = []
 
-	for path, value in fields:
+	# sort fields before saving to dictionary
+	# sort criterion: shorter paths go before longer paths
+	# This sort gives us an ability to store {}s and []s without any checks,
+	# because now they cannot rewrite already created dictionary or list
+	# (because their elements will have longer paths)
+	def key(field_tuple):
+		path, value = field_tuple
+		return len(path)
+
+	for path, value in sorted(fields, key=key):
 		saveToTree(res, 0, path, value)
 
 	# get rid of temporary root object and return only its first element
