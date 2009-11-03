@@ -2,7 +2,7 @@
 Facade for database - contains connect() and Connection class
 """
 
-import functools
+import copy
 import inspect
 
 from . import interface, logic, engine, op
@@ -33,9 +33,7 @@ def connect(engine_tag, *args, remove_conflicts=False, **kwds):
 			engine_kwds[key] = kwds[key]
 
 	engine_obj = engine_class(*args, **engine_kwds)
-
-	conn = Connection(engine_obj, remove_conflicts=remove_conflicts)
-	return CachedConnection(conn)
+	return Connection(engine_obj, remove_conflicts=remove_conflicts)
 
 def _isNotSearchCondition(arg):
 	"""
@@ -492,23 +490,246 @@ class CachedConnection(TransactedConnection):
 	def __init__(self, conn):
 		TransactedConnection.__init__(self)
 		self._conn = conn
-		self._cache = {}
+		self._root = {}
+
+		# FIXME: removed usage of hidden attribute
+		self._remove_conflicts = self._conn._remove_conflicts
 
 	def _begin(self, sync):
+		self._created_objects = set()
+		self._modified_objects = {}
+		self._sync = sync
 		if sync:
 			self._conn.beginSync()
 
 	def _commit(self):
 		self._conn.commit()
 
+	def _undo(self):
+		for id in self._created_objects:
+			del self._root[id]
+		for id in self._modified_objects:
+			self._root[id] = self._modified_objects[id]
+
 	def _rollback(self):
+		self._undo()
 		self._conn.rollback()
 
 	def close(self):
 		self._conn.close()
 
+	def _deleteAll(self, obj, path):
+		"""Delete all values from given path"""
+		if path[0] is None and isinstance(obj, list):
+			if len(path) == 1:
+				obj[:] = []
+			else:
+				for i in range(len(obj)):
+					self._deleteAll(obj[i], path[1:])
+		elif (isinstance(path[0], str) and isinstance(obj, dict) and path[0] in obj.keys()) or \
+				(isinstance(path[0], int) and isinstance(obj, list) and path[0] < len(obj)):
+			if len(path) == 1:
+				del obj[path[0]]
+			else:
+				self._deleteAll(obj[path[0]], path[1:])
+
+	def _memorize_created(self, id):
+		if id not in self._created_objects and id not in self._modified_objects:
+			self._created_objects.add(id)
+
+	def _memorize_modified(self, id):
+		if id not in self._created_objects and id not in self._modified_objects:
+			self._modified_objects[id] = self._root[id]
+
+	def _cached_create(self, id, data, path=None):
+		self._memorize_created(id)
+
+		if path is None:
+			path = []
+
+		saveToTree(self._root, id, path, copy.deepcopy(data))
+
+	def _cached_modify(self, id, path, value, remove_conflicts=None):
+		self._memorize_modified(id)
+
+		if path is None:
+			path = []
+		if remove_conflicts is None:
+			remove_conflicts = self._remove_conflicts
+		saveToTree(self._root, id, path, copy.deepcopy(value),
+			remove_conflicts=remove_conflicts)
+
+	def _cached_insert(self, id, path, value, remove_conflicts=None):
+		self._cached_insertMany(id, path, [value], remove_conflicts=remove_conflicts)
+
+	def _cached_insertMany(self, id, path, values, remove_conflicts=None):
+		self._memorize_modified(id)
+
+		if remove_conflicts is None:
+			remove_conflicts = self._remove_conflicts
+
+		values = [copy.deepcopy(value) for value in values]
+
+		if remove_conflicts:
+			self._cached_modify(id, path[:-1], [], remove_conflicts=True)
+
+		try:
+			target = getNodeByPath(self._root[id], path[:-1])
+		except:
+			saveToTree(self._root, id, path[:-1], [])
+			target = getNodeByPath(self._root[id], path[:-1])
+		index = path[-1]
+
+		if index is not None and index > len(target):
+			for i in range(len(target), index):
+				target.append(None)
+
+		if index is None:
+			for value in values:
+				target.append(value)
+		else:
+			for value in reversed(values):
+				target.insert(index, value)
+
+	def _cached_delete(self, id, path=None):
+		self._cached_deleteMany(id, paths=[path] if path is not None else None)
+
+	def _cached_deleteMany(self, id, paths=None):
+		self._memorize_modified(id)
+		if paths is None:
+			del self._root[id]
+		else:
+			for path in paths:
+				self._deleteAll(self._root[id], path)
+
+	def _cached_readByMask(self, id, mask=None):
+		return self._cached_read(id, path=None, masks=[mask] if mask is not None else None)
+
+	def _cached_readByMasks(self, id, masks=None):
+		return self._cached_read(id, path=None, masks=masks)
+
+	def _cached_read(self, id, path=None, masks=None):
+		if path is None:
+			path = []
+
+		try:
+			res = getNodeByPath(self._root, [id] + path)
+		except:
+			raise interface.LogicError("Object " + str(id) + " does not have field " +
+				str(path))
+
+		if masks is not None:
+			fields = treeToPaths(res)
+			res_fields = []
+			for field_path, value in fields:
+				for mask in masks:
+					if pathMatchesMask(field_path, mask):
+						res_fields.append((field_path, value))
+						break
+
+			if len(res_fields) == 0:
+				raise interface.LogicError("Object " + str(id) +
+					" does not have fields matching given masks")
+
+			res = pathsToTree(res_fields)
+
+		return copy.deepcopy(res)
+
+	def _cached_objectExists(self, id):
+		return id in self._root
+
+	def _onError(self):
+		self._undo()
+		TransactedConnection._onError(self)
+
 	def _handleRequests(self, requests):
-		res = []
-		for name, args, kwds in requests:
-			res.append(getattr(self._conn, name)(*args, **kwds))
-		return res
+		if self._sync:
+			results = []
+			for name, args, kwds in requests:
+				result = None
+				if name == 'create':
+					result = self._conn.create(*args, **kwds)
+					self._cached_create(result, *args, **kwds)
+				elif name in ['modify', 'insert', 'insertMany', 'delete', 'deleteMany']:
+					getattr(self._conn, name)(*args, **kwds)
+					id = args[0]
+					if id not in self._root:
+						self._root[id] = self._conn.read(id)
+					getattr(self, "_cached_" + name)(*args, **kwds)
+				elif name == 'objectExists':
+					id = args[0]
+					if id not in self._root:
+						result = self._conn.objectExists(id)
+					else:
+						result = True
+				elif name == 'repair':
+					self._root = {}
+					self._conn.repair()
+				elif name in ['read', 'readByMask', 'readByMasks']:
+					id = args[0]
+					if id not in self._root:
+						self._root[id] = self._conn.read(id)
+					result = getattr(self, "_cached_" + name)(*args, **kwds)
+				else:
+					result = getattr(self._conn, name)(*args, **kwds)
+
+				results.append(result)
+			return results
+		else:
+			cached_ids = set()
+			for request_num, elem in enumerate(requests):
+				name, args, kwds = elem
+				if name == 'commit':
+					raw_results = self._conn.commit()
+				elif name in ['modify', 'insert', 'insertMany', 'delete', 'deleteMany']:
+					id = args[0]
+					if id not in self._root and id not in cached_ids:
+						self._conn.read(id)
+						cached_ids.add(id)
+					getattr(self._conn, name)(*args, **kwds)
+				elif name in ['read', 'readByMask', 'readByMasks']:
+					id = args[0]
+					if id not in self._root and id not in cached_ids:
+						self._conn.read(id)
+						cached_ids.add(id)
+				elif name == 'objectExists':
+					id = args[0]
+					if id not in self._root and id not in cached_ids:
+						getattr(self._conn, name)(*args, **kwds)
+				else:
+					getattr(self._conn, name)(*args, **kwds)
+
+			raw_results = [None] + list(reversed(raw_results)) + [None]
+			results = []
+			for request_num, elem in enumerate(requests):
+				name, args, kwds = elem
+				result = None
+				if name == 'create':
+					new_id = raw_results.pop()
+					self._cached_create(new_id, *args, **kwds)
+					result = new_id
+				elif name in ['modify', 'insert', 'insertMany', 'delete', 'deleteMany']:
+					id = args[0]
+					if id in cached_ids:
+						self._root[id] = raw_results.pop()
+						cached_ids.remove(id)
+					getattr(self, "_cached_" + name)(*args, **kwds)
+					raw_results.pop()
+				elif name == 'objectExists':
+					id = args[0]
+					if id in cached_ids or id in self._root:
+						result = True
+					else:
+						result = raw_results.pop()
+				elif name in ['read', 'readByMask', 'readByMasks']:
+					id = args[0]
+					if id in cached_ids:
+						result = raw_results.pop()
+						cached_ids.remove(id)
+					result = getattr(self, "_cached_" + name)(*args, **kwds)
+				else:
+					result = raw_results.pop()
+
+				results.append(result)
+
+			return [None] * (len(results) - 1) + [results[1:-1]]
