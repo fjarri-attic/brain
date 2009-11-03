@@ -15,6 +15,17 @@ class XMLRPCGenerator:
 		return getattr(self._client, name)
 
 
+class CachedGenerator:
+	"""Class which mimics brain interface"""
+
+	def __getattr__(self, name):
+		return getattr(brain, name)
+
+	def connect(self, *args, **kwds):
+		conn = brain.connect(*args, **kwds)
+		return brain.CachedConnection(conn)
+
+
 def suite(db_path, all_engines=False, all_storages=False,
 	all_connections=False, server_address=None):
 
@@ -35,7 +46,8 @@ def getEngineTestSuites(db_path, all_engines=False, all_storages=False,
 
 	if all_connections:
 		connection_generators = {'local': brain,
-			'xmlrpc': XMLRPCGenerator(server_address)}
+			'xmlrpc': XMLRPCGenerator(server_address),
+			'cached': CachedGenerator()}
 	else:
 		connection_generators = {'local': brain}
 
