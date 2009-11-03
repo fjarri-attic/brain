@@ -190,7 +190,7 @@ class TransactedConnection:
 		else:
 			prepared_requests = []
 			names = []
-			requests = [('begin', (), {'sync': True})] + self.__requests + [('commit', (), {})]
+			requests = [('begin', (), {'sync': False})] + self.__requests + [('commit', (), {})]
 
 			try:
 				for name, args, kwds in requests:
@@ -198,13 +198,13 @@ class TransactedConnection:
 					prepared_args, prepared_kwds = self._prepareRequest(name, *args, **kwds)
 					prepared_requests.append((name, prepared_args, prepared_kwds))
 
-				results = self._handleRequests(prepared_requests)
+				results = self._handleRequests(prepared_requests)[-1]
 			except:
 				self._onError()
 				raise
 
 			return [self._processResult(name, result) for name, result
-				in zip(names[1:-1], results[1:-1])]
+				in zip(names[1:-1], results)]
 
 	def rollback(self):
 		"""Rollback current transaction"""
@@ -257,6 +257,7 @@ class Connection(TransactedConnection):
 		self._engine = engine
 		self._logic = logic.LogicLayer(self._engine)
 		self._remove_conflicts = remove_conflicts
+		self._sync = False
 
 		self._handlers = {
 			'commit': self._engine.commit,
@@ -277,6 +278,7 @@ class Connection(TransactedConnection):
 		}
 
 	def _begin(self, sync):
+		self._sync = sync
 		if sync:
 			self._engine.begin()
 
@@ -297,7 +299,10 @@ class Connection(TransactedConnection):
 		res = []
 		for name, args, kwds in requests:
 			res.append(self._handlers[name](*args, **kwds))
-		return res
+		if self._sync:
+			return res
+		else:
+			return [None] * (len(res) - 1) + [res[1:-1]]
 
 	def _process_read(self, result):
 		return pathsToTree([(field.name, field.py_value) for field in result])
