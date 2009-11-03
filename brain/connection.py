@@ -259,7 +259,7 @@ class Connection(TransactedConnection):
 
 		self._handlers = {
 			'commit': self._engine.commit,
-			'begin': self._begin,
+			'begin': self._fake_begin,
 			'create': self._logic.processCreateRequest,
 			'read': self._logic.processReadRequest,
 			'readByMask': self._logic.processReadRequest,
@@ -279,6 +279,9 @@ class Connection(TransactedConnection):
 		self._sync = sync
 		if sync:
 			self._engine.begin()
+
+	def _fake_begin(self, sync):
+		self._engine.begin()
 
 	def _commit(self):
 		self._engine.commit()
