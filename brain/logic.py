@@ -597,6 +597,10 @@ class _StructureLayer:
 
 		fields_info = self.getFieldsInfo(id, masks, include_refcounts=True)
 
+		# raise exception is someone tries to delete non-existent object
+		if masks is None and len(fields_info) == 0:
+			raise interface.LogicError("Object " + str(id) + " does not exist")
+
 		to_delete = []
 		to_add = []
 		for fields, refcount in fields_info:

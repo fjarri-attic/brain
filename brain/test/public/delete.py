@@ -216,9 +216,9 @@ class Delete(TestRequest):
 		self.assertEqual(res, [self.id1])
 
 	def testNonExistingObject(self):
-		"""Check that deletion of non-existing object does not raise anything"""
+		"""Check that deletion of non-existing object raises error"""
 		self.prepareStandNoList()
-		self.conn.delete(6)
+		self.assertRaises(brain.LogicError, self.conn.delete, 6)
 
 	def testSeveralTypesAtOnce(self):
 		"""Check that values of different types can be deleted at once by mask"""
