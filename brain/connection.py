@@ -256,6 +256,7 @@ class Connection(TransactedConnection):
 		self._logic = logic.LogicLayer(self._engine)
 		self._remove_conflicts = remove_conflicts
 		self._sync = False
+		self._in_tr = False
 
 		self._handlers = {
 			'commit': self._engine.commit,
@@ -278,19 +279,24 @@ class Connection(TransactedConnection):
 	def _begin(self, sync):
 		self._sync = sync
 		if sync:
+			self._in_tr = True
 			self._engine.begin()
 
 	def _fake_begin(self, sync):
+		self._in_tr = True
 		self._engine.begin()
 
 	def _commit(self):
 		self._engine.commit()
+		self._in_tr = False
 
 	def _rollback(self):
 		self._engine.rollback()
+		self._in_tr = False
 
 	def _onError(self):
-		self._rollback()
+		if self._in_tr:
+			self._rollback()
 		TransactedConnection._onError(self)
 
 	def _handleRequests(self, requests):
