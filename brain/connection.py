@@ -9,6 +9,11 @@ from . import interface, logic, engine, op
 from .interface import Field
 from .data import *
 
+# methods, which should be handled using the transaction logic
+TRANSACTED_METHODS = ['create', 'modify', 'read', 'delete', 'insert',
+	'readByMask', 'readByMasks', 'insertMany', 'deleteMany', 'objectExists', 'search',
+	'dump', 'repair']
+
 def connect(engine_tag, *args, remove_conflicts=False, **kwds):
 	"""
 	Connect to database.
@@ -249,6 +254,10 @@ class TransactedConnection:
 			self.__requests.append((name, args, kwds))
 
 	def __getattr__(self, name):
+
+		if name not in TRANSACTED_METHODS:
+			raise AttributeError("Unknown transacted method: " + name)
+
 		def handler(*args, **kwds):
 			return self.__transacted(name, *args, **kwds)
 

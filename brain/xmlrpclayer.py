@@ -15,7 +15,7 @@ sys.path.append(os.path.join(scriptdir, ".."))
 
 import brain
 from brain import FacadeError, FormatError, LogicError, StructureError
-from brain.connection import TransactedConnection
+from brain.connection import TransactedConnection, TRANSACTED_METHODS
 from brain.xmlrpchelpers import MyXMLRPCServer, MyServerProxy, MyMultiCall
 
 class BrainXMLRPCError(brain.BrainError):
@@ -23,11 +23,8 @@ class BrainXMLRPCError(brain.BrainError):
 	pass
 
 # methods, calls to which will be forwared to connection object
-_TRANSACTED_METHODS = ['create', 'modify', 'read', 'delete', 'insert',
-	'readByMask', 'readByMasks', 'insertMany', 'deleteMany', 'objectExists', 'search',
-	'dump', 'repair']
 _PURE_METHODS = ['begin', 'beginSync', 'beginAsync', 'commit', 'rollback']
-_CONNECTION_METHODS = _PURE_METHODS + _TRANSACTED_METHODS
+_CONNECTION_METHODS = _PURE_METHODS + TRANSACTED_METHODS
 
 
 class _Dispatcher:
@@ -89,7 +86,7 @@ class _Dispatcher:
 		"""Returns instance function object by name"""
 
 		func = None
-		if method_name in _TRANSACTED_METHODS:
+		if method_name in TRANSACTED_METHODS:
 			func = getattr(brain.connection.Connection, "_prepare_" + method_name)
 		elif method_name in _PURE_METHODS + ['close']:
 			func = getattr(brain.connection.Connection, method_name)
