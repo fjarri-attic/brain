@@ -132,6 +132,10 @@ def _propagateInversion(condition):
 
 
 class TransactedConnection:
+	"""
+	Class which implemets basic transaction logic
+	(including special logic for synchronous and asynchronous transactions).
+	"""
 
 	def __init__(self):
 		self.__transaction = False
@@ -165,12 +169,22 @@ class TransactedConnection:
 		self.begin(sync=True)
 
 	def _prepareRequest(self, name, *args, **kwds):
+		"""
+		Default function which is called in order to prepare transacted request
+		parameters for processing. By default it tries to call specific method,
+		and if it is not found, it returns initial arguments.
+		"""
 		try:
 			return self.__getattribute__("_prepare_" + name)(*args, **kwds)
 		except AttributeError:
 			return args, kwds
 
 	def _processResult(self, name, result):
+		"""
+		Default function which is called in order to process transacted request
+		result. By default it tries to call specific method,
+		and if it is not found, it returns untouched result.
+		"""
 		try:
 			return self.__getattribute__("_process_" + name)(result)
 		except AttributeError:
@@ -185,27 +199,41 @@ class TransactedConnection:
 			raise interface.FacadeError("Transaction is not in progress")
 
 		self.__transaction = False
+
 		if self.__sync:
+		# Synchronous transaction - just try to commit whatever was done
 			try:
 				self._commit()
 			finally:
 				self.__sync = False
 		else:
+		# Asynchronous transaction
 			prepared_requests = []
 			names = []
+
+			# Add synchronous begin and commit to requests
+			# (so that they are processed in a single function
+			# with other requests)
 			requests = [('begin', (), {'sync': False})] + self.__requests + [('commit', (), {})]
 
 			try:
+				# prepare request parameters
 				for name, args, kwds in requests:
 					names.append(name)
 					prepared_args, prepared_kwds = self._prepareRequest(name, *args, **kwds)
 					prepared_requests.append((name, prepared_args, prepared_kwds))
 
-				results = self._handleRequests(prepared_requests)[-1]
+				# process all requests, from begin to commit in a single function
+				# (derived class can have an ability to process several requests
+				# faster, if it knows that they are successive)
+				results = self._handleRequests(prepared_requests)
 			except:
+				# give derived class a chance to clean up failed transaction
 				self._onError()
 				raise
 
+			# return processed results (except for results of begin and commit,
+			# which do not return anything - because the begin() was synchronous)
 			return [self._processResult(name, result) for name, result
 				in zip(names[1:-1], results)]
 
@@ -219,6 +247,7 @@ class TransactedConnection:
 			self._rollback()
 
 	def _onError(self):
+		"""Default transaction error handler"""
 		self.__transaction = False
 
 	def close(self):
@@ -229,8 +258,10 @@ class TransactedConnection:
 		self._close()
 
 	def __transacted(self, name, *args, **kwds):
+		"""Transacted method handler"""
 
 		if not self.__transaction:
+		# if transaction is not started, start the asynchronous transaction
 			self.beginAsync()
 			self.__getattr__(name)(*args, **kwds)
 			return self.commit()[0]
@@ -238,12 +269,12 @@ class TransactedConnection:
 		elif self.__sync:
 		# synchronous transaction is currently in progress
 
-			# try to process request, rollback on error
 			try:
 				prepared_args, prepared_kwds = self._prepareRequest(name, *args, **kwds)
 				results = self._handleRequests([(name, prepared_args, prepared_kwds)])
 				processed = self._processResult(name, results[0])
 			except:
+				# give derived class a chance to clean up failed transaction
 				self._onError()
 				raise
 
@@ -254,14 +285,13 @@ class TransactedConnection:
 			self.__requests.append((name, args, kwds))
 
 	def __getattr__(self, name):
+		"""Transacted methods handlers generator"""
 
 		if name not in TRANSACTED_METHODS:
 			raise AttributeError("Unknown transacted method: " + name)
 
-		def handler(*args, **kwds):
-			return self.__transacted(name, *args, **kwds)
+		return lambda *args, **kwds: self.__transacted(name, *args, **kwds)
 
-		return handler
 
 class Connection(TransactedConnection):
 	"""Main control class of the database"""
@@ -325,7 +355,7 @@ class Connection(TransactedConnection):
 		if self._sync:
 			return res
 		else:
-			return [None] * (len(res) - 1) + [res[1:-1]]
+			return res[1:-1]
 
 	def _process_read(self, result):
 		return pathsToTree([(field.name, field.py_value) for field in result])
@@ -753,4 +783,4 @@ class CachedConnection(TransactedConnection):
 
 				results.append(result)
 
-			return [None] * (len(results) - 1) + [results[1:-1]]
+			return results[1:-1]

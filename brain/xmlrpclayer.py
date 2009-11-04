@@ -206,7 +206,7 @@ class _RemoteConnection(TransactedConnection):
 		else:
 			for name, args, kwds in requests:
 				getattr(self._multicall, name)(*args, **kwds)
-			return list(self._multicall())
+			return list(self._multicall())[-1]
 
 	def _begin(self, sync):
 		if sync:
