@@ -217,6 +217,10 @@ class TransactedConnection:
 		self.__transaction = False
 
 	def close(self):
+		"""
+		Disconnect from database.
+		All uncommitted changes will be lost.
+		"""
 		self._close()
 
 	def __transacted(self, name, *args, **kwds):
@@ -331,10 +335,6 @@ class Connection(TransactedConnection):
 		return result
 
 	def _close(self):
-		"""
-		Disconnect from database.
-		All uncommitted changes will be lost.
-		"""
 		self._engine.close()
 
 	def _prepare_modify(self, id, path, value, remove_conflicts=None):
