@@ -555,37 +555,22 @@ class Connection(TransactedConnection):
 		return (interface.RepairRequest(),), {}
 
 
-class CachedConnection(TransactedConnection):
+class ObjectCache:
 
-	def __init__(self, conn):
-		TransactedConnection.__init__(self)
-		self._conn = conn
+	def __init__(self, remove_conflicts=False):
 		self._root = {}
+		self._remove_conflicts = remove_conflicts
+		self.clear_undo_history()
 
-		# FIXME: removed usage of hidden attribute
-		self._remove_conflicts = self._conn._remove_conflicts
-
-	def _begin(self, sync):
-		self._created_objects = set()
-		self._modified_objects = {}
-		if sync:
-			self._conn.beginSync()
-
-	def _commit(self):
-		self._conn.commit()
-
-	def _undo(self):
+	def undo(self):
 		for id in self._created_objects:
 			del self._root[id]
 		for id in self._modified_objects:
 			self._root[id] = self._modified_objects[id]
 
-	def _rollback(self):
-		self._undo()
-		self._conn.rollback()
-
-	def close(self):
-		self._conn.close()
+	def clear_undo_history(self):
+		self._created_objects = set()
+		self._modified_objects = {}
 
 	def _deleteAll(self, obj, path):
 		"""Delete all values from given path"""
@@ -610,7 +595,7 @@ class CachedConnection(TransactedConnection):
 		if id not in self._created_objects and id not in self._modified_objects:
 			self._modified_objects[id] = self._root[id]
 
-	def _cached_create(self, id, data, path=None):
+	def create(self, id, data, path=None):
 		self._memorize_created(id)
 
 		if path is None:
@@ -618,7 +603,7 @@ class CachedConnection(TransactedConnection):
 
 		saveToTree(self._root, id, path, copy.deepcopy(data))
 
-	def _cached_modify(self, id, path, value, remove_conflicts=None):
+	def modify(self, id, path, value, remove_conflicts=None):
 		self._memorize_modified(id)
 
 		if path is None:
@@ -628,10 +613,10 @@ class CachedConnection(TransactedConnection):
 		saveToTree(self._root, id, path, copy.deepcopy(value),
 			remove_conflicts=remove_conflicts)
 
-	def _cached_insert(self, id, path, value, remove_conflicts=None):
-		self._cached_insertMany(id, path, [value], remove_conflicts=remove_conflicts)
+	def insert(self, id, path, value, remove_conflicts=None):
+		self.insertMany(id, path, [value], remove_conflicts=remove_conflicts)
 
-	def _cached_insertMany(self, id, path, values, remove_conflicts=None):
+	def insertMany(self, id, path, values, remove_conflicts=None):
 		self._memorize_modified(id)
 
 		if remove_conflicts is None:
@@ -640,7 +625,7 @@ class CachedConnection(TransactedConnection):
 		values = [copy.deepcopy(value) for value in values]
 
 		if remove_conflicts:
-			self._cached_modify(id, path[:-1], [], remove_conflicts=True)
+			self.modify(id, path[:-1], [], remove_conflicts=True)
 
 		try:
 			target = getNodeByPath(self._root[id], path[:-1])
@@ -660,10 +645,10 @@ class CachedConnection(TransactedConnection):
 			for value in reversed(values):
 				target.insert(index, value)
 
-	def _cached_delete(self, id, path=None):
-		self._cached_deleteMany(id, paths=[path] if path is not None else None)
+	def delete(self, id, path=None):
+		self.deleteMany(id, paths=[path] if path is not None else None)
 
-	def _cached_deleteMany(self, id, paths=None):
+	def deleteMany(self, id, paths=None):
 		self._memorize_modified(id)
 		if paths is None:
 			del self._root[id]
@@ -671,13 +656,13 @@ class CachedConnection(TransactedConnection):
 			for path in paths:
 				self._deleteAll(self._root[id], path)
 
-	def _cached_readByMask(self, id, mask=None):
-		return self._cached_read(id, path=None, masks=[mask] if mask is not None else None)
+	def readByMask(self, id, mask=None):
+		return self.read(id, path=None, masks=[mask] if mask is not None else None)
 
-	def _cached_readByMasks(self, id, masks=None):
-		return self._cached_read(id, path=None, masks=masks)
+	def readByMasks(self, id, masks=None):
+		return self.read(id, path=None, masks=masks)
 
-	def _cached_read(self, id, path=None, masks=None):
+	def read(self, id, path=None, masks=None):
 		if path is None:
 			path = []
 
@@ -704,11 +689,36 @@ class CachedConnection(TransactedConnection):
 
 		return copy.deepcopy(res)
 
-	def _cached_objectExists(self, id):
+	def objectExists(self, id):
 		return id in self._root
 
+
+class CachedConnection(TransactedConnection):
+
+	def __init__(self, conn):
+		TransactedConnection.__init__(self)
+		self._conn = conn
+
+		# FIXME: remove usage of hidden attribute
+		self._cache = ObjectCache(remove_conflicts=self._conn._remove_conflicts)
+
+	def _begin(self, sync):
+		self._cache.clear_undo_history()
+		if sync:
+			self._conn.beginSync()
+
+	def _commit(self):
+		self._conn.commit()
+
+	def _rollback(self):
+		self._cache.undo()
+		self._conn.rollback()
+
+	def close(self):
+		self._conn.close()
+
 	def _onError(self):
-		self._undo()
+		self._cache.undo()
 		TransactedConnection._onError(self)
 
 	def _handleRequests(self, requests):
@@ -718,13 +728,13 @@ class CachedConnection(TransactedConnection):
 				result = None
 				if name == 'create':
 					result = self._conn.create(*args, **kwds)
-					self._cached_create(result, *args, **kwds)
+					self._cache.create(result, *args, **kwds)
 				elif name in ['modify', 'insert', 'insertMany', 'delete', 'deleteMany']:
 					getattr(self._conn, name)(*args, **kwds)
 					id = args[0]
-					if id not in self._root:
+					if not self._cache.objectExists(id):
 						self._root[id] = self._conn.read(id)
-					getattr(self, "_cached_" + name)(*args, **kwds)
+					getattr(self._cache, name)(*args, **kwds)
 				elif name == 'objectExists':
 					id = args[0]
 					if id not in self._root:
@@ -736,9 +746,9 @@ class CachedConnection(TransactedConnection):
 					self._conn.repair()
 				elif name in ['read', 'readByMask', 'readByMasks']:
 					id = args[0]
-					if id not in self._root:
+					if not self._cache.objectExists(id):
 						self._root[id] = self._conn.read(id)
-					result = getattr(self, "_cached_" + name)(*args, **kwds)
+					result = getattr(self._cache, name)(*args, **kwds)
 				else:
 					result = getattr(self._conn, name)(*args, **kwds)
 
@@ -752,18 +762,18 @@ class CachedConnection(TransactedConnection):
 					raw_results = self._conn.commit()
 				elif name in ['modify', 'insert', 'insertMany', 'delete', 'deleteMany']:
 					id = args[0]
-					if id not in self._root and id not in cached_ids:
+					if not self._cache.objectExists(id) and id not in cached_ids:
 						self._conn.read(id)
 						cached_ids.add(id)
 					getattr(self._conn, name)(*args, **kwds)
 				elif name in ['read', 'readByMask', 'readByMasks']:
 					id = args[0]
-					if id not in self._root and id not in cached_ids:
+					if not self._cache.objectExists(id) and id not in cached_ids:
 						self._conn.read(id)
 						cached_ids.add(id)
 				elif name == 'objectExists':
 					id = args[0]
-					if id not in self._root and id not in cached_ids:
+					if not self._cache.objectExists(id) and id not in cached_ids:
 						getattr(self._conn, name)(*args, **kwds)
 				else:
 					getattr(self._conn, name)(*args, **kwds)
@@ -775,27 +785,27 @@ class CachedConnection(TransactedConnection):
 				result = None
 				if name == 'create':
 					new_id = raw_results.pop()
-					self._cached_create(new_id, *args, **kwds)
+					self._cache.create(new_id, *args, **kwds)
 					result = new_id
 				elif name in ['modify', 'insert', 'insertMany', 'delete', 'deleteMany']:
 					id = args[0]
 					if id in cached_ids:
-						self._root[id] = raw_results.pop()
+						self._cache.modify(id, None, raw_results.pop())
 						cached_ids.remove(id)
-					getattr(self, "_cached_" + name)(*args, **kwds)
+					getattr(self._cache, name)(*args, **kwds)
 					raw_results.pop()
 				elif name == 'objectExists':
 					id = args[0]
-					if id in cached_ids or id in self._root:
+					if id in cached_ids or self._cache.objectExists(id):
 						result = True
 					else:
 						result = raw_results.pop()
 				elif name in ['read', 'readByMask', 'readByMasks']:
 					id = args[0]
 					if id in cached_ids:
-						self._root[id] = raw_results.pop()
+						self._cache.modify(id, None, raw_results.pop())
 						cached_ids.remove(id)
-					result = getattr(self, "_cached_" + name)(*args, **kwds)
+					result = getattr(self._cache, name)(*args, **kwds)
 				else:
 					result = raw_results.pop()
 
