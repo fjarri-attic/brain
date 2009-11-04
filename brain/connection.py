@@ -217,14 +217,18 @@ class TransactedConnection:
 			# Add asynchronous begin and commit to requests
 			# (so that they are processed in a single function
 			# with other requests)
-			requests = [('begin', (), {'sync': False})] + self.__requests + [('commit', (), {})]
+			prepared_begin_args, prepared_begin_kwds = self._prepareRequest('begin', sync=False)
+			prepared_commit_args, prepared_commit_kwds = self._prepareRequest('commit')
+
+			requests = [('begin', prepared_begin_args, prepared_begin_kwds)] + \
+				self.__requests + \
+				[('commit', prepared_commit_args, prepared_commit_kwds)]
 
 			try:
 				# prepare request parameters
 				for name, args, kwds in requests:
 					names.append(name)
-					prepared_args, prepared_kwds = self._prepareRequest(name, *args, **kwds)
-					prepared_requests.append((name, prepared_args, prepared_kwds))
+					prepared_requests.append((name, args, kwds))
 
 				# process all requests, from begin to commit in a single function
 				# (derived class can have an ability to process several requests
@@ -266,14 +270,22 @@ class TransactedConnection:
 		if not self.__transaction:
 		# if transaction is not started, start the asynchronous transaction
 			self.beginAsync()
-			self.__getattr__(name)(*args, **kwds)
+			getattr(self, name)(*args, **kwds)
 			return self.commit()[0]
 
-		elif self.__sync:
+		# prepare arguments in place, just in case _prepareRequest
+		# throws an error (it can happen)
+		try:
+			prepared_args, prepared_kwds = self._prepareRequest(name, *args, **kwds)
+		except:
+			# give derived class a chance to clean up failed transaction
+			self._onError()
+			raise
+
+		if self.__sync:
 		# synchronous transaction is currently in progress
 
 			try:
-				prepared_args, prepared_kwds = self._prepareRequest(name, *args, **kwds)
 				results = self._handleRequests([(name, prepared_args, prepared_kwds)])
 				processed = self._processResult(name, results[0])
 			except:
@@ -285,7 +297,7 @@ class TransactedConnection:
 
 		else:
 		# asynchronous transaction is currently in progress
-			self.__requests.append((name, args, kwds))
+			self.__requests.append((name, prepared_args, prepared_kwds))
 
 	def __getattr__(self, name):
 		"""Transacted methods handlers generator"""
