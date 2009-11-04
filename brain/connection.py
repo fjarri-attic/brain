@@ -211,7 +211,7 @@ class TransactedConnection:
 			prepared_requests = []
 			names = []
 
-			# Add synchronous begin and commit to requests
+			# Add asynchronous begin and commit to requests
 			# (so that they are processed in a single function
 			# with other requests)
 			requests = [('begin', (), {'sync': False})] + self.__requests + [('commit', (), {})]
@@ -233,7 +233,7 @@ class TransactedConnection:
 				raise
 
 			# return processed results (except for results of begin and commit,
-			# which do not return anything - because the begin() was synchronous)
+			# which do not return anything - because the begin() was asynchronous)
 			return [self._processResult(name, result) for name, result
 				in zip(names[1:-1], results)]
 
