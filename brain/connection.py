@@ -145,9 +145,6 @@ class TransactedConnection:
 	def _sync(self):
 		return self.__sync
 
-	def _transaction(self):
-		return self.__transaction
-
 	def begin(self, sync):
 		"""Begin synchronous or asynchronous transaction."""
 
