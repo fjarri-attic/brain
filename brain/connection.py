@@ -142,6 +142,12 @@ class TransactedConnection:
 		self.__sync = False
 		self.__requests = []
 
+	def _sync(self):
+		return self.__sync
+
+	def _transaction(self):
+		return self.__transaction
+
 	def begin(self, sync):
 		"""Begin synchronous or asynchronous transaction."""
 
@@ -301,8 +307,6 @@ class Connection(TransactedConnection):
 		self._engine = engine
 		self._logic = logic.LogicLayer(self._engine)
 		self._remove_conflicts = remove_conflicts
-		self._sync = False
-		self._in_tr = False
 
 		self._handlers = {
 			'commit': self._engine.commit,
@@ -323,25 +327,21 @@ class Connection(TransactedConnection):
 		}
 
 	def _begin(self, sync):
-		self._sync = sync
 		if sync:
-			self._in_tr = True
 			self._engine.begin()
 
 	def _fake_begin(self, sync):
-		self._in_tr = True
-		self._engine.begin()
+		if self._transaction() and self._sync():
+			self._engine.begin()
 
 	def _commit(self):
 		self._engine.commit()
-		self._in_tr = False
 
 	def _rollback(self):
 		self._engine.rollback()
-		self._in_tr = False
 
 	def _onError(self):
-		if self._in_tr:
+		if self._transaction():
 			self._rollback()
 		TransactedConnection._onError(self)
 
@@ -352,7 +352,7 @@ class Connection(TransactedConnection):
 		res = []
 		for name, args, kwds in requests:
 			res.append(self._handlers[name](*args, **kwds))
-		if self._sync:
+		if self._sync():
 			return res
 		else:
 			return res[1:-1]
@@ -549,7 +549,6 @@ class CachedConnection(TransactedConnection):
 	def _begin(self, sync):
 		self._created_objects = set()
 		self._modified_objects = {}
-		self._sync = sync
 		if sync:
 			self._conn.beginSync()
 
@@ -694,7 +693,7 @@ class CachedConnection(TransactedConnection):
 		TransactedConnection._onError(self)
 
 	def _handleRequests(self, requests):
-		if self._sync:
+		if self._sync():
 			results = []
 			for name, args, kwds in requests:
 				result = None
