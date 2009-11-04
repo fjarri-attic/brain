@@ -208,10 +208,7 @@ class TransactedConnection:
 
 		if self.__sync:
 		# Synchronous transaction - just try to commit whatever was done
-			try:
-				self._commit()
-			finally:
-				self.__sync = False
+			self._commit()
 		else:
 		# Asynchronous transaction
 			prepared_requests = []
