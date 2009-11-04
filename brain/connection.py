@@ -313,6 +313,10 @@ class Connection(TransactedConnection):
 		self._engine = engine
 		self._logic = logic.LogicLayer(self._engine)
 		self._remove_conflicts = remove_conflicts
+
+		# Since this class handles asynchronous transaction as if it is
+		# a synchronous one, it has to look for begin/end of transactions
+		# itself
 		self._transaction = False
 
 		self._handlers = {
@@ -360,7 +364,10 @@ class Connection(TransactedConnection):
 	def _handleRequests(self, requests):
 		"""Start/stop transaction, handle exceptions"""
 
-		# Handle request inside a transaction
+		# TODO: probably it will be faster to pass the whole request
+		# package to the underlying layer.
+		# Currently we handle asynchronous and synchronous transaction
+		# similarly - just calling corresponding Logic class methods
 		res = []
 		for name, args, kwds in requests:
 			res.append(self._handlers[name](*args, **kwds))
