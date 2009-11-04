@@ -216,6 +216,9 @@ class TransactedConnection:
 	def _onError(self):
 		self.__transaction = False
 
+	def close(self):
+		self._close()
+
 	def __transacted(self, name, *args, **kwds):
 
 		if not self.__transaction:
@@ -327,7 +330,7 @@ class Connection(TransactedConnection):
 				result[i] = pathsToTree([(field.name, field.py_value) for field in result[i]])
 		return result
 
-	def close(self):
+	def _close(self):
 		"""
 		Disconnect from database.
 		All uncommitted changes will be lost.
