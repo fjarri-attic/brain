@@ -316,10 +316,11 @@ class Connection(TransactedConnection):
 		self._engine = engine
 		self._logic = logic.LogicLayer(self._engine)
 		self._remove_conflicts = remove_conflicts
+		self._transaction = False
 
 		self._handlers = {
 			'commit': self._engine.commit,
-			'begin': self._fake_begin,
+			'begin': self._manual_begin,
 			'create': self._logic.processCreateRequest,
 			'read': self._logic.processReadRequest,
 			'readByMask': self._logic.processReadRequest,
@@ -335,22 +336,27 @@ class Connection(TransactedConnection):
 			'repair': self._logic.processRepairRequest
 		}
 
+	def _engine_begin(self):
+		self._engine.begin()
+		self._transaction = True
+
 	def _begin(self, sync):
 		if sync:
-			self._engine.begin()
+			self._engine_begin()
 
-	def _fake_begin(self, sync):
-		if self._transaction() and self._sync():
-			self._engine.begin()
+	def _manual_begin(self, sync):
+		self._engine_begin()
 
 	def _commit(self):
+		self._transaction = False
 		self._engine.commit()
 
 	def _rollback(self):
+		self._transaction = False
 		self._engine.rollback()
 
 	def _onError(self):
-		if self._transaction():
+		if self._transaction:
 			self._rollback()
 		TransactedConnection._onError(self)
 
