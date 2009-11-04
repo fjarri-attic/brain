@@ -733,7 +733,7 @@ class CachedConnection(TransactedConnection):
 				elif name in ['read', 'readByMask', 'readByMasks']:
 					id = args[0]
 					if id in cached_ids:
-						result = raw_results.pop()
+						self._root[id] = raw_results.pop()
 						cached_ids.remove(id)
 					result = getattr(self, "_cached_" + name)(*args, **kwds)
 				else:
