@@ -245,6 +245,10 @@ class _PostgreEngine(_Engine):
 	def close(self):
 		self._conn.close()
 
+		# Delete connection explicitly - Postgre keeps something there,
+		# which keeps the DB opened and causes failures during further connections
+		del self._conn
+
 	def getNewId(self):
 		if not self.tableExists('max_uuid'):
 			self.execute("CREATE TABLE max_uuid (uuid {type})".format(
