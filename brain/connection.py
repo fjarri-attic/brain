@@ -740,7 +740,7 @@ class CachedConnection(TransactedConnection):
 					getattr(self._cache, name)(*args, **kwds)
 				elif name == 'objectExists':
 					id = args[0]
-					if id not in self._root:
+					if not self._cache.objectExists(id):
 						result = self._conn.objectExists(id)
 					else:
 						result = True
