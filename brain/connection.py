@@ -692,6 +692,12 @@ class ObjectCache:
 	def objectExists(self, id):
 		return id in self._root
 
+	def invalidate(self):
+		for id in self._root:
+			self._memorize_modified(id)
+
+		self._root = {}
+
 
 class CachedConnection(TransactedConnection):
 
@@ -733,7 +739,7 @@ class CachedConnection(TransactedConnection):
 					getattr(self._conn, name)(*args, **kwds)
 					id = args[0]
 					if not self._cache.objectExists(id):
-						self._cache.modify(id, None, self._conn.read(id))
+						self._cache.create(id, self._conn.read(id))
 					getattr(self._cache, name)(*args, **kwds)
 				elif name == 'objectExists':
 					id = args[0]
@@ -742,12 +748,12 @@ class CachedConnection(TransactedConnection):
 					else:
 						result = True
 				elif name == 'repair':
-					self._root = {}
+					self._cache.invalidate()
 					self._conn.repair()
 				elif name in ['read', 'readByMask', 'readByMasks']:
 					id = args[0]
 					if not self._cache.objectExists(id):
-						self._cache.modify(id, None, self._conn.read(id))
+						self._cache.create(id, self._conn.read(id))
 					result = getattr(self._cache, name)(*args, **kwds)
 				else:
 					result = getattr(self._conn, name)(*args, **kwds)
@@ -756,31 +762,39 @@ class CachedConnection(TransactedConnection):
 			return results
 		else:
 			cached_ids = set()
-			for request_num, elem in enumerate(requests):
-				name, args, kwds = elem
+			additional_requests = []
+			for name, args, kwds in requests:
+				additional_request = False
 				if name == 'commit':
 					raw_results = self._conn.commit()
 				elif name in ['modify', 'insert', 'insertMany', 'delete', 'deleteMany']:
 					id = args[0]
 					if not self._cache.objectExists(id) and id not in cached_ids:
+						additional_request = True
 						self._conn.read(id)
 						cached_ids.add(id)
 					getattr(self._conn, name)(*args, **kwds)
 				elif name in ['read', 'readByMask', 'readByMasks']:
 					id = args[0]
 					if not self._cache.objectExists(id) and id not in cached_ids:
+						additional_request = True
 						self._conn.read(id)
 						cached_ids.add(id)
 				elif name == 'objectExists':
 					id = args[0]
 					if not self._cache.objectExists(id) and id not in cached_ids:
+						additional_request = True
 						getattr(self._conn, name)(*args, **kwds)
+				elif name == 'repair':
+					cached_ids.clear()
+					getattr(self._conn, name)(*args, **kwds)
 				else:
 					getattr(self._conn, name)(*args, **kwds)
+				additional_requests.append(additional_request)
 
 			raw_results = [None] + list(reversed(raw_results)) + [None]
 			results = []
-			for request_num, elem in enumerate(requests):
+			for elem, additional_request in zip(requests, additional_requests):
 				name, args, kwds = elem
 				result = None
 				if name == 'create':
@@ -789,23 +803,23 @@ class CachedConnection(TransactedConnection):
 					result = new_id
 				elif name in ['modify', 'insert', 'insertMany', 'delete', 'deleteMany']:
 					id = args[0]
-					if id in cached_ids:
-						self._cache.modify(id, None, raw_results.pop())
-						cached_ids.remove(id)
+					if additional_request:
+						self._cache.create(id, raw_results.pop())
 					getattr(self._cache, name)(*args, **kwds)
 					raw_results.pop()
 				elif name == 'objectExists':
 					id = args[0]
-					if id in cached_ids or self._cache.objectExists(id):
-						result = True
-					else:
+					if additional_request:
 						result = raw_results.pop()
+					else:
+						result = True
 				elif name in ['read', 'readByMask', 'readByMasks']:
 					id = args[0]
-					if id in cached_ids:
-						self._cache.modify(id, None, raw_results.pop())
-						cached_ids.remove(id)
+					if additional_request:
+						self._cache.create(id, raw_results.pop())
 					result = getattr(self._cache, name)(*args, **kwds)
+				elif name == 'repair':
+					self._cache.invalidate()
 				else:
 					result = raw_results.pop()
 
