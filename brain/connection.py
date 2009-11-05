@@ -818,12 +818,19 @@ class CachedConnection(TransactedConnection):
 		# checking object existence
 		additional_requests = []
 
+		# TODO: probably this select-case can be turned into map of handlers
+
+		# First stage: perform asynchronous requests and read result
+
 		for name, args, kwds in requests:
 			additional_request = False
+
 			if name == 'commit':
 			# read results of asynchronous transaction
 				raw_results = self._conn.commit()
+
 			elif name in ['modify', 'insert', 'insertMany', 'delete', 'deleteMany']:
+			# modification request - check if object should be cached
 				id = args[0]
 				if id not in cached_ids:
 					additional_request = True
@@ -831,49 +838,71 @@ class CachedConnection(TransactedConnection):
 					cached_ids.add(id)
 				getattr(self._conn, name)(*args, **kwds)
 			elif name in ['read', 'readByMask', 'readByMasks']:
+			# read request - check if object should be cached
+			# do not make initial request, because its result
+			# will be taken straight from cache
 				id = args[0]
 				if id not in cached_ids:
 					additional_request = True
 					self._conn.read(id)
 					cached_ids.add(id)
 			elif name == 'objectExists':
+			# checking if object exists - if it is not cached,
+			# we will have to ask connection
 				id = args[0]
 				if id not in cached_ids:
 					additional_request = True
 					getattr(self._conn, name)(*args, **kwds)
 			elif name == 'repair':
+			# invalidate all cached IDs
 				cached_ids.clear()
 				getattr(self._conn, name)(*args, **kwds)
 			else:
+			# just pass request to connection
 				getattr(self._conn, name)(*args, **kwds)
 			additional_requests.append(additional_request)
 
+		# Second stage - remove results of additional requests from list
+		# and update cache
+
 		raw_results = [None] + list(reversed(raw_results)) + [None]
 		results = []
+
 		for elem, additional_request in zip(requests, additional_requests):
 			name, args, kwds = elem
 			result = None
+
 			if name == 'create':
+			# take new ID from request result and create new object in cache
 				new_id = raw_results.pop()
 				self._cache.create(new_id, *args, **kwds)
 				result = new_id
+
 			elif name in ['modify', 'insert', 'insertMany', 'delete', 'deleteMany']:
+			# update cache if there was additional request
 				id = args[0]
 				if additional_request:
 					self._cache.create(id, raw_results.pop())
 				getattr(self._cache, name)(*args, **kwds)
 				raw_results.pop()
+
 			elif name == 'objectExists':
+			# if there was additional request, take result from it
+			# if not, take result from cache
 				id = args[0]
 				if additional_request:
 					result = raw_results.pop()
 				else:
 					result = True
+
 			elif name in ['read', 'readByMask', 'readByMasks']:
+			# if there was additional request, update cache
+			# then result of initial request is definitely in cache
 				id = args[0]
 				if additional_request:
 					self._cache.create(id, raw_results.pop())
 				result = getattr(self._cache, name)(*args, **kwds)
+
 			elif name == 'repair':
 				self._cache.invalidate()
 			else:
@@ -881,6 +910,7 @@ class CachedConnection(TransactedConnection):
 
 			results.append(result)
 
+		# cut begin() and commit() results
 		return results[1:-1]
 
 	def _handleRequests(self, requests):
