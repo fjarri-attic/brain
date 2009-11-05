@@ -189,9 +189,18 @@ class Connection(TestRequest):
 		and None for non-existent
 		"""
 		self.prepareStandNoList()
+
+		# check asynchronous requests
 		self.conn.delete(self.id1)
 		self.assertEqual(self.conn.objectExists(self.id1), False)
 		self.assertEqual(self.conn.objectExists(self.id2), True)
+
+		# check synchronous requests
+		self.conn.delete(self.id3)
+		self.conn.beginSync()
+		self.assertEqual(self.conn.objectExists(self.id3), False)
+		self.assertEqual(self.conn.objectExists(self.id4), True)
+		self.conn.commit()
 
 	def testKeywordArgumentsInRequest(self):
 		"""
