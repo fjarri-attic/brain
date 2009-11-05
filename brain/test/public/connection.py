@@ -370,6 +370,26 @@ class Connection(TestRequest):
 
 		self.assertEqual(res, '2222')
 
+	def testChangeDefaultRemoveConflictsValue(self):
+		"""Check that default remove_conflicts value can be changed for connection"""
+
+		# conflicts are removed by default
+		self.conn.close()
+		self.conn = self.reconnect(remove_conflicts=True)
+		obj = self.conn.create({'tracks': [1, 2, 3]})
+		self.conn.modify(obj, ['tracks', 'key'], 'test')
+		res = self.conn.read(obj, ['tracks'])
+		self.assertEqual(res, {'key': 'test'})
+		self.assertEqual(self.conn.getRemoveConflicts(), True)
+
+		# conflicts are not removed by default
+		self.conn.close()
+		self.conn = self.reconnect(remove_conflicts=False)
+		obj = self.conn.create({'tracks': [1, 2, 3]})
+		self.assertRaises(brain.StructureError, self.conn.modify,
+			obj, ['tracks', 'key'], 'test')
+		self.assertEqual(self.conn.getRemoveConflicts(), False)
+
 
 def suite(engine_params, connection_generator):
 	res = helpers.NamedTestSuite('connection')
