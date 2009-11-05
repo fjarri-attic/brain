@@ -736,7 +736,7 @@ class CachedConnection(TransactedConnection):
 					getattr(self._conn, name)(*args, **kwds)
 					id = args[0]
 					if not self._cache.objectExists(id):
-						self._root[id] = self._conn.read(id)
+						self._cache.modify(id, None, self._conn.read(id))
 					getattr(self._cache, name)(*args, **kwds)
 				elif name == 'objectExists':
 					id = args[0]
@@ -750,7 +750,7 @@ class CachedConnection(TransactedConnection):
 				elif name in ['read', 'readByMask', 'readByMasks']:
 					id = args[0]
 					if not self._cache.objectExists(id):
-						self._root[id] = self._conn.read(id)
+						self._cache.modify(id, None, self._conn.read(id))
 					result = getattr(self._cache, name)(*args, **kwds)
 				else:
 					result = getattr(self._conn, name)(*args, **kwds)
