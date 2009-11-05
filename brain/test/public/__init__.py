@@ -23,7 +23,10 @@ class CachedGenerator:
 
 	def connect(self, *args, **kwds):
 		conn = brain.connect(*args, **kwds)
-		return brain.CachedConnection(conn)
+
+		# setting size threshold to a very low value,
+		# for testing purposes only
+		return brain.CachedConnection(conn, size_threshold=1)
 
 
 def suite(db_path, all_engines=False, all_storages=False,
