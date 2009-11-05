@@ -272,21 +272,30 @@ class Connection(TestRequest):
 
 	def testRepair(self):
 		"""Check that repair request at least does not spoil anything"""
-		self.prepareStandDifferentTypes()
-		data_before = self.conn.dump()
 
-		# separate IDs from data and create a dictionary
-		# for easier comparison
-		data_before_dict = {obj_id: data for obj_id, data in
-			zip(data_before[::2], data_before[1::2])}
+		for sync in [True, False]:
+			self.prepareStandDifferentTypes()
+			data_before = self.conn.dump()
 
-		self.conn.repair()
+			# separate IDs from data and create a dictionary
+			# for easier comparison
+			data_before_dict = {obj_id: data for obj_id, data in
+				zip(data_before[::2], data_before[1::2])}
 
-		data_after = self.conn.dump()
-		data_after_dict = {obj_id: data for obj_id, data in
-			zip(data_after[::2], data_after[1::2])}
+			self.conn.begin(sync)
+			self.conn.repair()
+			self.conn.commit()
 
-		self.assertEqual(data_before, data_after)
+			data_after = self.conn.dump()
+			data_after_dict = {obj_id: data for obj_id, data in
+				zip(data_after[::2], data_after[1::2])}
+
+			self.assertEqual(data_before, data_after)
+
+			# remove created objects
+			self.conn.delete(self.id1)
+			self.conn.delete(self.id2)
+			self.conn.delete(self.id3)
 
 	def testNoneAsEngineTag(self):
 		"""
