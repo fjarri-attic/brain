@@ -89,3 +89,67 @@ def pathMatchesMask(path, mask):
 			return False
 
 	return True
+
+
+class AccessLogger:
+	"""Class which remembers the order of access to some keys"""
+
+	class Link:
+		"""Auxiliary class, linked list element"""
+		def __init__(self, prev, next, key):
+			self.prev = prev
+			self.next = next
+			self.key = key
+
+	def __init__(self, size_threshold):
+		self._size_threshold = size_threshold
+
+		self._map = {}
+
+		# root element, linking the beginning and the end of the list
+		self._root = self.Link(None, None, None)
+		self._root.prev = self._root
+		self._root.next = self._root
+
+	def delete(self, key):
+		"""Remove element from list"""
+		old_link = self._map.pop(key)
+		old_link.prev.next = old_link.next
+		old_link.next.prev = old_link.prev
+
+	def _push(self, key):
+		"""Push element to the end of the list"""
+		root = self._root
+		last = root.prev
+		link = self.Link(last, root, key)
+		last.next = link
+		root.prev = link
+		self._map[key] = link
+
+	def delete_oldest(self):
+		"""
+		Delete oldest elements (the ones at the beginning of the list,
+		in other words - least recently updated) and return list with
+		deleted elements.
+		"""
+		oldest_num = len(self._map) - self._size_threshold
+		if oldest_num <= 0:
+			return []
+
+		oldest = []
+		while len(oldest) < oldest_num:
+			to_delete = self._root.next.key
+			self.delete(to_delete)
+			oldest.append(to_delete)
+
+		return oldest
+
+	def update(self, key):
+		"""
+		Move element to the end of the list or create it if
+		it does not exist.
+		"""
+		if key in self._map:
+			self.delete(key)
+
+		self._push(key)
