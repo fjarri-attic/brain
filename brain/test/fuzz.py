@@ -27,7 +27,7 @@ class FakeConnection(ObjectCache):
 	"""
 
 	def __init__(self):
-		ObjectCache.__init__(self)
+		ObjectCache.__init__(self, size_threshold=0)
 		self._id_counter = 0
 
 	def create(self, data, path=None):
@@ -37,7 +37,7 @@ class FakeConnection(ObjectCache):
 		"""
 		self._id_counter += 1
 		ObjectCache.create(self, self._id_counter, data, path)
-		self.clear_undo_history()
+		self.commit()
 		return self._id_counter
 
 	def __getattr__(self, name):
@@ -51,8 +51,10 @@ class FakeConnection(ObjectCache):
 		def handler(*args, **kwds):
 			try:
 				return getattr(ObjectCache, name)(self, *args, **kwds)
+			except:
+				self.rollback()
 			finally:
-				self.clear_undo_history()
+				self.commit()
 
 		return handler
 

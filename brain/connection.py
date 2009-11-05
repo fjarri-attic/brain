@@ -566,12 +566,9 @@ class ObjectCache:
 		self._access_logger = AccessLogger(size_threshold)
 		self._remove_conflicts = remove_conflicts
 		self._size_threshold = size_threshold
-		self._created_objects = set()
-		self._modified_objects = {}
+		self._clearUndoHistory()
 
-		self.clear_undo_history()
-
-	def undo(self):
+	def rollback(self):
 		"""Roll back all memorized changes"""
 
 		# in case of LimitedSizeDict usage, some newly created objects
@@ -583,28 +580,38 @@ class ObjectCache:
 		for id in self._modified_objects:
 			self._root[id] = self._modified_objects[id]
 
-	def updateAccessLog(self):
+		self._clearUndoHistory()
 
+	def commit(self):
+		"""Confirm all changes made from previous commit/rollback"""
+
+		# if we're not logging access, just clear history and return
 		if self._size_threshold == 0:
+			self._clearUndoHistory()
 			return
 
+		# update access for created objects
+		# (additional check is because they could be deleted
+		# during the same transaction)
 		for id in self._created_objects:
 			if id in self._root:
 				self._access_logger.update(id)
 
+		# update access for modified objects
 		for id in self._modified_objects:
 			if id in self._root:
 				self._access_logger.update(id)
 			else:
 				self._access_logger.delete(id)
 
+		# remove least recently accessed objects from cache
 		oldest = self._access_logger.delete_oldest()
 		for id in oldest:
 			del self._root[id]
 
-		self.clear_undo_history()
+		self._clearUndoHistory()
 
-	def clear_undo_history(self):
+	def _clearUndoHistory(self):
 		"""Forget all memorized changes"""
 		self._created_objects = set()
 		self._modified_objects = {}
@@ -771,23 +778,22 @@ class CachedConnection(TransactedConnection):
 		}
 
 	def _begin(self, sync):
-		self._cache.clear_undo_history()
 		if sync:
 			self._conn.beginSync()
 
 	def _commit(self):
-		self._cache.updateAccessLog()
+		self._cache.commit()
 		self._conn.commit()
 
 	def _rollback(self):
-		self._cache.undo()
+		self._cache.rollback()
 		self._conn.rollback()
 
 	def close(self):
 		self._conn.close()
 
 	def _onError(self):
-		self._cache.undo()
+		self._cache.rollback()
 		TransactedConnection._onError(self)
 
 	def _handleSyncCreation(self, name, value, path=None):
@@ -911,7 +917,7 @@ class CachedConnection(TransactedConnection):
 			result = None
 
 			if name == 'commit':
-				self._cache.updateAccessLog()
+				self._cache.commit()
 
 			elif name == 'create':
 			# take new ID from request result and create new object in cache
