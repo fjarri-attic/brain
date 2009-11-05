@@ -556,6 +556,10 @@ class Connection(TransactedConnection):
 
 
 class ObjectCache:
+	"""
+	Class, which partially mimics Connection interface, storing
+	object data in Python structures.
+	"""
 
 	def __init__(self, remove_conflicts=False):
 		self._root = {}
@@ -563,12 +567,14 @@ class ObjectCache:
 		self.clear_undo_history()
 
 	def undo(self):
+		"""Roll back all memorized changes"""
 		for id in self._created_objects:
 			del self._root[id]
 		for id in self._modified_objects:
 			self._root[id] = self._modified_objects[id]
 
 	def clear_undo_history(self):
+		"""Forget all memorized changes"""
 		self._created_objects = set()
 		self._modified_objects = {}
 
@@ -700,6 +706,12 @@ class ObjectCache:
 
 
 class CachedConnection(TransactedConnection):
+	"""
+	Wrapper on top of object with Connection interface, which provides
+	object data caching.
+	Warning: do not use if two or more simultaneous connections to one DB are
+	opened - cache can return old data in this case.
+	"""
 
 	def __init__(self, conn):
 		TransactedConnection.__init__(self)
@@ -707,6 +719,20 @@ class CachedConnection(TransactedConnection):
 
 		# FIXME: remove usage of hidden attribute
 		self._cache = ObjectCache(remove_conflicts=self._conn._remove_conflicts)
+
+		self._sync_handlers = {
+			'create': self._handleCreationSync,
+			'modify': self._handleModificationSync,
+			'insert': self._handleModificationSync,
+			'insertMany': self._handleModificationSync,
+			'delete': self._handleModificationSync,
+			'deleteMany': self._handleModificationSync,
+			'objectExists': self._handleObjectExistsSync,
+			'repair': self._handleRepairSync,
+			'read': self._handleReadSync,
+			'readByMask': self._handleReadSync,
+			'readByMasks': self._handleReadSync
+		}
 
 	def _begin(self, sync):
 		self._cache.clear_undo_history()
@@ -727,39 +753,60 @@ class CachedConnection(TransactedConnection):
 		self._cache.undo()
 		TransactedConnection._onError(self)
 
+	def _handleCreationSync(self, name, value, path=None):
+		# Get new ID from connection and create object in cache
+		new_id = self._conn.create(value, path)
+		self._cache.create(new_id, value, path)
+		return new_id
+
+	def _handleModificationSync(self, name, *args, **kwds):
+		# Object modification - perform on connection,
+		# update cache if necessary and perform same
+		# operation on cache.
+		getattr(self._conn, name)(*args, **kwds)
+		id = args[0]
+		if not self._cache.objectExists(id):
+			self._cache.create(id, self._conn.read(id))
+		getattr(self._cache, name)(*args, **kwds)
+
+	def _handleObjectExistsSync(self, name, id):
+		# If object is already in cache, the answer is trivial;
+		# if not - ask connection object.
+		if not self._cache.objectExists(id):
+			return self._conn.objectExists(id)
+		else:
+			return True
+
+	def _handleRepairSync(self, name):
+		# theoretically, after repair anything can happen,
+		# so cache is no longer valid
+		self._cache.invalidate()
+		self._conn.repair()
+
+	def _handleReadSync(self, name, id, *args, **kwds):
+		# Read to cache first if necessary, then read from cache
+		if not self._cache.objectExists(id):
+			self._cache.create(id, self._conn.read(id))
+		return getattr(self._cache, name)(id, *args, **kwds)
+
+	def _handleSync(self, requests):
+		"""Handle requests during synchronous transaction"""
+
+		results = []
+		for name, args, kwds in requests:
+			if name in self._sync_handlers:
+			# if request requires some special treatment
+				result = self._sync_handlers[name](name, *args, **kwds)
+			else:
+			# non-cached request, just ask connection
+				result = getattr(self._conn, name)(*args, **kwds)
+
+			results.append(result)
+		return results
+
 	def _handleRequests(self, requests):
 		if self._sync():
-			results = []
-			for name, args, kwds in requests:
-				result = None
-				if name == 'create':
-					result = self._conn.create(*args, **kwds)
-					self._cache.create(result, *args, **kwds)
-				elif name in ['modify', 'insert', 'insertMany', 'delete', 'deleteMany']:
-					getattr(self._conn, name)(*args, **kwds)
-					id = args[0]
-					if not self._cache.objectExists(id):
-						self._cache.create(id, self._conn.read(id))
-					getattr(self._cache, name)(*args, **kwds)
-				elif name == 'objectExists':
-					id = args[0]
-					if not self._cache.objectExists(id):
-						result = self._conn.objectExists(id)
-					else:
-						result = True
-				elif name == 'repair':
-					self._cache.invalidate()
-					self._conn.repair()
-				elif name in ['read', 'readByMask', 'readByMasks']:
-					id = args[0]
-					if not self._cache.objectExists(id):
-						self._cache.create(id, self._conn.read(id))
-					result = getattr(self._cache, name)(*args, **kwds)
-				else:
-					result = getattr(self._conn, name)(*args, **kwds)
-
-				results.append(result)
-			return results
+			return self._handleSync(requests)
 		else:
 			cached_ids = set()
 			additional_requests = []
