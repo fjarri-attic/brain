@@ -604,10 +604,7 @@ class ObjectCache:
 		saveToTree(self._root, id, path, copy.deepcopy(data))
 
 	def modify(self, id, path, value, remove_conflicts=None):
-		if id in self._root:
-			self._memorize_modified(id)
-		else:
-			self._memorize_created(id)
+		self._memorize_modified(id)
 
 		if path is None:
 			path = []
