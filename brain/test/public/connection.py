@@ -279,6 +279,21 @@ class Connection(TestRequest):
 
 		self.assertEqual(data_before, data_after)
 
+	def testNoneAsEngineTag(self):
+		"""
+		Check that specifying None as engine tag works
+		We cannot test that it is the same as getDefaultEngineTag(),
+		so just checking that connection is established. At least,
+		it will cover corresponding lines in module.
+		"""
+		conn2 = self.gen.connect(None, None)
+		conn2.create({'test': 'test'})
+		conn2.close()
+
+	def testWrongMethodName(self):
+		"""Check that call to wrong transacted method name raises an exception"""
+		self.assertRaises(AttributeError, getattr, self.conn, 'creat')
+
 
 def suite(engine_params, connection_generator):
 	res = helpers.NamedTestSuite('connection')
