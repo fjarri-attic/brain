@@ -563,16 +563,46 @@ class ObjectCache:
 
 	def __init__(self, remove_conflicts=False, size_threshold=0):
 		self._root = {}
+		self._access_logger = AccessLogger(size_threshold)
 		self._remove_conflicts = remove_conflicts
 		self._size_threshold = size_threshold
+		self._created_objects = set()
+		self._modified_objects = {}
+
 		self.clear_undo_history()
 
 	def undo(self):
 		"""Roll back all memorized changes"""
-		for id in self._created_objects:
+
+		# in case of LimitedSizeDict usage, some newly created objects
+		# can be already deleted from cache
+		to_delete = self._created_objects.intersection(self._root)
+
+		for id in to_delete:
 			del self._root[id]
 		for id in self._modified_objects:
 			self._root[id] = self._modified_objects[id]
+
+	def updateAccessLog(self):
+
+		if self._size_threshold == 0:
+			return
+
+		for id in self._created_objects:
+			if id in self._root:
+				self._access_logger.update(id)
+
+		for id in self._modified_objects:
+			if id in self._root:
+				self._access_logger.update(id)
+			else:
+				self._access_logger.delete(id)
+
+		oldest = self._access_logger.delete_oldest()
+		for id in oldest:
+			del self._root[id]
+
+		self.clear_undo_history()
 
 	def clear_undo_history(self):
 		"""Forget all memorized changes"""
@@ -657,6 +687,7 @@ class ObjectCache:
 
 	def deleteMany(self, id, paths=None):
 		self._memorize_modified(id)
+
 		if paths is None:
 			del self._root[id]
 		else:
@@ -745,6 +776,7 @@ class CachedConnection(TransactedConnection):
 			self._conn.beginSync()
 
 	def _commit(self):
+		self._cache.updateAccessLog()
 		self._conn.commit()
 
 	def _rollback(self):
@@ -839,6 +871,7 @@ class CachedConnection(TransactedConnection):
 					self._conn.read(id)
 					cached_ids.add(id)
 				getattr(self._conn, name)(*args, **kwds)
+
 			elif name in ['read', 'readByMask', 'readByMasks']:
 			# read request - check if object should be cached
 			# do not make initial request, because its result
@@ -848,6 +881,7 @@ class CachedConnection(TransactedConnection):
 					additional_request = True
 					self._conn.read(id)
 					cached_ids.add(id)
+
 			elif name == 'objectExists':
 			# checking if object exists - if it is not cached,
 			# we will have to ask connection
@@ -855,10 +889,12 @@ class CachedConnection(TransactedConnection):
 				if id not in cached_ids:
 					additional_request = True
 					getattr(self._conn, name)(*args, **kwds)
+
 			elif name == 'repair':
 			# invalidate all cached IDs
 				cached_ids.clear()
 				getattr(self._conn, name)(*args, **kwds)
+
 			else:
 			# just pass request to connection
 				getattr(self._conn, name)(*args, **kwds)
@@ -874,7 +910,10 @@ class CachedConnection(TransactedConnection):
 			name, args, kwds = elem
 			result = None
 
-			if name == 'create':
+			if name == 'commit':
+				self._cache.updateAccessLog()
+
+			elif name == 'create':
 			# take new ID from request result and create new object in cache
 				new_id = raw_results.pop()
 				self._cache.create(new_id, *args, **kwds)
