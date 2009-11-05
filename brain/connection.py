@@ -704,6 +704,9 @@ class ObjectCache:
 
 		self._root = {}
 
+	def getIDs(self):
+		return set(self._root)
+
 
 class CachedConnection(TransactedConnection):
 	"""
@@ -804,72 +807,84 @@ class CachedConnection(TransactedConnection):
 			results.append(result)
 		return results
 
+	def _handleAsync(self, requests):
+		"""Handle requests during asynchronous transaction"""
+
+		# memorizing all objects, cached during this transaction
+		cached_ids = self._cache.getIDs()
+
+		# for each request, if corresponding element of this array is True,
+		# it means that additional request was performed, reading or
+		# checking object existence
+		additional_requests = []
+
+		for name, args, kwds in requests:
+			additional_request = False
+			if name == 'commit':
+			# read results of asynchronous transaction
+				raw_results = self._conn.commit()
+			elif name in ['modify', 'insert', 'insertMany', 'delete', 'deleteMany']:
+				id = args[0]
+				if id not in cached_ids:
+					additional_request = True
+					self._conn.read(id)
+					cached_ids.add(id)
+				getattr(self._conn, name)(*args, **kwds)
+			elif name in ['read', 'readByMask', 'readByMasks']:
+				id = args[0]
+				if id not in cached_ids:
+					additional_request = True
+					self._conn.read(id)
+					cached_ids.add(id)
+			elif name == 'objectExists':
+				id = args[0]
+				if id not in cached_ids:
+					additional_request = True
+					getattr(self._conn, name)(*args, **kwds)
+			elif name == 'repair':
+				cached_ids.clear()
+				getattr(self._conn, name)(*args, **kwds)
+			else:
+				getattr(self._conn, name)(*args, **kwds)
+			additional_requests.append(additional_request)
+
+		raw_results = [None] + list(reversed(raw_results)) + [None]
+		results = []
+		for elem, additional_request in zip(requests, additional_requests):
+			name, args, kwds = elem
+			result = None
+			if name == 'create':
+				new_id = raw_results.pop()
+				self._cache.create(new_id, *args, **kwds)
+				result = new_id
+			elif name in ['modify', 'insert', 'insertMany', 'delete', 'deleteMany']:
+				id = args[0]
+				if additional_request:
+					self._cache.create(id, raw_results.pop())
+				getattr(self._cache, name)(*args, **kwds)
+				raw_results.pop()
+			elif name == 'objectExists':
+				id = args[0]
+				if additional_request:
+					result = raw_results.pop()
+				else:
+					result = True
+			elif name in ['read', 'readByMask', 'readByMasks']:
+				id = args[0]
+				if additional_request:
+					self._cache.create(id, raw_results.pop())
+				result = getattr(self._cache, name)(*args, **kwds)
+			elif name == 'repair':
+				self._cache.invalidate()
+			else:
+				result = raw_results.pop()
+
+			results.append(result)
+
+		return results[1:-1]
+
 	def _handleRequests(self, requests):
 		if self._sync():
 			return self._handleSync(requests)
 		else:
-			cached_ids = set()
-			additional_requests = []
-			for name, args, kwds in requests:
-				additional_request = False
-				if name == 'commit':
-					raw_results = self._conn.commit()
-				elif name in ['modify', 'insert', 'insertMany', 'delete', 'deleteMany']:
-					id = args[0]
-					if not self._cache.objectExists(id) and id not in cached_ids:
-						additional_request = True
-						self._conn.read(id)
-						cached_ids.add(id)
-					getattr(self._conn, name)(*args, **kwds)
-				elif name in ['read', 'readByMask', 'readByMasks']:
-					id = args[0]
-					if not self._cache.objectExists(id) and id not in cached_ids:
-						additional_request = True
-						self._conn.read(id)
-						cached_ids.add(id)
-				elif name == 'objectExists':
-					id = args[0]
-					if not self._cache.objectExists(id) and id not in cached_ids:
-						additional_request = True
-						getattr(self._conn, name)(*args, **kwds)
-				elif name == 'repair':
-					cached_ids.clear()
-					getattr(self._conn, name)(*args, **kwds)
-				else:
-					getattr(self._conn, name)(*args, **kwds)
-				additional_requests.append(additional_request)
-
-			raw_results = [None] + list(reversed(raw_results)) + [None]
-			results = []
-			for elem, additional_request in zip(requests, additional_requests):
-				name, args, kwds = elem
-				result = None
-				if name == 'create':
-					new_id = raw_results.pop()
-					self._cache.create(new_id, *args, **kwds)
-					result = new_id
-				elif name in ['modify', 'insert', 'insertMany', 'delete', 'deleteMany']:
-					id = args[0]
-					if additional_request:
-						self._cache.create(id, raw_results.pop())
-					getattr(self._cache, name)(*args, **kwds)
-					raw_results.pop()
-				elif name == 'objectExists':
-					id = args[0]
-					if additional_request:
-						result = raw_results.pop()
-					else:
-						result = True
-				elif name in ['read', 'readByMask', 'readByMasks']:
-					id = args[0]
-					if additional_request:
-						self._cache.create(id, raw_results.pop())
-					result = getattr(self._cache, name)(*args, **kwds)
-				elif name == 'repair':
-					self._cache.invalidate()
-				else:
-					result = raw_results.pop()
-
-				results.append(result)
-
-			return results[1:-1]
+			return self._handleAsync(requests)
