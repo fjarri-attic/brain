@@ -298,6 +298,33 @@ class Connection(TestRequest):
 		"""Check that call to wrong transacted method name raises an exception"""
 		self.assertRaises(AttributeError, getattr, self.conn, 'creat')
 
+	def testCacheOnActionRollback(self):
+		"""
+		Check that when new object is added to cache because of some action
+		on this object, it is removed from cache on rollback.
+		(we cannot check it explicitly, so we just create the situation which activates
+		corresponding codepath, and check coverage).
+		"""
+
+		# this test makes no sense for in-memory databases - their data is not persistent
+		if self.in_memory: return
+
+		obj = self.conn.create({'name': 'Alex', 'age': 22})
+		self.conn.close()
+
+		# recreate connection
+		args = self.connection_args
+		kwds = copy.deepcopy(self.connection_kwds)
+		kwds['open_existing'] = 1
+		self.conn = self.gen.connect(self.tag, *args, **kwds)
+
+		self.conn.beginSync()
+		self.conn.modify(obj, ['age'], 23)
+		self.conn.rollback()
+
+		res = self.conn.read(obj, ['age'])
+		self.assertEqual(res, 22)
+
 
 def suite(engine_params, connection_generator):
 	res = helpers.NamedTestSuite('connection')
