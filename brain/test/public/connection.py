@@ -134,12 +134,16 @@ class Connection(TestRequest):
 		self.prepareStandNoList()
 
 		self.conn.beginSync()
+		new_obj = self.conn.create({'key': 'New object'})
 		self.conn.modify(self.id1, None, {'name': 'Zack'})
 		self.conn.rollback()
 
 		# check that rollback really occurred
 		res = self.conn.read(self.id1)
 		self.assertEqual(res, {'name': 'Alex', 'phone': '1111'})
+
+		# new object should be deleted
+		self.assertEqual(self.conn.objectExists(new_obj), False)
 
 	def testSyncTransactionError(self):
 		"""Check that sync transaction automatically rolls back on error"""
