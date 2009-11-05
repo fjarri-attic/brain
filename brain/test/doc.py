@@ -706,6 +706,16 @@ Get all database contents.
  [1, [1, 2, 3], 2, {'key': 'val'}]
  >>> conn.close()
 
+Connection.getRemoveConflicts()
+===============================
+
+Get current default value of ``remove_conflicts`` keyword (the one which was set
+when connection was created, in `connect()`_).
+
+**Arguments**: ``getRemoveConflicts()``
+
+**Returns**: True or False
+
 .. _Connection.insert():
 
 .. _Connection.insertMany():
