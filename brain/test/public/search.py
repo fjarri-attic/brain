@@ -11,6 +11,16 @@ from public.requests import TestRequest, getParameterized
 class Search(TestRequest):
 	"""Test operation of SearchRequest"""
 
+	def testSynchronousSearch(self):
+		"""Check that search operate normally in synchronous mode"""
+		self.prepareStandNoList()
+		self.conn.beginSync()
+		obj = self.conn.create({'key': 'New object'})
+		res = self.conn.search(['key'], op.EQ, 'New object')
+		self.conn.commit()
+
+		self.assertEqual(res, [obj])
+
 	def testConditionAnd(self):
 		"""Check complex condition with And operator"""
 		self.prepareStandNoList()
