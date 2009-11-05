@@ -8,6 +8,7 @@ import time
 import sys
 
 import brain
+from brain.connection import ObjectCache
 from brain.data import *
 
 STARTING_DEPTH = 5 # starting data depth of objects
@@ -19,85 +20,42 @@ NONE_PROBABILITY = 0.3 # probability of last None appearance in the path of inse
 READ_BY_MASK_PROBABILITY = 0.6 # probability of using masks in read()
 CONFLICTING_PATH_PROBABILITY = 0.2 # probability of using conflicting path when modifying/inserting
 
-class FakeConnection:
+class FakeConnection(ObjectCache):
 	"""
 	Class which mimics some Connection methods, implementing them using Python data structures.
 	It is used to test request results for real Connection class
 	"""
 
 	def __init__(self):
+		ObjectCache.__init__(self)
 		self._id_counter = 0
-		self._root = {}
-
-	def _deleteAll(self, obj, path):
-		"""Delete all values from given path"""
-		if path[0] is None and isinstance(obj, list):
-			if len(path) == 1:
-				obj[:] = []
-			else:
-				for i in range(len(obj)):
-					self._deleteAll(obj[i], path[1:])
-		elif (isinstance(path[0], str) and isinstance(obj, dict) and path[0] in obj.keys()) or \
-				(isinstance(path[0], int) and isinstance(obj, list) and path[0] < len(obj)):
-			if len(path) == 1:
-				del obj[path[0]]
-			else:
-				self._deleteAll(obj[path[0]], path[1:])
 
 	def create(self, data, path=None):
-		if path is None:
-			path = []
+		"""
+		Special treatment for create request - ObjectCache needs object ID
+		to be specified in create request (it does not have an internal counter).
+		"""
 		self._id_counter += 1
-		saveToTree(self._root, self._id_counter, path, data)
+		ObjectCache.create(self, self._id_counter, data, path)
+		self.clear_undo_history()
 		return self._id_counter
 
-	def modify(self, id, path, value, remove_conflicts=False):
-		saveToTree(self._root, id, path, value, remove_conflicts=remove_conflicts)
+	def __getattr__(self, name):
+		"""
+		Handler for all DB requests. Simply transfer request to object cache
+		and 'commit' it (clear cache undo history) - we do not need the
+		TransactedConnection complexity for fuzz tests, commit right after
+		request is good enough.
+		"""
 
-	def insertMany(self, id, path, values, remove_conflicts=False):
-		if remove_conflicts:
-			self.modify(id, path[:-1], [], remove_conflicts=True)
+		def handler(*args, **kwds):
+			try:
+				return getattr(ObjectCache, name)(self, *args, **kwds)
+			finally:
+				self.clear_undo_history()
 
-		target = getNodeByPath(self._root[id], path[:-1])
-		index = path[-1]
+		return handler
 
-		if index is not None and index > len(target):
-			for i in range(len(target), index):
-				target.append(None)
-
-		if index is None:
-			for value in values:
-				target.append(value)
-		else:
-			for value in reversed(values):
-				target.insert(index, value)
-
-	def deleteMany(self, id, paths=None):
-		for path in paths:
-			self._deleteAll(self._root[id], path)
-
-	def read(self, id, path=None, masks=None):
-		if path is None:
-			path = []
-
-		res = getNodeByPath(self._root, [id] + path)
-
-		if masks is not None:
-			fields = treeToPaths(res)
-			res_fields = []
-			for field_path, value in fields:
-				for mask in masks:
-					if pathMatchesMask(field_path, mask):
-						res_fields.append((field_path, value))
-						break
-
-			if len(res_fields) == 0:
-				raise brain.LogicError("Object " + str(id) +
-					" does not have fields matching given masks")
-
-			res = pathsToTree(res_fields)
-
-		return res
 
 # Auxiliary functions
 
