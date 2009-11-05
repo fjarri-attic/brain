@@ -1079,6 +1079,22 @@ depend on DB engine).
  True
  >>> conn.close()
 
+CachedConnection
+~~~~~~~~~~~~~~~~
+
+This class wraps anything with `Connection`_-like interface and adds object caching.
+The caching algorithm is rather simple, it speeds up only read operations (by keeping
+copies of objects in memory).
+
+**Arguments**: ``CachedConnection(conn, size_threshold=0)``
+
+``conn``:
+  Object with `Connection`_ interface.
+
+``size_threshold``:
+  How many objects the cache must keep in memory. If zero, all accessed objects are kept.
+  If non-zero, specifies the number of most recently accessed object kept.
+
 Client
 ~~~~~~
 
