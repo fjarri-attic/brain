@@ -70,10 +70,11 @@ def getParameterized(base_class, engine_params, connection_generator):
 
 	class Derived(base_class):
 
-		def reconnect(self):
+		def reconnect(self, **additional_kwds):
 			"""Creates another connection with the same properties as the initial one"""
 			args = self._connection_args
 			kwds = copy.deepcopy(self._connection_kwds)
+			kwds.update(additional_kwds)
 			kwds['open_existing'] = 1
 			return self.gen.connect(self._tag, *args, **kwds)
 
