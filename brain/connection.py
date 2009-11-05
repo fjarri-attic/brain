@@ -561,9 +561,10 @@ class ObjectCache:
 	object data in Python structures.
 	"""
 
-	def __init__(self, remove_conflicts=False):
+	def __init__(self, remove_conflicts=False, size_threshold=0):
 		self._root = {}
 		self._remove_conflicts = remove_conflicts
+		self._size_threshold = size_threshold
 		self.clear_undo_history()
 
 	def undo(self):
@@ -716,12 +717,13 @@ class CachedConnection(TransactedConnection):
 	opened - cache can return old data in this case.
 	"""
 
-	def __init__(self, conn):
+	def __init__(self, conn, size_threshold=0):
 		TransactedConnection.__init__(self)
 		self._conn = conn
 
 		# FIXME: remove usage of hidden attribute
-		self._cache = ObjectCache(remove_conflicts=self._conn._remove_conflicts)
+		self._cache = ObjectCache(remove_conflicts=self._conn._remove_conflicts,
+			size_threshold=size_threshold)
 
 		self._sync_handlers = {
 			'create': self._handleSyncCreation,
