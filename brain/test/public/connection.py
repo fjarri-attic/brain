@@ -334,7 +334,28 @@ class Connection(TestRequest):
 		res = self.conn.read(obj, ['age'])
 		self.assertEqual(res, 22)
 
-	def testCacheUpdateOnSynchronousRead(self):
+	def testCacheUpdateOnAsyncModification(self):
+		"""
+		Check that cache is properly updated during asynchronous modification request
+		(modify/delete/insert).
+		"""
+		# this test makes no sense for in-memory databases - their data is not persistent
+		if self.in_memory: return
+
+		self.prepareStandNoList()
+
+		# recreate connection
+		args = self.connection_args
+		kwds = copy.deepcopy(self.connection_kwds)
+		kwds['open_existing'] = 1
+		self.conn = self.gen.connect(self.tag, *args, **kwds)
+
+		self.conn.modify(self.id2, ['phone'], '3333')
+		res = self.conn.read(self.id2, ['phone'])
+
+		self.assertEqual(res, '3333')
+
+	def testCacheUpdateOnSyncRead(self):
 		"""
 		Coverage test, which checks that new object is stored in cache during
 		synchronous read in case of cache miss.
