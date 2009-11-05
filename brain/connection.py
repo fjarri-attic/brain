@@ -338,6 +338,7 @@ class Connection(TransactedConnection):
 		}
 
 	def getRemoveConflicts(self):
+		"""Get current default value of remove_conflicts keyword."""
 		return self._remove_conflicts
 
 	def _engine_begin(self):
