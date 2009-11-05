@@ -721,17 +721,17 @@ class CachedConnection(TransactedConnection):
 		self._cache = ObjectCache(remove_conflicts=self._conn._remove_conflicts)
 
 		self._sync_handlers = {
-			'create': self._handleCreationSync,
-			'modify': self._handleModificationSync,
-			'insert': self._handleModificationSync,
-			'insertMany': self._handleModificationSync,
-			'delete': self._handleModificationSync,
-			'deleteMany': self._handleModificationSync,
-			'objectExists': self._handleObjectExistsSync,
-			'repair': self._handleRepairSync,
-			'read': self._handleReadSync,
-			'readByMask': self._handleReadSync,
-			'readByMasks': self._handleReadSync
+			'create': self._handleSyncCreation,
+			'modify': self._handleSyncModification,
+			'insert': self._handleSyncModification,
+			'insertMany': self._handleSyncModification,
+			'delete': self._handleSyncModification,
+			'deleteMany': self._handleSyncModification,
+			'objectExists': self._handleSyncObjectExists,
+			'repair': self._handleSyncRepair,
+			'read': self._handleSyncRead,
+			'readByMask': self._handleSyncRead,
+			'readByMasks': self._handleSyncRead
 		}
 
 	def _begin(self, sync):
@@ -753,13 +753,13 @@ class CachedConnection(TransactedConnection):
 		self._cache.undo()
 		TransactedConnection._onError(self)
 
-	def _handleCreationSync(self, name, value, path=None):
+	def _handleSyncCreation(self, name, value, path=None):
 		# Get new ID from connection and create object in cache
 		new_id = self._conn.create(value, path)
 		self._cache.create(new_id, value, path)
 		return new_id
 
-	def _handleModificationSync(self, name, *args, **kwds):
+	def _handleSyncModification(self, name, *args, **kwds):
 		# Object modification - perform on connection,
 		# update cache if necessary and perform same
 		# operation on cache.
@@ -769,7 +769,7 @@ class CachedConnection(TransactedConnection):
 			self._cache.create(id, self._conn.read(id))
 		getattr(self._cache, name)(*args, **kwds)
 
-	def _handleObjectExistsSync(self, name, id):
+	def _handleSyncObjectExists(self, name, id):
 		# If object is already in cache, the answer is trivial;
 		# if not - ask connection object.
 		if not self._cache.objectExists(id):
@@ -777,13 +777,13 @@ class CachedConnection(TransactedConnection):
 		else:
 			return True
 
-	def _handleRepairSync(self, name):
+	def _handleSyncRepair(self, name):
 		# theoretically, after repair anything can happen,
 		# so cache is no longer valid
 		self._cache.invalidate()
 		self._conn.repair()
 
-	def _handleReadSync(self, name, id, *args, **kwds):
+	def _handleSyncRead(self, name, id, *args, **kwds):
 		# Read to cache first if necessary, then read from cache
 		if not self._cache.objectExists(id):
 			self._cache.create(id, self._conn.read(id))
