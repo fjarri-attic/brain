@@ -189,11 +189,15 @@ class Client:
 class _RemoteConnection(TransactedConnection):
 	"""Class which mimics local DB connection"""
 
-	def __init__(self, client, *args, **kwds):
+	def __init__(self, client, *args, remove_conflicts=False, **kwds):
 		TransactedConnection.__init__(self)
 		self._client = client
-		self._session_id = client.connect(*args, **kwds)
+		self._remove_conflicts = remove_conflicts
+		self._session_id = client.connect(*args, remove_conflicts=remove_conflicts, **kwds)
 		self._multicall = None
+
+	def getRemoveConflicts(self):
+		return self._remove_conflicts
 
 	def _handleRequests(self, requests):
 

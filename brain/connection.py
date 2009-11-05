@@ -337,6 +337,9 @@ class Connection(TransactedConnection):
 			'repair': self._logic.processRepairRequest
 		}
 
+	def getRemoveConflicts(self):
+		return self._remove_conflicts
+
 	def _engine_begin(self):
 		self._engine.begin()
 		self._transaction = True
@@ -568,6 +571,9 @@ class ObjectCache:
 		self._size_threshold = size_threshold
 		self._clearUndoHistory()
 
+	def getRemoveConflicts(self):
+		return self._remove_conflicts
+
 	def rollback(self):
 		"""Roll back all memorized changes"""
 
@@ -759,8 +765,7 @@ class CachedConnection(TransactedConnection):
 		TransactedConnection.__init__(self)
 		self._conn = conn
 
-		# FIXME: remove usage of hidden attribute
-		self._cache = ObjectCache(remove_conflicts=self._conn._remove_conflicts,
+		self._cache = ObjectCache(remove_conflicts=self._conn.getRemoveConflicts(),
 			size_threshold=size_threshold)
 
 		self._sync_handlers = {
@@ -776,6 +781,9 @@ class CachedConnection(TransactedConnection):
 			'readByMask': self._handleSyncRead,
 			'readByMasks': self._handleSyncRead
 		}
+
+	def getRemoveConflicts(self):
+		return self._cache.getRemoveConflicts()
 
 	def _begin(self, sync):
 		if sync:
