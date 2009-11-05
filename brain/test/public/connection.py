@@ -1,7 +1,6 @@
 """Unit tests for database facade"""
 
 import unittest
-import copy
 
 import brain
 import brain.op as op
@@ -261,10 +260,7 @@ class Connection(TestRequest):
 		obj = self.conn.create(data)
 
 		# create second connection
-		args = self.connection_args
-		kwds = copy.deepcopy(self.connection_kwds)
-		kwds['open_existing'] = 1
-		conn2 = self.gen.connect(self.tag, *args, **kwds)
+		conn2 = self.reconnect()
 		res = conn2.read(obj)
 		conn2.close()
 
@@ -321,11 +317,7 @@ class Connection(TestRequest):
 		obj = self.conn.create({'name': 'Alex', 'age': 22})
 		self.conn.close()
 
-		# recreate connection
-		args = self.connection_args
-		kwds = copy.deepcopy(self.connection_kwds)
-		kwds['open_existing'] = 1
-		self.conn = self.gen.connect(self.tag, *args, **kwds)
+		self.conn = self.reconnect()
 
 		self.conn.beginSync()
 		self.conn.modify(obj, ['age'], 23)
@@ -344,11 +336,7 @@ class Connection(TestRequest):
 
 		self.prepareStandNoList()
 
-		# recreate connection
-		args = self.connection_args
-		kwds = copy.deepcopy(self.connection_kwds)
-		kwds['open_existing'] = 1
-		self.conn = self.gen.connect(self.tag, *args, **kwds)
+		self.conn = self.reconnect()
 
 		self.conn.modify(self.id2, ['phone'], '3333')
 		res = self.conn.read(self.id2, ['phone'])
@@ -365,11 +353,7 @@ class Connection(TestRequest):
 
 		self.prepareStandNoList()
 
-		# recreate connection
-		args = self.connection_args
-		kwds = copy.deepcopy(self.connection_kwds)
-		kwds['open_existing'] = 1
-		self.conn = self.gen.connect(self.tag, *args, **kwds)
+		self.conn = self.reconnect()
 
 		self.conn.beginSync()
 		res = self.conn.read(self.id2, ['phone'])

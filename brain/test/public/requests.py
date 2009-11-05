@@ -1,5 +1,6 @@
 """Unit with basic mechanisms of database layer requests testing"""
 
+import copy
 import unittest
 
 import helpers
@@ -68,16 +69,24 @@ def getParameterized(base_class, engine_params, connection_generator):
 	"""Get parameterized requests test class with predefined setUp()"""
 
 	class Derived(base_class):
+
+		def reconnect(self):
+			"""Creates another connection with the same properties as the initial one"""
+			args = self._connection_args
+			kwds = copy.deepcopy(self._connection_kwds)
+			kwds['open_existing'] = 1
+			return self.gen.connect(self._tag, *args, **kwds)
+
 		def setUp(self):
 			self.in_memory = engine_params.in_memory
 			self.gen = connection_generator
-			self.tag = engine_params.engine_tag
+			self._tag = engine_params.engine_tag
 
 			args = engine_params.engine_args
 			kwds = engine_params.engine_kwds
 
-			self.connection_args = args
-			self.connection_kwds = kwds
+			self._connection_args = args
+			self._connection_kwds = kwds
 			self.conn = self.gen.connect(engine_params.engine_tag, *args, **kwds)
 
 		def tearDown(self):
