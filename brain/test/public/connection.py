@@ -362,6 +362,7 @@ class Connection(TestRequest):
 
 		self.prepareStandNoList()
 
+		self.conn.close()
 		self.conn = self.reconnect()
 
 		self.conn.beginSync()
