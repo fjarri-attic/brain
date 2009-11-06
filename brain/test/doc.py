@@ -1086,6 +1086,10 @@ This class wraps anything with `Connection`_-like interface and adds object cach
 The caching algorithm is rather simple, it speeds up only read operations (by keeping
 copies of objects in memory).
 
+**Warning**: This class can work incorrectly if more than one connection to database is opened.
+For example, if the second connection changes something in database, the cache will not change
+and, therefore, read operation from the first connection will return the old value.
+
 **Arguments**: ``CachedConnection(conn, size_threshold=0)``
 
 ``conn``:
