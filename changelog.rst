@@ -148,3 +148,10 @@ Added support for insertion and deletion requests in nested lists.
 * conflicts checking logic is slightly more strict now - creating list/map
   in place of value is considered a conflict too
 * changed search() behavior a little - now NOT acts more logically
+
+0.1.5
+=====
+
+* added CachedConnection class, which noticeably increases speed of reading operations for slow connections
+* added getRemoveConflicts() for connection objects
+* generalized connection classes structure, moved parts of logic to separate classes

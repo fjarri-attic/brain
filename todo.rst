@@ -1,8 +1,3 @@
-Next release: 0.1.5
-===================
-
-- create a caching connection and use it in fuzz tests
-
 Future
 ======
 
