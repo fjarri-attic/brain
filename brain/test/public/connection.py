@@ -345,6 +345,7 @@ class Connection(TestRequest):
 
 		self.prepareStandNoList()
 
+		self.conn.close()
 		self.conn = self.reconnect()
 
 		self.conn.modify(self.id2, ['phone'], '3333')
