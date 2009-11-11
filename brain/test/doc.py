@@ -483,6 +483,7 @@ Currently the following connection methods are available:
  * `Connection.delete()`_
  * `Connection.deleteMany()`_
  * `Connection.dump()`_
+ * `Connection.getRemoveConflicts()`_
  * `Connection.insert()`_
  * `Connection.insertMany()`_
  * `Connection.modify()`_
