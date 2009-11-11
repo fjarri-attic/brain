@@ -345,7 +345,7 @@ The package is supplied with a set of functionality tests which I use for debugg
 They can be found in ``test`` subfolder of module main folder. Tests are executed using ``run.py``,
 which has the following parameters:
 
-``run.py <func|fuzz> [options]``
+``run.py <func|fuzz|doc|perf> [options]``
 
 ``func``:
   Functionality tests. They are based on Python's ``unittest`` module, with some minor extensions.
