@@ -624,7 +624,7 @@ class _StructureLayer:
 			# get number of records to be deleted
 			# (unfortunately, some databases (like sqlite) do not return number of
 			# deleted rows as a result of DELETE query)
-			rows = self._engine.execute("SELECT COUNT(*) " + query_str, tables,values)
+			rows = self._engine.execute("SELECT COUNT(*) " + query_str, tables, values)
 			del_num = rows[0][0]
 
 			# if there are any, delete them
