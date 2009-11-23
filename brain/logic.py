@@ -78,6 +78,13 @@ class _StructureLayer:
 		refcounters = {}
 		for table in tables:
 			rows = self._engine.execute("SELECT id FROM {}", [table])
+
+			# empty field tables are automatically deleted, so if we found
+			# one, it should be removed too
+			if len(rows) == 0:
+				self._engine.deleteTable(table)
+				continue
+
 			ids = [x[0] for x in rows]
 			field = Field.fromTableName(self._engine, table)
 			name_str = field.name_str
