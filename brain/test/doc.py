@@ -244,6 +244,11 @@ stands for position in list. None is used in several special cases: to specify t
 `Connection.insert()`_ should perform insertion at the end of the list or as a mask for
 `Connection.delete()`_ and `Connection.read()`_.
 
+String elements must not contain uppercase symbols. This is done because each field name
+correspond to table name in underlying SQL engine, and some engines ignore case in table names.
+So, in order to avoid later search errors, uppercase symbols in field names are simply not allowed -
+`FormatError`_ is thrown.
+
 If path does not contain Nones, it is called *determined*.
 
 **Example**:
