@@ -625,7 +625,7 @@ class _StructureLayer:
 				condition_str = ""
 
 			query_str = "FROM {} WHERE " + self._ID_COLUMN + "=? " + condition_str
-			tables = [field.table_name]
+			tables = [fields[0].table_name] # table names for all fields in group are the same
 			values = [id]
 
 			# get number of records to be deleted
