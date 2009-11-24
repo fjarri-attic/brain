@@ -101,17 +101,17 @@ class Delete(TestRequest):
 		self.conn.delete(self.id2, ['tracks', 1])
 
 		# Check that deletion and reenumeration occurred
-		res = self.conn.readByMask(self.id2, ['tracks', None, 'Name'])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'name'])
 		self.assertEqual(res, {'tracks': [
-			{'Name': 'Track 1 name'},
-			{'Name': 'Track 3 name'}
+			{'name': 'Track 1 name'},
+			{'name': 'Track 3 name'}
 		]})
 
 		# Check that nested list is intact and reenumeration occurred in it too
-		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'authors', None])
 		self.assertEqual(res, {'tracks': [
-			{'Authors': ['Carl II', 'Dan']},
-			{'Authors': ['Rob']}
+			{'authors': ['Carl II', 'Dan']},
+			{'authors': ['Rob']}
 		]})
 
 	def testNestedListFromBeginning(self):
@@ -120,16 +120,16 @@ class Delete(TestRequest):
 		self.conn.delete(self.id2, ['tracks', 0])
 
 		# Check that deletion and reenumeration occurred
-		res = self.conn.readByMask(self.id2, ['tracks', None, 'Name'])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'name'])
 		self.assertEqual(res, {'tracks': [
-			{'Name': 'Track 2 name'},
-			{'Name': 'Track 3 name'}
+			{'name': 'Track 2 name'},
+			{'name': 'Track 3 name'}
 		]})
 
 		# Check that nested list is intact and reenumeration occurred in it too
-		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'authors', None])
 		self.assertEqual(res, {'tracks': [
-			{'Authors': ['Alex']}, {'Authors': ['Rob']}
+			{'authors': ['Alex']}, {'authors': ['Rob']}
 		]})
 
 	def testNestedListFromEnd(self):
@@ -138,34 +138,34 @@ class Delete(TestRequest):
 		self.conn.delete(self.id2, ['tracks', 2])
 
 		# Check that deletion and reenumeration occurred
-		res = self.conn.readByMask(self.id2, ['tracks', None, 'Name'])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'name'])
 		self.assertEqual(res, {'tracks': [
-			{'Name': 'Track 1 name'},
-			{'Name': 'Track 2 name'}
+			{'name': 'Track 1 name'},
+			{'name': 'Track 2 name'}
 		]})
 
 		# Check that nested list is intact and reenumeration occurred in it too
-		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'authors', None])
 		self.assertEqual(res, {'tracks': [
-			{'Authors': ['Carl II', 'Dan']},
-			{'Authors': ['Alex']}
+			{'authors': ['Carl II', 'Dan']},
+			{'authors': ['Alex']}
 		]})
 
 	def testFromListByMaskLeaf(self):
 		"""Test deletion using list mask, leaf list"""
 		self.prepareStandNestedList()
-		self.conn.delete(self.id2, ['tracks', 0, 'Authors', None])
-		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
+		self.conn.delete(self.id2, ['tracks', 0, 'authors', None])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'authors', None])
 		self.assertEqual(res, {'tracks': [
-			None, {'Authors': ['Alex']}, {'Authors': ['Rob']}
+			None, {'authors': ['Alex']}, {'authors': ['Rob']}
 		]})
 
 	def testFromListByMask(self):
 		"""Test deletion using list mask, non-leaf list"""
 		self.prepareStandNestedList()
-		self.conn.delete(self.id2, ['tracks', None, 'Authors', 0])
-		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
-		self.assertEqual(res, {'tracks': [{'Authors': ['Dan']}]})
+		self.conn.delete(self.id2, ['tracks', None, 'authors', 0])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'authors', None])
+		self.assertEqual(res, {'tracks': [{'authors': ['Dan']}]})
 
 	def testFromListKeepsNeighbors(self):
 		"""
@@ -173,12 +173,12 @@ class Delete(TestRequest):
 		from its level of hierarchy
 		"""
 		self.prepareStandNestedList()
-		self.conn.delete(self.id2, ['tracks', 0, 'Authors', 0])
-		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', 0])
+		self.conn.delete(self.id2, ['tracks', 0, 'authors', 0])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'authors', 0])
 		self.assertEqual(res, {'tracks': [
-			{'Authors': ['Dan']},
-			{'Authors': ['Alex']},
-			{'Authors': ['Rob']}
+			{'authors': ['Dan']},
+			{'authors': ['Alex']},
+			{'authors': ['Rob']}
 		]})
 
 	def testAllValuesFromField(self):
@@ -207,12 +207,12 @@ class Delete(TestRequest):
 		self.conn.delete(self.id1, ['tracks', 2])
 
 		# check that value was deleted
-		res = self.conn.search(['tracks', None, 'Lyrics', None], op.EQ, 'Lalala')
+		res = self.conn.search(['tracks', None, 'lyrics', None], op.EQ, 'Lalala')
 		self.assertEqual(res, [])
 
 		# add this value back
-		self.conn.modify(self.id1, ['tracks', 2, 'Lyrics', 0], 'Blablabla')
-		res = self.conn.search(['tracks', None, 'Lyrics', None], op.EQ, 'Blablabla')
+		self.conn.modify(self.id1, ['tracks', 2, 'lyrics', 0], 'Blablabla')
+		res = self.conn.search(['tracks', None, 'lyrics', None], op.EQ, 'Blablabla')
 		self.assertEqual(res, [self.id1])
 
 	def testNonExistingObject(self):
@@ -240,9 +240,9 @@ class Delete(TestRequest):
 		# here pointsToListElements() returned true, because the last list index
 		# is defined; but it is not the last name element, so the field really
 		# does not point to list
-		self.conn.delete(self.id1, ['tracks', 0, 'Name'])
-		res = self.conn.readByMask(self.id1, ['tracks', None, 'Name'])
-		self.assertEqual(res, {'tracks': [None, {'Name': 'Track 2 name'}]})
+		self.conn.delete(self.id1, ['tracks', 0, 'name'])
+		res = self.conn.readByMask(self.id1, ['tracks', None, 'name'])
+		self.assertEqual(res, {'tracks': [None, {'name': 'Track 2 name'}]})
 
 	def testSubTree(self):
 		"""Check that one can delete a subtree at once"""
@@ -250,12 +250,12 @@ class Delete(TestRequest):
 		self.conn.delete(self.id1, ['tracks', 0])
 		res = self.conn.readByMask(self.id1, ['tracks', None])
 		self.assertEqual(res, {'tracks': [{
-			'Name': 'Track 2 name',
-			'Length': 350.0,
-			'Volume': 26,
-			'Rating': 4,
-			'Authors': ['Carl', 'Dan'],
-			'Data': b'\x00\x01\x03'
+			'name': 'Track 2 name',
+			'length': 350.0,
+			'volume': 26,
+			'rating': 4,
+			'authors': ['Carl', 'Dan'],
+			'data': b'\x00\x01\x03'
 		}]})
 
 	def testEmptyMap(self):

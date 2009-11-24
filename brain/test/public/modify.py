@@ -99,8 +99,8 @@ class Modify(TestRequest):
 	def testModificationAddsList(self):
 		"""Check that modification request creates necessary hierarchy"""
 		self.prepareStandNestedList()
-		self.conn.modify(self.id1, ['tracks', 2, 'Lyrics', 0], 'Blablabla')
-		res = self.conn.read(self.id1, ['tracks', 2, 'Lyrics'])
+		self.conn.modify(self.id1, ['tracks', 2, 'lyrics', 0], 'Blablabla')
+		res = self.conn.read(self.id1, ['tracks', 2, 'lyrics'])
 		self.assertEqual(res, ['Blablabla'])
 
 	def testListOnTopOfMap(self):

@@ -36,19 +36,19 @@ class Read(TestRequest):
 	def testAddedListComplexCondition(self):
 		"""Check that read request works properly when some list positions are defined"""
 		self.prepareStandNestedList()
-		res = self.conn.readByMask(self.id1, ['tracks', None, 'Authors', 0])
+		res = self.conn.readByMask(self.id1, ['tracks', None, 'authors', 0])
 		self.assertEqual(res, {'tracks': [
-			{'Authors': ['Alex']},
-			{'Authors': ['Carl I']}
+			{'authors': ['Alex']},
+			{'authors': ['Carl I']}
 		]})
 
 	def testFromMiddleLevelList(self):
 		"""Check that one can read from list in the middle of the hierarchy"""
 		self.prepareStandNestedList()
-		res = self.conn.readByMask(self.id1, ['tracks', None, 'Name'])
+		res = self.conn.readByMask(self.id1, ['tracks', None, 'name'])
 		self.assertEqual(res, {'tracks': [
-			{'Name': 'Track 1 name'},
-			{'Name': 'Track 2 name'}
+			{'name': 'Track 1 name'},
+			{'name': 'Track 2 name'}
 		]})
 
 	def testNonExistingObject(self):
@@ -68,18 +68,18 @@ class Read(TestRequest):
 	def testSubTree(self):
 		"""Check that subtree can be read at once"""
 		self.prepareStandNestedList()
-		res = self.conn.readByMask(self.id1, ['tracks', 0, 'Authors'])
+		res = self.conn.readByMask(self.id1, ['tracks', 0, 'authors'])
 		self.assertEqual(res, {'tracks': [
-			{'Authors': ['Alex', 'Bob']}
+			{'authors': ['Alex', 'Bob']}
 		]})
 
 	def testSubTreesByMask(self):
 		"""Check that several subtrees can be read at once by mask"""
 		self.prepareStandNestedList()
-		res = self.conn.readByMask(self.id1, ['tracks', None, 'Authors'])
+		res = self.conn.readByMask(self.id1, ['tracks', None, 'authors'])
 		self.assertEqual(res, {'tracks': [
-			{'Authors': ['Alex', 'Bob']},
-			{'Authors': ['Carl I']}
+			{'authors': ['Alex', 'Bob']},
+			{'authors': ['Carl I']}
 		]})
 
 	def testComplexStructure(self):
@@ -87,22 +87,22 @@ class Read(TestRequest):
 		self.prepareStandDifferentTypes()
 		res = self.conn.readByMask(self.id1, ['tracks'])
 		self.assertEqual(res, {'tracks': [
-			{'Name': 'Track 1 name', 'Length': 300, 'Volume': 29.4,
-				'Authors': ['Alex', 'Bob'],
-				'Data': b'\x00\x01\x02'},
-			{'Name': 'Track 2 name', 'Length': 350.0, 'Volume': 26,
-				'Authors': ['Carl', 'Dan'],
-				'Rating': 4,
-				'Data': b'\x00\x01\x03'}]})
+			{'name': 'Track 1 name', 'length': 300, 'volume': 29.4,
+				'authors': ['Alex', 'Bob'],
+				'data': b'\x00\x01\x02'},
+			{'name': 'Track 2 name', 'length': 350.0, 'volume': 26,
+				'authors': ['Carl', 'Dan'],
+				'rating': 4,
+				'data': b'\x00\x01\x03'}]})
 
 	def testSeveralComplexStructures(self):
 		"""Check that several complex structures can be read at once"""
 		self.prepareStandDifferentTypes()
-		res = self.conn.readByMasks(self.id1, [['tracks', None, 'Name'],
-			['tracks', None, 'Authors', None]])
+		res = self.conn.readByMasks(self.id1, [['tracks', None, 'name'],
+			['tracks', None, 'authors', None]])
 		self.assertEqual(res, {'tracks': [
-			{'Name': 'Track 1 name', 'Authors': ['Alex', 'Bob']},
-			{'Name': 'Track 2 name', 'Authors': ['Carl', 'Dan']}
+			{'name': 'Track 1 name', 'authors': ['Alex', 'Bob']},
+			{'name': 'Track 2 name', 'authors': ['Carl', 'Dan']}
 		]})
 
 	def testReadNullValueFromRoot(self):
@@ -119,14 +119,14 @@ class Read(TestRequest):
 	def testReadFromPath(self):
 		"""Check that structure can be read from path"""
 		self.prepareStandDifferentTypes()
-		res = self.conn.read(self.id1, ['tracks', 0, 'Authors'])
+		res = self.conn.read(self.id1, ['tracks', 0, 'authors'])
 		self.assertEqual(res, ['Alex', 'Bob'])
 
 	def testReadFromPathByMask(self):
 		"""Check that path and masks parameters work simultaneously"""
 		self.prepareStandDifferentTypes()
-		res = self.conn.read(self.id1, ['tracks'], [[None, 'Authors']])
-		self.assertEqual(res, [{'Authors': ['Alex', 'Bob']}, {'Authors': ['Carl', 'Dan']}])
+		res = self.conn.read(self.id1, ['tracks'], [[None, 'authors']])
+		self.assertEqual(res, [{'authors': ['Alex', 'Bob']}, {'authors': ['Carl', 'Dan']}])
 
 	def testReadFromNonExistentPath(self):
 		"""Check that attempt to read from non-existent path raises LogicError"""
@@ -141,10 +141,10 @@ class Read(TestRequest):
 
 	def testReadPathAndMasks(self):
 		"""Check that path and masks arguments ofr read() work simultaneously"""
-		obj = self.conn.create({'tracks': [{'Name': 'track 1', 'Length': 240},
-			{'Name': 'track 2', 'Length': 300}]})
-		res = self.conn.read(obj, ['tracks'], [[None, 'Length']])
-		self.assertEqual(res, [{'Length': 240}, {'Length': 300}])
+		obj = self.conn.create({'tracks': [{'name': 'track 1', 'length': 240},
+			{'name': 'track 2', 'length': 300}]})
+		res = self.conn.read(obj, ['tracks'], [[None, 'length']])
+		self.assertEqual(res, [{'length': 240}, {'length': 300}])
 
 
 def suite(engine_params, connection_generator):

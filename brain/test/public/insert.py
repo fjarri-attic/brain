@@ -42,112 +42,112 @@ class Insert(TestRequest):
 		"""Test insertion to the middle of nested list"""
 		self.prepareStandNestedList()
 		self.conn.insertMany(self.id2, ['tracks', 1], [
-			{'Name': 'Track 4 name'}, {'Name': 'Track 5 name'}
+			{'name': 'Track 4 name'}, {'name': 'Track 5 name'}
 		])
 
-		res = self.conn.readByMask(self.id2, ['tracks', None, 'Name'])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'name'])
 		self.assertEqual(res, {'tracks': [
-			{'Name': 'Track 1 name'},
-			{'Name': 'Track 4 name'},
-			{'Name': 'Track 5 name'},
-			{'Name': 'Track 2 name'},
-			{'Name': 'Track 3 name'}
+			{'name': 'Track 1 name'},
+			{'name': 'Track 4 name'},
+			{'name': 'Track 5 name'},
+			{'name': 'Track 2 name'},
+			{'name': 'Track 3 name'}
 		]})
 
-		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'authors', None])
 		self.assertEqual(res, {'tracks': [
-			{'Authors': ['Carl II', 'Dan']},
+			{'authors': ['Carl II', 'Dan']},
 			None,
 			None,
-			{'Authors': ['Alex']},
-			{'Authors': ['Rob']}
+			{'authors': ['Alex']},
+			{'authors': ['Rob']}
 		]})
 
 	def testToTheBeginningNestedList(self):
 		"""Test insertion to the beginning of nested list"""
 		self.prepareStandNestedList()
 		self.conn.insertMany(self.id2, ['tracks', 0], [
-			{'Name': 'Track 4 name'}, {'Name': 'Track 5 name'}
+			{'name': 'Track 4 name'}, {'name': 'Track 5 name'}
 		])
 
-		res = self.conn.readByMask(self.id2, ['tracks', None, 'Name'])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'name'])
 		self.assertEqual(res, {'tracks': [
-			{'Name': 'Track 4 name'},
-			{'Name': 'Track 5 name'},
-			{'Name': 'Track 1 name'},
-			{'Name': 'Track 2 name'},
-			{'Name': 'Track 3 name'}
+			{'name': 'Track 4 name'},
+			{'name': 'Track 5 name'},
+			{'name': 'Track 1 name'},
+			{'name': 'Track 2 name'},
+			{'name': 'Track 3 name'}
 		]})
 
-		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'authors', None])
 		self.assertEqual(res, {'tracks': [
 			None,
 			None,
-			{'Authors': ['Carl II', 'Dan']},
-			{'Authors': ['Alex']},
-			{'Authors': ['Rob']}
+			{'authors': ['Carl II', 'Dan']},
+			{'authors': ['Alex']},
+			{'authors': ['Rob']}
 		]})
 
 	def testToTheEndNestedList(self):
 		"""Test insertion to the end of nested list"""
 		self.prepareStandNestedList()
 		self.conn.insertMany(self.id2, ['tracks', None], [
-			{'Name': 'Track 4 name'}, {'Name': 'Track 5 name'}
+			{'name': 'Track 4 name'}, {'name': 'Track 5 name'}
 		])
 
-		res = self.conn.readByMask(self.id2, ['tracks', None, 'Name'])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'name'])
 		self.assertEqual(res, {'tracks': [
-			{'Name': 'Track 1 name'},
-			{'Name': 'Track 2 name'},
-			{'Name': 'Track 3 name'},
-			{'Name': 'Track 4 name'},
-			{'Name': 'Track 5 name'}
+			{'name': 'Track 1 name'},
+			{'name': 'Track 2 name'},
+			{'name': 'Track 3 name'},
+			{'name': 'Track 4 name'},
+			{'name': 'Track 5 name'}
 		]})
 
-		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'authors', None])
 		self.assertEqual(res, {'tracks': [
-			{'Authors': ['Carl II', 'Dan']},
-			{'Authors': ['Alex']},
-			{'Authors': ['Rob']},
+			{'authors': ['Carl II', 'Dan']},
+			{'authors': ['Alex']},
+			{'authors': ['Rob']},
 		]})
 
 	def testTreeToTheBeginningNestedList(self):
 		"""Test insertion of the data tree to the beginning of nested list"""
 		self.prepareStandNestedList()
-		self.conn.insert(self.id2, ['tracks', 0], {'Authors': ['Earl', 'Fred']})
-		res = self.conn.readByMask(self.id2, ['tracks', None, 'Name'])
+		self.conn.insert(self.id2, ['tracks', 0], {'authors': ['Earl', 'Fred']})
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'name'])
 		self.assertEqual(res, {'tracks': [
 			None,
-			{'Name': 'Track 1 name'},
-			{'Name': 'Track 2 name'},
-			{'Name': 'Track 3 name'}
+			{'name': 'Track 1 name'},
+			{'name': 'Track 2 name'},
+			{'name': 'Track 3 name'}
 		]})
 
-		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'authors', None])
 		self.assertEqual(res, {'tracks': [
-			{'Authors': ['Earl', 'Fred']},
-			{'Authors': ['Carl II', 'Dan']},
-			{'Authors': ['Alex']},
-			{'Authors': ['Rob']}
+			{'authors': ['Earl', 'Fred']},
+			{'authors': ['Carl II', 'Dan']},
+			{'authors': ['Alex']},
+			{'authors': ['Rob']}
 		]})
 
 	def testTreeToTheEndNestedList(self):
 		"""Test insertion of the data tree to the end of nested list"""
 		self.prepareStandNestedList()
-		self.conn.insert(self.id2, ['tracks', None], {'Authors': ['Earl', 'Fred']})
-		res = self.conn.readByMask(self.id2, ['tracks', None, 'Name'])
+		self.conn.insert(self.id2, ['tracks', None], {'authors': ['Earl', 'Fred']})
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'name'])
 		self.assertEqual(res, {'tracks': [
-			{'Name': 'Track 1 name'},
-			{'Name': 'Track 2 name'},
-			{'Name': 'Track 3 name'}
+			{'name': 'Track 1 name'},
+			{'name': 'Track 2 name'},
+			{'name': 'Track 3 name'}
 		]})
 
-		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'authors', None])
 		self.assertEqual(res, {'tracks': [
-			{'Authors': ['Carl II', 'Dan']},
-			{'Authors': ['Alex']},
-			{'Authors': ['Rob']},
-			{'Authors': ['Earl', 'Fred']}
+			{'authors': ['Carl II', 'Dan']},
+			{'authors': ['Alex']},
+			{'authors': ['Rob']},
+			{'authors': ['Earl', 'Fred']}
 		]})
 
 	def testToTheEndSeveralLists(self):
@@ -155,14 +155,14 @@ class Insert(TestRequest):
 		self.prepareStandNestedList()
 
 		res = self.conn.insertMany(self.id2,
-			['tracks', 1, 'Authors', None],
+			['tracks', 1, 'authors', None],
 			['Yngwie', 'Zack'])
 
-		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'authors', None])
 		self.assertEqual(res, {'tracks': [
-			{'Authors': ['Carl II', 'Dan']},
-			{'Authors': ['Alex', 'Yngwie', 'Zack']},
-			{'Authors': ['Rob']}
+			{'authors': ['Carl II', 'Dan']},
+			{'authors': ['Alex', 'Yngwie', 'Zack']},
+			{'authors': ['Rob']}
 		]})
 
 	def testToEmptyList(self):
@@ -170,14 +170,14 @@ class Insert(TestRequest):
 		self.prepareStandSimpleList()
 
 		self.conn.insertMany(self.id2,
-			['tracks', 2, 'Authors', None],
+			['tracks', 2, 'authors', None],
 			['Earl', 'Fred'], remove_conflicts=True)
 
-		res = self.conn.readByMask(self.id2, ['tracks', None, 'Authors', None])
+		res = self.conn.readByMask(self.id2, ['tracks', None, 'authors', None])
 		self.assertEqual(res, {'tracks': [
 			None,
 			None,
-			{'Authors': ['Earl', 'Fred']}
+			{'authors': ['Earl', 'Fred']}
 		]})
 
 	def testToListWithSeveralTypes(self):
@@ -189,7 +189,7 @@ class Insert(TestRequest):
 		self.conn.insertMany(self.id1, ['meta', 2], ['Monk', 2, 10.0])
 		res = self.conn.readByMask(self.id1, ['meta', None])
 		self.assertEqual(res, {'meta': [
-			'Pikeman', 'Archer','Monk', 2,
+			'Pikeman', 'Archer', 'Monk', 2,
 			10.0, 1, 2, 4.0, 5.0, b'Gryphon', b'Swordsman'
 		]})
 

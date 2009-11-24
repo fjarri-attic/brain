@@ -226,13 +226,13 @@ class Search(TestRequest):
 	def testNestedList(self):
 		"""Check searching in nested lists"""
 		self.prepareStandNestedList()
-		res = self.conn.search(['tracks', 0, 'Authors', None], op.EQ, 'Alex')
+		res = self.conn.search(['tracks', 0, 'authors', None], op.EQ, 'Alex')
 		self.assertEqual(res, [self.id1])
 
 	def testNestedListRegexp(self):
 		"""Check regexp searching in nested lists"""
 		self.prepareStandNestedList()
-		res = self.conn.search(['tracks', 1, 'Authors', None], op.REGEXP, 'Carl')
+		res = self.conn.search(['tracks', 1, 'authors', None], op.REGEXP, 'Carl')
 		self.assertEqual(res, [self.id1])
 
 	def testNestedListComplexCondition(self):
@@ -240,9 +240,9 @@ class Search(TestRequest):
 		self.prepareStandNestedList()
 
 		res = self.conn.search(
-			[['tracks', None, 'Authors', 1], op.EQ, 'Bob'],
+			[['tracks', None, 'authors', 1], op.EQ, 'Bob'],
 			op.AND,
-			[['tracks', None, 'Name'], op.REGEXP, 'name']
+			[['tracks', None, 'name'], op.REGEXP, 'name']
 		)
 
 		self.assertEqual(res, [self.id1])
@@ -252,11 +252,11 @@ class Search(TestRequest):
 		self.prepareStandDifferentTypes()
 
 		# check work for ints
-		res = self.conn.search(['tracks', None, 'Length'], op.GT, 310)
+		res = self.conn.search(['tracks', None, 'length'], op.GT, 310)
 		self.assertEqual(res, [self.id2])
 
 		# check work for strings
-		res = self.conn.search(['tracks', None, 'Name'], op.GT, 'Track 2 name')
+		res = self.conn.search(['tracks', None, 'name'], op.GT, 'Track 2 name')
 		self.assertEqual(res, [self.id2])
 
 	def testConditionGreaterOrEqual(self):
@@ -264,11 +264,11 @@ class Search(TestRequest):
 		self.prepareStandDifferentTypes()
 
 		# check work for ints
-		res = self.conn.search(['tracks', None, 'Length'], op.GTE, 300)
+		res = self.conn.search(['tracks', None, 'length'], op.GTE, 300)
 		self.assertSameElements(res, [self.id1, self.id2])
 
 		# check work for strings
-		res = self.conn.search(['tracks', None, 'Name'], op.GTE, 'Track 2 name')
+		res = self.conn.search(['tracks', None, 'name'], op.GTE, 'Track 2 name')
 		self.assertSameElements(res, [self.id1, self.id2])
 
 	def testConditionLower(self):
@@ -276,11 +276,11 @@ class Search(TestRequest):
 		self.prepareStandDifferentTypes()
 
 		# check work for ints
-		res = self.conn.search(['tracks', None, 'Length'], op.LT, 300)
+		res = self.conn.search(['tracks', None, 'length'], op.LT, 300)
 		self.assertEqual(res, [self.id2])
 
 		# check work for strings
-		res = self.conn.search(['tracks', None, 'Name'], op.LT, 'Track 3 name')
+		res = self.conn.search(['tracks', None, 'name'], op.LT, 'Track 3 name')
 		self.assertEqual(res, [self.id1])
 
 	def testConditionLowerOrEqual(self):
@@ -288,21 +288,21 @@ class Search(TestRequest):
 		self.prepareStandDifferentTypes()
 
 		# check work for ints
-		res = self.conn.search(['tracks', None, 'Volume'], op.LTE, 27.0)
+		res = self.conn.search(['tracks', None, 'volume'], op.LTE, 27.0)
 		self.assertEqual(res, [self.id2])
 
 		# check work for strings
-		res = self.conn.search(['tracks', None, 'Name'], op.LTE, 'Track 3 name')
+		res = self.conn.search(['tracks', None, 'name'], op.LTE, 'Track 3 name')
 		self.assertSameElements(res, [self.id1, self.id2])
 
 	def testNoneTypeSimpleCondition(self):
 		"""Test that search condition works for NULL value"""
 		self.prepareStandDifferentTypes()
 
-		res = self.conn.search(['tracks', None, 'Volume'], op.EQ, None)
+		res = self.conn.search(['tracks', None, 'volume'], op.EQ, None)
 		self.assertEqual(res, [self.id2])
 
-		res = self.conn.search(op.NOT, ['tracks', None, 'Volume'], op.EQ, None)
+		res = self.conn.search(op.NOT, ['tracks', None, 'volume'], op.EQ, None)
 		self.assertSameElements(res, [self.id1, self.id3])
 
 	def testNoneTypeComplexCondition(self):
@@ -310,9 +310,9 @@ class Search(TestRequest):
 		self.prepareStandDifferentTypes()
 
 		res = self.conn.search(
-			[op.NOT, ['tracks', None, 'Volume'], op.EQ, None],
+			[op.NOT, ['tracks', None, 'volume'], op.EQ, None],
 			op.AND,
-			[['tracks', None, 'Length'], op.EQ, None]
+			[['tracks', None, 'length'], op.EQ, None]
 		)
 
 		self.assertEqual(res, [self.id3])
@@ -320,7 +320,7 @@ class Search(TestRequest):
 	def testWrongCondition(self):
 		"""Test that exception is raised when condition is ill-formed"""
 		self.assertRaises(brain.FormatError, self.conn.search,
-			['tracks', None, 'Length'], op.EQ)
+			['tracks', None, 'length'], op.EQ)
 
 	def testGetAllIDs(self):
 		"""Check that empty search condition returns list of all IDs in database"""
