@@ -15,7 +15,7 @@ class Format(helpers.NamedTestCase):
 
 	def testFieldWrongName(self):
 		"""Test that Field constructor raises exceptions on wrong names"""
-		names = ["fld", {'test': 1}, ['test', 1, [1, 2]], [''], None, '']
+		names = ["fld", {'test': 1}, ['test', 1, [1, 2]], [''], None, '', ["UpperCaseName"]]
 
 		for name in names:
 			self.assertRaises(brain.FormatError, Field, None, name, '1')
