@@ -249,12 +249,12 @@ If path does not contain Nones, it is called *determined*.
 **Example**:
 
  >>> conn = brain.connect(None, None)
- >>> id1 = conn.create({'Tracks': [{'Name': 'track 1', 'Length': 240},
- ... {'Name': 'track 2', 'Length': 300}]})
- >>> print(conn.read(id1, ['Tracks', 0, 'Name']))
+ >>> id1 = conn.create({'tracks': [{'name': 'track 1', 'length': 240},
+ ... {'name': 'track 2', 'length': 300}]})
+ >>> print(conn.read(id1, ['tracks', 0, 'name']))
  track 1
- >>> print(conn.readByMask(id1, ['Tracks', None, 'Length']))
- {'Tracks': [{'Length': 240}, {'Length': 300}]}
+ >>> print(conn.readByMask(id1, ['tracks', None, 'length']))
+ {'tracks': [{'length': 240}, {'length': 300}]}
  >>> conn.close()
 
 .. _FacadeError:
@@ -682,11 +682,11 @@ other list elements are shifted correspondingly.
 
 * Deletion by mask
 
- >>> id1 = conn.create({'Tracks': [{'Name': 'track 1', 'Length': 240},
- ... {'Name': 'track 2', 'Length': 300}]})
- >>> conn.delete(id1, ['Tracks', None, 'Length'])
+ >>> id1 = conn.create({'tracks': [{'name': 'track 1', 'length': 240},
+ ... {'name': 'track 2', 'length': 300}]})
+ >>> conn.delete(id1, ['tracks', None, 'length'])
  >>> print(conn.read(id1))
- {'Tracks': [{'Name': 'track 1'}, {'Name': 'track 2'}]}
+ {'tracks': [{'name': 'track 1'}, {'name': 'track 2'}]}
  >>> conn.close()
 
 Connection.dump()
@@ -925,27 +925,27 @@ Read contents of given object.
 **Example**:
 
  >>> conn = brain.connect(None, None)
- >>> id1 = conn.create({'tracks': [{'Name': 'track 1', 'Length': 240}, {'Name': 'track 2', 'Length': 300}]})
+ >>> id1 = conn.create({'tracks': [{'name': 'track 1', 'length': 240}, {'name': 'track 2', 'length': 300}]})
 
 * Read the whole object
 
  >>> print(conn.read(id1))
- {'tracks': [{'Length': 240, 'Name': 'track 1'}, {'Length': 300, 'Name': 'track 2'}]}
+ {'tracks': [{'length': 240, 'name': 'track 1'}, {'length': 300, 'name': 'track 2'}]}
 
 * Read from given path
 
  >>> print(conn.read(id1, ['tracks', 0]))
- {'Length': 240, 'Name': 'track 1'}
+ {'length': 240, 'name': 'track 1'}
 
 * Read by mask
 
- >>> print(conn.readByMask(id1, ['tracks', None, 'Length']))
- {'tracks': [{'Length': 240}, {'Length': 300}]}
+ >>> print(conn.readByMask(id1, ['tracks', None, 'length']))
+ {'tracks': [{'length': 240}, {'length': 300}]}
 
 * Read from path, filter by mask. Note that mask is relative.
 
- >>> print(conn.read(id1, ['tracks'], [[None, 'Length']]))
- [{'Length': 240}, {'Length': 300}]
+ >>> print(conn.read(id1, ['tracks'], [[None, 'length']]))
+ [{'length': 240}, {'length': 300}]
  >>> conn.close()
 
 Connection.repair()
