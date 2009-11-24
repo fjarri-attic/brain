@@ -108,6 +108,11 @@ class Field:
 			if elem == '':
 				raise FormatError("Field name element should not be an empty string")
 
+			# some DB engines have case-insensitive table names, so we must
+			# require lower case explicitly to avoid search errors
+			if isinstance(elem, str) and not elem.islower():
+				raise FormatError("Field name must be lowercase")
+
 		# check value type
 		if type(py_value) not in _SUPPORTED_TYPES:
 			raise FormatError("Wrong value class: " + str(type(py_value)))
