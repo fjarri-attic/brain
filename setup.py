@@ -14,7 +14,7 @@ import os.path
 
 from brain.test.doc import DOCUMENTATION
 
-VERSION = '0.1.5'
+VERSION = '0.1.6'
 
 # generate .rst file with documentation
 open(os.path.join(os.path.dirname(__file__), 'documentation.rst'), 'w').write(DOCUMENTATION)
