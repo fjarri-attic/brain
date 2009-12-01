@@ -155,3 +155,9 @@ Added support for insertion and deletion requests in nested lists.
 * added CachedConnection class, which noticeably increases speed of reading operations for slow connections
 * added getRemoveConflicts() for connection objects
 * generalized connection classes structure, moved parts of logic to separate classes
+
+0.1.6
+=====
+
+* added case restriction for field names (they now must be lowercase)
+
